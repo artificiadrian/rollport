@@ -1,0 +1,84 @@
+# Builds the installers for every system when a version tag is pushed
+# (git tag v0.2.0 && git push origin v0.2.0), and puts them on a draft
+# release of that tag. Publish the draft by hand once the files are checked.
+# The files are named without the version (Rollport.dmg, Rollport-setup.exe),
+# so https://github.com/artificiadrian/rollport/releases/latest/download/<file>
+# always gives the newest release's file, and the site links to that.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  installers:
+    name: Installers for ${{ matrix.system }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One Mac download for both Apple silicon and Intel.
+          - system: macOS
+            platform: macos-latest
+            args: --target universal-apple-darwin
+            names: "[name][setup][ext]"
+          # The setup .exe only: the MSI did not install in the first test.
+          - system: Windows
+            platform: windows-latest
+            args: --bundles nsis
+            names: "[name][setup][ext]"
+          # Rollport.exe, which runs without being installed. Tauri marks the
+          # program inside an installer with the installer's type, so this one
+          # is built on its own, without installers.
+          - system: Windows, no installer
+            platform: windows-latest
+            args: --no-bundle
+            names: "Rollport[ext]"
+            plain: true
+          # The oldest supported Ubuntu, so the Linux build runs on older glibc too.
+          - system: Linux
+            platform: ubuntu-22.04
+            args: ""
+            names: "[name][setup][ext]"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Linux libraries
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev patchelf
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # The pushed tag, so the files land on its release even if the
+          # version in tauri.conf.json was not raised to match.
+          tagName: ${{ github.ref_name }}
+          releaseName: Rollport ${{ github.ref_name }}
+          releaseBody: Download the file for your system below. The builds are not signed yet; see the README for how to open them.
+          releaseDraft: true
+          args: ${{ matrix.args }}
+          releaseAssetNamePattern: ${{ matrix.names }}
+          uploadPlainBinary: ${{ matrix.plain || false }}

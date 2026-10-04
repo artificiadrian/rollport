@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+    <!-- The source of every app icon: `pnpm tauri icon src-tauri/app-icon.svg`.
+         The site's logo (three stacked prints) on a macOS-style tile: 824 px
+         inside the 1024 px canvas, as Apple's icon grid has it. -->
+    <defs>
+        <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fdfdfc" />
+            <stop offset="1" stop-color="#e9e8e6" />
+        </linearGradient>
+        <filter id="lift" x="-10%" y="-10%" width="120%" height="130%">
+            <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#21201c" flood-opacity="0.28" />
+        </filter>
+    </defs>
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#tile)" filter="url(#lift)" />
+    <rect x="100.5" y="100.5" width="823" height="823" rx="185.5" fill="none" stroke="#21201c" stroke-opacity="0.08" />
+    <!-- The logo, 24 units drawn 26 px each, centred. -->
+    <g transform="translate(200 226) scale(26)" fill="none" stroke="#21201c" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="2.5" y="6" width="12" height="10" rx="1.6" transform="rotate(-9 8.5 11)" fill="#f9f9f8" stroke="#8d8d86" />
+        <rect x="9.5" y="5" width="12" height="10" rx="1.6" transform="rotate(8 15.5 10)" fill="#f9f9f8" stroke="#8d8d86" />
+        <rect x="6" y="8" width="12" height="10" rx="1.6" fill="#fdfdfc" />
+        <path d="m7.5 16 3-3 2 2 1.5-1.5 2.5 2.5" />
+    </g>
+</svg>

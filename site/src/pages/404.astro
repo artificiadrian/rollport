@@ -1,0 +1,66 @@
+---
+// Shown by GitHub Pages for any address the site does not have (404).
+import Page from "../layouts/Page.astro"
+import { url } from "../site"
+---
+
+<Page title="Page not found: Rollport" description="This page does not exist.">
+    <!-- Centred in the room under the header, as on the home page; the bottom
+         padding is the header's height, so it sits in the middle of the window. -->
+    <div class="flex flex-1 flex-col pb-header">
+        <main class="wrap my-auto text-center">
+            <!-- The logo's three prints, the front one missing: not in the folder. -->
+            <svg
+                class="mx-auto text-ink"
+                width="160"
+                height="160"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="0.4"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+                aria-hidden="true"
+            >
+                <rect
+                    x="2.5"
+                    y="6"
+                    width="12"
+                    height="10"
+                    rx="1.6"
+                    transform="rotate(-9 8.5 11)"
+                    class="fill-subtle text-muted"
+                    opacity="0.7"
+                />
+                <rect
+                    x="9.5"
+                    y="5"
+                    width="12"
+                    height="10"
+                    rx="1.6"
+                    transform="rotate(8 15.5 10)"
+                    class="fill-subtle text-muted"
+                    opacity="0.7"
+                />
+                <rect
+                    x="6"
+                    y="8"
+                    width="12"
+                    height="10"
+                    rx="1.6"
+                    class="fill-canvas"
+                    stroke-dasharray="1 0.9"
+                />
+                <path d="M10.6 11.6a1.4 1.4 0 1 1 1.9 1.3c-.35.15-.5.45-.5.8v.3" />
+                <circle cx="12" cy="15.6" r="0.12" fill="currentColor" />
+            </svg>
+            <h1 class="mt-6 text-3xl font-semibold">Page not found</h1>
+            <p class="mt-2 text-muted">
+                This page does not exist, or it has moved.
+            </p>
+            <a class="link mt-6 inline-block" href={url("/")}>
+                Go to the home page
+            </a>
+        </main>
+    </div>
+</Page>

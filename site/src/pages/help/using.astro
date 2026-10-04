@@ -1,0 +1,104 @@
+---
+import HelpSection from "../../components/HelpSection.astro"
+import Help from "../../layouts/Help.astro"
+---
+
+<Help
+    title="Using Rollport"
+    description="Choose what to import and how files are named, stop and continue an import, and import again later."
+>
+    <div class="max-w-(--container-text)">
+        <h1 class="text-3xl font-semibold">Using Rollport</h1>
+        <p class="mt-4 text-lg text-muted text-pretty">
+            What you can change, and what happens on the next import.
+        </p>
+    </div>
+
+    <HelpSection
+        id="options"
+        screen="options"
+        alt="Rollport with Options open: date taken, media types, and file names"
+    >
+        <p>
+            Open <b>Options</b> at the bottom of the window:
+        </p>
+        <ul>
+            <li>
+                <b>Date taken</b>: any date, the last 7 or 30 days, the last 12
+                months, or between two dates you choose.
+            </li>
+            <li>
+                <b>Media types</b>: all media, no Live Photo videos (the short
+                clip that goes with each Live Photo), photos only, or videos
+                only.
+            </li>
+            <li>
+                <b>File names</b>: can be set until the folder's first import.
+                See <a href="#file-names">How files are named</a>.
+            </li>
+        </ul>
+    </HelpSection>
+
+    <HelpSection id="file-names">
+        <p>
+            Until a folder's first import, you can choose how its files are
+            named:
+        </p>
+        <ul>
+            <li>
+                Date and time in the name:{" "}
+                <code>2026-09-02_15-04-11_IMG_0001.HEIC</code>
+            </li>
+            <li>
+                Year and month folders: <code>2026/09/IMG_0001.HEIC</code>
+            </li>
+            <li>
+                The phone's own name: <code>IMG_0001.HEIC</code>
+            </li>
+        </ul>
+        <p>
+            After the first import, the folder keeps that naming, so all its
+            files are named the same way.
+        </p>
+    </HelpSection>
+
+    <HelpSection
+        id="copying"
+        screen="importing"
+        alt="Rollport is 63 percent done, with about a minute left"
+    >
+        <p>
+            The photos go past as they are copied, and Rollport shows the time
+            left. You can click <b>Stop</b> at any time: what is already copied
+            stays in the folder, and the next import goes on from there.
+        </p>
+    </HelpSection>
+
+    <HelpSection
+        id="again"
+        screen="done"
+        alt="Rollport says Imported 312, and that nothing was deleted from the iPhone"
+    >
+        <p>
+            When the import is done, you can unplug the iPhone. Next time,
+            connect it and click <b>Import</b>: only what is new is copied.
+        </p>
+        <p>
+            The folder keeps a record of what it already has, in a small file
+            named <code>rollport-library.db</code>. Keep that file, or the next
+            import copies everything again.
+        </p>
+        <p>
+            Rollport never deletes anything on the iPhone. Once the photos are
+            in the folder, you can delete them on the iPhone yourself to free up
+            space.
+        </p>
+    </HelpSection>
+
+    <HelpSection id="folders">
+        <p>
+            You can import into as many folders as you like. Each folder keeps
+            its own record, so each one gets only what it does not have yet.
+        </p>
+    </HelpSection>
+</Help>

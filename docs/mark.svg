@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.5 2.5 23 17" fill="none" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Rollport's mark, three stacked prints, as in src-tauri/app-icon.svg
+         without its tile. The back prints are cut away under the front one,
+         so the mark stays transparent on any page. -->
+    <mask id="front" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="#fff" />
+        <rect x="6" y="8" width="12" height="10" rx="1.6" fill="#000" stroke="#000" stroke-width="3" />
+    </mask>
+    <g stroke="#8d8d86" mask="url(#front)">
+        <rect x="2.5" y="6" width="12" height="10" rx="1.6" transform="rotate(-9 8.5 11)" />
+        <rect x="9.5" y="5" width="12" height="10" rx="1.6" transform="rotate(8 15.5 10)" />
+    </g>
+    <g stroke="#21201c">
+        <rect x="6" y="8" width="12" height="10" rx="1.6" />
+        <path d="m7.5 16 3-3 2 2 1.5-1.5 2.5 2.5" />
+    </g>
+</svg>

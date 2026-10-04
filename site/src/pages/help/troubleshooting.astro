@@ -1,0 +1,80 @@
+---
+import HelpSection from "../../components/HelpSection.astro"
+import Help from "../../layouts/Help.astro"
+import { site } from "../../site"
+---
+
+<Help
+    title="Troubleshooting: Rollport"
+    description="What to do when Rollport does not open or does not find the iPhone."
+>
+    <div class="max-w-(--container-text)">
+        <h1 class="text-3xl font-semibold">Troubleshooting</h1>
+    </div>
+
+    <HelpSection question id="mac-cannot-open">
+        <p>
+            Apple has not checked Rollport yet, so the Mac blocks it the first
+            time. Try to open it once and close the message. Then open{" "}
+            <b>System Settings</b> › <b>Privacy &amp; Security</b> and click{" "}
+            <b>Open Anyway</b>.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="windows-protected">
+        <p>
+            Rollport is not signed yet, so Windows warns about it. Click{" "}
+            <b>More info</b>, then <b>Run anyway</b>.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="windows-apple-devices">
+        <p>
+            Windows needs Apple's USB driver to see the iPhone. Install Apple
+            Devices from the Microsoft Store, or iTunes. Then connect the iPhone
+            again. <a href={site.appleDevices}>Get Apple Devices</a>
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="linux-usbmuxd">
+        <p>
+            Rollport reaches the iPhone through <code>usbmuxd</code>. Install it
+            with your distribution's package manager, for example{" "}
+            <code>sudo apt install usbmuxd</code> on Debian and Ubuntu, or{" "}
+            <code>sudo dnf install usbmuxd</code> on Fedora. Then connect the
+            iPhone again.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="nothing-happens">
+        <p>
+            Unlock the iPhone. The first time, tap <b>Trust</b>, then enter your
+            passcode. If Rollport still does not see it, try another cable or
+            another USB port.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="windows-heic">
+        <p>
+            The iPhone saves photos as HEIC and videos as HEVC, and Rollport
+            copies them as they are. Windows needs two extensions from the
+            Microsoft Store to open them:{" "}
+            <a href={site.heif}>HEIF Image Extensions</a> (free) and{" "}
+            <a href={site.hevc}>HEVC Video Extensions</a> (about $0.99). The
+            photos need both.
+        </p>
+        <p>
+            To take new photos as JPEG instead, open <b>Settings</b> ›{" "}
+            <b>Camera</b> › <b>Formats</b> on the iPhone and choose{" "}
+            <b>Most Compatible</b>. Photos you already took stay HEIC.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="something-else">
+        <p>
+            Tell us what happened, which system you use (Mac, Windows, or
+            Linux), and your iPhone model.{" "}
+            <a href={`${site.repo}/issues`}>Open an issue on GitHub</a>
+        </p>
+    </HelpSection>
+</Help>

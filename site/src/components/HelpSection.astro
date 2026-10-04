@@ -1,0 +1,92 @@
+---
+// One part of a help page: a heading, text, and an optional picture of the
+// app on a tinted panel. The heading comes from src/help.ts by id. A question
+// (troubleshooting) opens in place instead, one at a time.
+import { sectionTitle, type SectionId } from "../help"
+import Window from "./Window.astro"
+
+interface Props {
+    id: SectionId
+    /** A troubleshooting question: its answer opens in place. */
+    question?: boolean
+    screen?: "trust" | "folder" | "ready" | "options" | "importing" | "done"
+    /** What the picture shows, for screen readers. */
+    alt?: string
+}
+const { id, question, screen, alt } = Astro.props
+const title = sectionTitle(id)
+---
+
+{question ? (
+    <details
+        class="group scroll-mt-12 border-b border-line first-of-type:mt-8 first-of-type:border-t"
+        id={id}
+        name="questions"
+        data-question
+    >
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+            <h2 class="text-balance">{title}</h2>
+            <span
+                class="text-xl leading-none text-muted transition-transform group-open:rotate-45"
+                aria-hidden="true"
+            >
+                +
+            </span>
+        </summary>
+        <div class="prose pb-6">
+            <slot />
+        </div>
+    </details>
+) : (
+    <section class="mt-12 scroll-mt-12" id={id}>
+        <h2 class="text-xl font-semibold text-balance">
+            <a class="link [--link-rest:transparent]" href={`#${id}`}>
+                {title}
+            </a>
+        </h2>
+        <div class="prose mt-3">
+            <slot />
+        </div>
+        {screen && (
+            <figure class="mt-6 flex justify-center rounded-xl bg-subtle px-6 py-8">
+                <Window
+                    class="w-full max-w-shot"
+                    screen={screen}
+                    title={alt ?? title}
+                />
+            </figure>
+        )}
+    </section>
+)}
+
+<script>
+    // A question opens from its link or the address; one opened by hand puts
+    // its id in the address, so it can be shared, and the sidebar marks it.
+    const questions = [
+        ...document.querySelectorAll<HTMLDetailsElement>("[data-question]"),
+    ]
+    function openFromAddress() {
+        const target = document.getElementById(location.hash.slice(1))
+        if (
+            target instanceof HTMLDetailsElement &&
+            target.dataset["question"] !== undefined
+        )
+            target.open = true
+    }
+    for (const question of questions)
+        question.addEventListener("toggle", () => {
+            const hash = `#${question.id}`
+            if (question.open && location.hash !== hash)
+                history.replaceState(null, "", hash)
+            // One closes as another opens: clear the address only if it is
+            // still this question's.
+            else if (!question.open && location.hash === hash)
+                history.replaceState(null, "", location.pathname)
+            else return
+            dispatchEvent(new HashChangeEvent("hashchange"))
+        })
+    if (questions.length > 0) {
+        addEventListener("hashchange", openFromAddress)
+        openFromAddress()
+    }
+</script>

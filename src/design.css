@@ -1,0 +1,151 @@
+/* The design the app and the site share: colours, the font, focus rings, and
+   the buttons. Import it after Tailwind: @import "tailwindcss"; then this. */
+@import "@radix-ui/colors/sand.css";
+@import "@radix-ui/colors/sand-dark.css";
+@import "@radix-ui/colors/tomato.css";
+@import "@radix-ui/colors/tomato-dark.css";
+@import "@radix-ui/colors/orange.css";
+@import "@radix-ui/colors/orange-dark.css";
+
+/* Radix turns its dark scales on with a class, not with the system setting.
+   app.html sets the class from the system setting, and dark: follows it too,
+   so the two cannot disagree. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+    --color-tomato-3: var(--tomato-3);
+    --color-tomato-6: var(--tomato-6);
+    --color-tomato-7: var(--tomato-7);
+    --color-tomato-9: var(--tomato-9);
+    --color-tomato-11: var(--tomato-11);
+    --color-tomato-12: var(--tomato-12);
+    --color-orange-9: var(--orange-9);
+    --color-orange-11: var(--orange-11);
+
+    /* Surfaces by role, so light and dark can sit on different steps. */
+    --color-canvas: var(--canvas);
+    --color-subtle: var(--subtle);
+    --color-element: var(--element);
+    --color-fill: var(--fill);
+    --color-line: var(--line);
+    --color-edge: var(--edge);
+    --color-faint: var(--faint);
+    --color-muted: var(--sand-11);
+    --color-ink: var(--sand-12);
+}
+
+/* Dark surfaces sit two Radix steps up and borders one: on sand-1 the window
+   read as a hole next to every other app. Text keeps its steps. color-scheme
+   follows the class so native controls — date pickers — match. */
+:root {
+    color-scheme: light;
+    --canvas: var(--sand-1);
+    --subtle: var(--sand-2);
+    --element: var(--sand-3);
+    --fill: var(--sand-5);
+    --line: var(--sand-6);
+    --edge: var(--sand-7);
+    --faint: var(--sand-8);
+}
+
+:root.dark {
+    color-scheme: dark;
+    --canvas: var(--sand-3);
+    --subtle: var(--sand-4);
+    --element: var(--sand-5);
+    --fill: var(--sand-7);
+    --line: var(--sand-7);
+    --edge: var(--sand-8);
+    --faint: var(--sand-9);
+}
+
+@theme {
+    --font-sans: system-ui, sans-serif;
+}
+
+/* Keyboard focus has to be visible, and the webview does not do it for us. */
+:where(button, input, select, a, summary):focus-visible {
+    outline: 2px solid color-mix(in srgb, currentColor 55%, transparent);
+    outline-offset: 2px;
+}
+
+body {
+    background-color: var(--canvas);
+    color: var(--sand-12);
+}
+
+/* Frosted over whatever is behind: pills and secondary buttons let its
+   colour through. The main action is solid ink, raised above them. */
+/* The -webkit- form goes first: after the plain one, the minifier keeps only
+   the prefixed form, and Chromium on Windows loses the blur. */
+@utility glass {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-canvas) 55%, transparent);
+    -webkit-backdrop-filter: blur(var(--blur-md)) saturate(150%);
+    backdrop-filter: blur(var(--blur-md)) saturate(150%);
+}
+
+/* Hover and press for every button, one way each. Outside Tailwind's layers
+   on purpose: a hover colour has to win over the resting colour a utility
+   class sets on the same button. */
+/* The main action: ink, solid and raised above the glass, so it is the one
+   thing to press on any tint. Sand 12 on Sand 1 is near-black in light mode
+   and near-white in dark mode. */
+.btn-main {
+    background-color: var(--sand-12);
+    color: var(--sand-1);
+    box-shadow:
+        0 1px 2px rgb(0 0 0 / 0.2),
+        0 6px 14px -4px rgb(0 0 0 / 0.35),
+        0 24px 40px -18px rgb(0 0 0 / 0.5);
+    transition:
+        transform 150ms ease-out,
+        box-shadow 150ms ease-out,
+        background-color 150ms ease-out;
+}
+
+/* The ring takes the fill, not the text: the text is the opposite colour, and
+   its ring read as a dark border round the light button in dark mode. */
+.btn-main:focus-visible {
+    outline-color: color-mix(in srgb, var(--sand-12) 55%, transparent);
+}
+
+.btn-main:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--sand-12) 88%, var(--sand-1));
+}
+
+.btn-main:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow:
+        0 1px 2px rgb(0 0 0 / 0.2),
+        0 4px 10px -4px rgb(0 0 0 / 0.35);
+}
+
+.btn-glass {
+    transition:
+        transform 150ms ease-out,
+        background-color 150ms ease-out,
+        border-color 150ms ease-out;
+}
+
+.btn-glass:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--canvas) 85%, transparent);
+    border-color: color-mix(in srgb, var(--sand-12) 22%, transparent);
+}
+
+.btn-glass:active:not(:disabled) {
+    transform: scale(0.97);
+    background-color: var(--canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-main,
+    .btn-glass {
+        transition: none;
+    }
+
+    .btn-main:active:not(:disabled),
+    .btn-glass:active:not(:disabled) {
+        transform: none;
+    }
+}

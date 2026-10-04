@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Rollport</title>
+        <script>
+            // Before first paint, so a dark window never flashes light.
+            const dark = matchMedia("(prefers-color-scheme: dark)")
+            const follow = () =>
+                document.documentElement.classList.toggle("dark", dark.matches)
+            follow()
+            dark.addEventListener("change", follow)
+        </script>
+        %sveltekit.head%
+    </head>
+    <body>
+        <div style="display: contents">%sveltekit.body%</div>
+    </body>
+</html>

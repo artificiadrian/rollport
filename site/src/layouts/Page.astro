@@ -1,0 +1,182 @@
+---
+// Every page of the site: the head, the visitor's system and theme, the
+// header, and in development the switch to try other systems and themes.
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right"
+import DevSwitch from "../components/DevSwitch.astro"
+import Mark from "../components/Mark.astro"
+import { sentence, site, url } from "../site"
+import "../styles/global.css"
+
+interface Props {
+    title: string
+    description: string
+    /** From 768 px up the header stays in view as the page scrolls (help). */
+    stickyHeader?: boolean
+}
+const { title, description, stickyHeader } = Astro.props
+const path = Astro.url.pathname
+const started = url("/help/getting-started")
+// Full addresses, as link previews and search engines need them.
+const canonical = new URL(path, site.origin).href
+const ogImage = new URL(url("/og.png"), site.origin).href
+// The image says the home page sentence; so does its description.
+const ogAlt = `The Rollport window with 312 new photos and videos ready to import, next to what Rollport does: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`
+---
+
+<!doctype html>
+<!-- A sticky header covers the top: a link to a section lands below it. -->
+<html lang="en" class:list={[stickyHeader && "md:scroll-pt-12"]}>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
+        <meta name="generator" content={Astro.generator} />
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonical} />
+        <link rel="sitemap" href={url("/sitemap-index.xml")} />
+        <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
+        <!-- Link previews: the share image is made by scripts/demo.ts. -->
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Rollport" />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={ogAlt} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <!-- The canvas colours: sand-1 light, sand-3 dark. -->
+        <meta
+            name="theme-color"
+            content="#fdfdfc"
+            media="(prefers-color-scheme: light)"
+        />
+        <meta
+            name="theme-color"
+            content="#222221"
+            media="(prefers-color-scheme: dark)"
+        />
+        <script is:inline>
+            // The visitor's system, before paint: the app window wears its title
+            // bar and its download is the main button (windows: and linux:
+            // variants in global.css). Anything else counts as a Mac.
+            const platform =
+                navigator.userAgentData?.platform ?? navigator.platform
+            document.documentElement.dataset.os = /win/i.test(platform)
+                ? "windows"
+                : /linux|x11/i.test(platform) &&
+                    !/android/i.test(navigator.userAgent)
+                  ? "linux"
+                  : "mac"
+        </script>
+        <script is:inline>
+            // Radix switches to its dark scale with a class, so set it from the system before paint.
+            const dark = matchMedia("(prefers-color-scheme: dark)")
+            const apply = () =>
+                document.documentElement.classList.toggle("dark", dark.matches)
+            apply()
+            dark.addEventListener("change", apply)
+        </script>
+        {import.meta.env.DEV && <script is:inline>
+            // The dev switch's choice, before paint: its own script runs
+            // after it, and the page showed this system's frame until then.
+            const root = document.documentElement
+            root.dataset.realOs = root.dataset.os
+            try {
+                const choice = JSON.parse(
+                    sessionStorage.getItem("rollport-dev-switch") ?? "{}",
+                )
+                if (choice.os && choice.os !== "auto")
+                    root.dataset.os = choice.os
+                if (choice.theme && choice.theme !== "auto")
+                    root.classList.toggle("dark", choice.theme === "dark")
+            } catch {}
+        </script>}
+    </head>
+    <!-- A full-height column, so a page can centre itself under the header. -->
+    <body class="flex min-h-svh flex-col antialiased">
+        <!-- The bar is full width, so the blur and the line reach the edges;
+             the line shows once the page has scrolled (script below). When it
+             sticks it is thin (12 px padding); the 12 px above and below it
+             scroll away, so at the top the header sits where it does on every
+             page. -->
+        <div
+            class:list={[
+                stickyHeader &&
+                    "z-20 border-b border-transparent bg-canvas/80 backdrop-blur-md transition-colors md:sticky md:top-0 md:my-3 data-scrolled:border-line",
+            ]}
+            data-header={stickyHeader ? "" : undefined}
+        >
+            <header
+                class:list={[
+                    "wrap flex items-center justify-between py-6",
+                    stickyHeader && "md:py-3",
+                ]}
+            >
+                <a
+                    class="inline-flex items-center gap-2 font-semibold"
+                    href={url("/")}
+                >
+                    <Mark size={22} />
+                    Rollport
+                </a>
+                <nav class="flex gap-6 text-muted" aria-label="Site">
+                    <!-- One is marked: Get started on its page, Help on the others. -->
+                    {[
+                        {
+                            href: url("/help/getting-started"),
+                            label: "Get started",
+                        },
+                        { href: url("/help"), label: "Help" },
+                    ].map(({ href, label }) => (
+                        <a
+                            class="transition-colors hover:text-ink aria-[current=page]:text-ink"
+                            href={href}
+                            aria-current={
+                                (
+                                    label === "Help"
+                                        ? path.startsWith(href) &&
+                                          !path.startsWith(started)
+                                        : path.startsWith(href)
+                                )
+                                    ? "page"
+                                    : undefined
+                            }
+                        >
+                            {label}
+                        </a>
+                    ))}
+                    <!-- The arrow: this link leaves the site. Same tab, so Back works.
+                         The icon's own padding is the gap; a pixel down puts it
+                         on the lowercase letters, which most of the word is.
+                         One step lighter than the word, so it reads as a hint. -->
+                    <a
+                        class="group inline-flex items-center transition-colors hover:text-ink"
+                        href={site.repo}
+                    >
+                        GitHub
+                        <ArrowUpRight
+                            size={14}
+                            class="translate-y-px text-(--sand-10) transition-colors group-hover:text-ink"
+                            aria-hidden="true"
+                        />
+                    </a>
+                </nav>
+            </header>
+        </div>
+        <slot />
+        {import.meta.env.DEV && <DevSwitch />}
+    </body>
+</html>
+
+<script>
+    // A sticky header draws its line once the page has scrolled.
+    const bar = document.querySelector<HTMLElement>("[data-header]")
+    if (bar) {
+        const mark = () => bar.toggleAttribute("data-scrolled", scrollY > 0)
+        addEventListener("scroll", mark, { passive: true })
+        mark()
+    }
+</script>

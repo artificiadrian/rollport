@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Help and troubleshooting
+    url: https://artificiadrian.github.io/rollport/help/troubleshooting
+    about: Answers to the common problems, such as a phone that does not show up.

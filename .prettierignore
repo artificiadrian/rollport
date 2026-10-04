@@ -1,0 +1,11 @@
+.svelte-kit
+build
+node_modules
+pnpm-lock.yaml
+src-tauri/gen
+src-tauri/target
+static
+site/dist
+site/.astro
+site/public/demo
+docs

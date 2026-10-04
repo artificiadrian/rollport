@@ -1,0 +1,351 @@
+---
+// Get started: from the download to the first import, one step per row, for
+// the visitor's system. The switch sets data-os on <html>, as the page does
+// before it paints, so the steps, their numbers, the app's pictures, and the
+// sidebar change by CSS alone (windows: and linux: variants; a Mac's is the
+// default). Each step is on the page once, so its id is unique.
+import ArrowRight from "@lucide/astro/icons/arrow-right"
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right"
+import Download from "@lucide/astro/icons/download"
+import Folder from "@lucide/astro/icons/folder"
+import Terminal from "@lucide/astro/icons/terminal"
+import Usb from "@lucide/astro/icons/usb"
+import appIcon from "../../../../src-tauri/app-icon.svg?url"
+import Window from "../../components/Window.astro"
+import { sectionTitle, type SectionId } from "../../help"
+import Help from "../../layouts/Help.astro"
+import { site, url } from "../../site"
+
+type Os = "mac" | "windows" | "linux"
+type Art = "install-mac" | "install" | "driver" | "usbmuxd"
+type Part = {
+    /** HTML: some steps link out or show a command; <b> marks what you click. */
+    text: string[]
+    /** A button under the text, to a page outside. */
+    action?: { label: string; href: string }
+    /** What may happen the first time, after "First time only:". HTML. */
+    note?: string
+    art?: Art
+    screen?: "trust" | "folder" | "ready"
+    alt?: string
+}
+type Step = { id: SectionId } & (
+    ({ on?: Os[] } & Part) | { variants: Partial<Record<Os, Part>> }
+)
+
+const steps: Step[] = [
+    {
+        id: "apple-devices",
+        on: ["windows"],
+        text: [
+            "Windows needs Apple's USB driver to see the iPhone. Install Apple Devices from the Microsoft Store, or iTunes.",
+        ],
+        action: { label: "Get Apple Devices", href: site.appleDevices },
+        art: "driver",
+    },
+    {
+        id: "usbmuxd",
+        on: ["linux"],
+        text: [
+            "Rollport reaches the iPhone through <code>usbmuxd</code>. Install it with your distribution's package manager:",
+            "<code>sudo apt install usbmuxd</code> on Debian and Ubuntu, or <code>sudo dnf install usbmuxd</code> on Fedora.",
+        ],
+        art: "usbmuxd",
+    },
+    {
+        id: "install",
+        variants: {
+            mac: {
+                text: [
+                    "Download Rollport, open the download, and drag Rollport to <b>Applications</b>.",
+                ],
+                note: "the Mac will not open Rollport, because Apple has not checked it yet. Close the message, then open <b>System Settings</b> › <b>Privacy &amp; Security</b> and click <b>Open Anyway</b>.",
+                art: "install-mac",
+            },
+            windows: {
+                text: ["Download Rollport and open the download."],
+                note: "Windows may say it protected your PC, because Rollport is not signed yet. Click <b>More info</b>, then <b>Run anyway</b>.",
+                art: "install",
+            },
+            linux: {
+                text: [
+                    "Download Rollport for your distribution, install it, and open it.",
+                ],
+                art: "install",
+            },
+        },
+    },
+    {
+        id: "connect",
+        text: [
+            "Connect the iPhone with a USB cable and unlock it. The first time, the iPhone asks whether to trust this computer: tap <b>Trust</b>, then enter your passcode. Rollport waits and tells you what to do.",
+            "Nothing goes over the internet. The photos go through the cable to your computer, and nowhere else.",
+        ],
+        screen: "trust",
+        alt: "Rollport asks you to tap Trust on the iPhone",
+    },
+    {
+        id: "folder",
+        text: [
+            "Choose where the photos go. Rollport suggests a folder: click <b>Change…</b> to pick another, or drop a folder on the window. Then click <b>Use this folder</b>. The folder remembers what it already has, so you can use the same folder every time.",
+        ],
+        screen: "folder",
+        alt: "Rollport asks where the photos go, and suggests a folder",
+    },
+    {
+        id: "import",
+        text: [
+            "Rollport counts the photos and videos the folder does not have yet, and shows the newest. Click <b>Import</b>.",
+            "Files are copied as they are: HEIC stays HEIC, and videos stay videos. Each file keeps the date and time it was taken. Nothing on the iPhone is deleted.",
+            `To import only some photos, or to name the files differently, see <a href="${url("/help/using")}">Using Rollport</a>.`,
+        ],
+        screen: "ready",
+        alt: "Rollport shows 312 new photos and videos, ready to import",
+    },
+]
+
+const systems: { os: Os; label: string }[] = [
+    { os: "mac", label: "Mac" },
+    { os: "windows", label: "Windows" },
+    { os: "linux", label: "Linux" },
+]
+// Complete class names, so Tailwind finds them. A Mac's is the default.
+const inline = {
+    mac: "windows:hidden linux:hidden",
+    windows: "hidden windows:inline",
+    linux: "hidden linux:inline",
+}
+const row = {
+    mac: "windows:hidden linux:hidden",
+    windows: "hidden windows:grid",
+    linux: "hidden linux:grid",
+}
+const part = {
+    mac: "contents windows:hidden linux:hidden",
+    windows: "hidden windows:contents",
+    linux: "hidden linux:contents",
+}
+
+const all: Os[] = ["mac", "windows", "linux"]
+const labels: Record<Os, string> = {
+    mac: "Mac",
+    windows: "Windows",
+    linux: "Linux",
+}
+const systemsOf = (step: Step): Os[] =>
+    "variants" in step
+        ? all.filter((os) => step.variants[os])
+        : (step.on ?? all)
+// Each step's number on each system: "Step 2 of 5".
+const numbers = (step: Step) =>
+    systemsOf(step).map((os) => {
+        const list = steps.filter((s) => systemsOf(s).includes(os))
+        return { os, n: list.indexOf(step) + 1, of: list.length }
+    })
+const parts = (step: Step): { os?: Os; part: Part }[] =>
+    "variants" in step
+        ? all.flatMap((os) => {
+              const p = step.variants[os]
+              return p ? [{ os, part: p }] : []
+          })
+        : [{ part: step }]
+const rowClass = (step: Step) => {
+    const on = systemsOf(step)
+    return on.length === all.length ? "grid" : on.map((os) => row[os]).join(" ")
+}
+---
+
+<Help
+    title="Get started: Rollport"
+    description="Install Rollport, connect your iPhone, choose a folder, and do the first import. For Mac, Windows, and Linux."
+    wide
+>
+    <h1 class="text-3xl font-semibold">Get started</h1>
+    <p class="mt-4 text-lg text-muted text-pretty">
+        A few steps, the first time only. After that, connect the iPhone and
+        click <b>Import</b>.
+    </p>
+    <!-- Radio buttons: one of three, with arrow keys, announced as such. -->
+    <fieldset class="mt-6 inline-grid grid-cols-3 gap-1 rounded-xl bg-element p-1">
+        <legend class="sr-only">Steps for</legend>
+        {systems.map(({ os, label }) => (
+            <label class="cursor-pointer rounded-lg px-4 py-1.5 text-center text-muted transition-colors hover:text-ink has-checked:bg-canvas has-checked:font-medium has-checked:text-ink has-checked:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink">
+                <input class="sr-only" type="radio" name="os" value={os} />
+                {label}
+            </label>
+        ))}
+    </fieldset>
+
+    <!-- A numbered line: a number per step, joined by a thin line, and no
+         boxes. The picture sits right of the text from xl, under it before. -->
+    <ol class="mt-12">
+        {steps.map((step) => (
+            <li
+                class:list={[
+                    "group relative scroll-mt-12 grid-cols-[var(--spacing-8)_1fr] gap-x-4 pb-16 last:pb-0 xl:grid-cols-[var(--spacing-8)_1fr_var(--container-shot)] xl:gap-x-12",
+                    rowClass(step),
+                ]}
+                id={step.id}
+            >
+                <span
+                    class="absolute top-8 bottom-0 left-4 my-2 w-px -translate-x-1/2 bg-line group-last:hidden"
+                    aria-hidden="true"
+                />
+                <span class="grid size-8 place-items-center rounded-full border border-edge bg-canvas text-sm font-medium tabular-nums">
+                    {numbers(step).map(({ os, n }) => (
+                        <span class={inline[os]}>{n}</span>
+                    ))}
+                </span>
+                {parts(step).map(({ os, part: p }) => (
+                    <div class={os ? part[os] : "contents"}>
+                        <div class="col-start-2">
+                            <h2 class="text-xl leading-8 font-semibold">
+                                <a
+                                    class="link [--link-rest:transparent]"
+                                    href={`#${step.id}`}
+                                >
+                                    {sectionTitle(step.id)}
+                                </a>
+                            </h2>
+                            <div class="prose mt-2">
+                                {p.text.map((t) => (
+                                    <p set:html={t} />
+                                ))}
+                            </div>
+                            {step.id === "install" && os && (
+                                <div class="mt-6">
+                                    <a
+                                        class="button button-solid inline-flex"
+                                        href={site.downloads[os]}
+                                    >
+                                        <Download
+                                            size={16}
+                                            aria-hidden="true"
+                                        />
+                                        Download for {labels[os]}
+                                    </a>
+                                </div>
+                            )}
+                            {p.action && (
+                                <a
+                                    class="button button-outline mt-6 inline-flex"
+                                    href={p.action.href}
+                                >
+                                    {p.action.label}
+                                    <ArrowUpRight
+                                        size={16}
+                                        aria-hidden="true"
+                                    />
+                                </a>
+                            )}
+                            {p.note && (
+                                <p class="mt-6 text-sm leading-relaxed text-pretty text-muted [&_b]:font-semibold [&_b]:text-ink">
+                                    <b>First time only:</b>{" "}
+                                    <span set:html={p.note} />
+                                </p>
+                            )}
+                        </div>
+                        <div class="col-start-2 mt-8 flex xl:col-start-3 xl:row-start-1 xl:mt-0 xl:justify-center">
+                            {p.screen ? (
+                                <Window
+                                    class="w-full max-w-shot"
+                                    screen={p.screen}
+                                    title={p.alt ?? sectionTitle(step.id)}
+                                />
+                            ) : p.art === "install-mac" ? (
+                                <div
+                                    class="flex items-center gap-4 text-sm text-muted"
+                                    role="img"
+                                    aria-label="Rollport goes into the Applications folder"
+                                >
+                                    <!-- Each picture over its name, as in a Finder
+                                         window; the arrow sits level with the pictures. -->
+                                    <span class="flex flex-col items-center gap-1">
+                                        <img
+                                            class="size-16"
+                                            src={appIcon}
+                                            alt=""
+                                        />
+                                        Rollport
+                                    </span>
+                                    <ArrowRight
+                                        class="mb-6"
+                                        size={20}
+                                        aria-hidden="true"
+                                    />
+                                    <span class="flex flex-col items-center gap-1">
+                                        <span class="grid size-16 place-items-center">
+                                            <Folder
+                                                size={56}
+                                                stroke-width={1.25}
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                        Applications
+                                    </span>
+                                </div>
+                            ) : p.art === "install" ? (
+                                <div class="flex flex-col items-center gap-1 text-sm text-muted">
+                                    <img
+                                        class="size-art"
+                                        src={appIcon}
+                                        alt=""
+                                    />
+                                    Rollport
+                                </div>
+                            ) : (
+                                <div
+                                    class="flex flex-col items-center gap-2 text-sm text-muted"
+                                    aria-hidden="true"
+                                >
+                                    <!-- The step's text names it; the picture only shows it. -->
+                                    <span class="grid size-art place-items-center rounded-full bg-element">
+                                        {p.art === "driver" ? (
+                                            <Usb
+                                                size={40}
+                                                stroke-width={1.25}
+                                            />
+                                        ) : (
+                                            <Terminal
+                                                size={40}
+                                                stroke-width={1.25}
+                                            />
+                                        )}
+                                    </span>
+                                    {p.art === "driver"
+                                        ? "Apple Devices"
+                                        : "usbmuxd"}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </li>
+        ))}
+    </ol>
+
+    <p class="mt-12 text-muted">
+        Something does not work? See{" "}
+        <a class="link text-ink" href={url("/help/troubleshooting")}>
+            Troubleshooting
+        </a>
+        .
+    </p>
+</Help>
+
+<script>
+    // The switch shows the steps for one system; it starts on the visitor's.
+    const root = document.documentElement
+    const radios = [
+        ...document.querySelectorAll<HTMLInputElement>('input[name="os"]'),
+    ]
+    function show(os: string) {
+        root.dataset["os"] = os
+        for (const radio of radios) radio.checked = radio.value === os
+        // The sidebar marks the step being read again (layouts/Help.astro).
+        dispatchEvent(new Event("resize"))
+    }
+    for (const radio of radios)
+        radio.addEventListener("change", () => show(radio.value))
+    show(root.dataset["os"] ?? "mac")
+</script>

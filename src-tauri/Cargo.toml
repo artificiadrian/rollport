@@ -1,0 +1,40 @@
+[package]
+name = "rollport"
+version = "0.1.0"
+description = "Copies the photos and videos from an iPhone to a folder on your computer, over USB."
+authors = ["artificiadrian"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "rollport_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+sha2 = "0.10"
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+idevice = { version = "0.1.65", features = ["afc", "usbmuxd", "pair"] }
+tokio = { version = "1", features = ["rt", "sync", "time", "fs", "io-util", "macros"] }
+tokio-stream = { version = "0.1", default-features = false }
+rfd = "0.17.2"
+chrono = { version = "0.4", default-features = false, features = ["alloc", "clock", "serde"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+fs4 = "0.13"
+percent-encoding = "2.3.2"
+
+# Whether a folder sits on a network drive: statfs on macOS, the drive type on Windows.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2.189"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
+

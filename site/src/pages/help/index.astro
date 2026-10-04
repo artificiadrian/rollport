@@ -1,0 +1,48 @@
+---
+import Help from "../../layouts/Help.astro"
+import { url } from "../../site"
+
+const parts = [
+    {
+        href: "/help/getting-started",
+        title: "Get started",
+        text: "Install Rollport, connect your iPhone, choose a folder, and do the first import. For Mac, Windows, and Linux.",
+    },
+    {
+        href: "/help/using",
+        title: "Using Rollport",
+        text: "Choose what to import and how files are named, stop and continue an import, and import again later.",
+    },
+    {
+        href: "/help/troubleshooting",
+        title: "Troubleshooting",
+        text: "What to do when Rollport does not open or does not find the iPhone.",
+    },
+]
+---
+
+<Help
+    title="Help: Rollport"
+    description="How to copy the photos and videos from your iPhone to a folder on your computer with Rollport."
+>
+    <div class="max-w-(--container-text)">
+        <h1 class="text-3xl font-semibold">Help</h1>
+        <p class="mt-4 text-lg text-muted text-pretty">
+            Rollport copies the photos and videos from your iPhone to a folder
+            on your computer, over USB. The first import takes a few steps.
+            After that, it is one click.
+        </p>
+        <ul class="mt-12 space-y-8">
+            {parts.map(({ href, title, text }) => (
+                <li>
+                    <a class="group block" href={url(href)}>
+                        <span class="link text-xl font-semibold [--link-rest:transparent]">
+                            {title}
+                        </span>
+                        <span class="mt-1 block text-muted">{text}</span>
+                    </a>
+                </li>
+            ))}
+        </ul>
+    </div>
+</Help>

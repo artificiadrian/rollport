@@ -1,0 +1,104 @@
+---
+// Development only (index.astro renders it under import.meta.env.DEV): shows
+// the page as another system and theme would see it. It sets what the page
+// sets for real visitors: data-os and the dark class on <html>.
+const groups = [
+    { name: "os", options: ["auto", "mac", "windows", "linux"] },
+    { name: "theme", options: ["auto", "light", "dark"] },
+]
+---
+
+<div
+    class="fixed right-4 bottom-4 z-50 grid gap-2 rounded-xl border border-line bg-subtle/95 p-2 text-sm shadow-lg backdrop-blur-md"
+    data-dev-switch
+>
+    {groups.map((group) => (
+        <div class="flex gap-1" role="group" aria-label={group.name}>
+            {group.options.map((option) => (
+                <button
+                    class="rounded-md px-2 py-1 text-muted hover:text-ink aria-pressed:bg-element aria-pressed:text-ink"
+                    data-group={group.name}
+                    data-option={option}
+                    aria-pressed="false"
+                >
+                    {option}
+                </button>
+            ))}
+        </div>
+    ))}
+</div>
+
+<script>
+    type Choice = { os: string; theme: string }
+    const KEY = "rollport-dev-switch"
+    const root = document.documentElement
+    // What the page worked out for this browser, before any override
+    // (Page.astro keeps it as data-real-os).
+    const real = { os: root.dataset["realOs"] ?? root.dataset["os"] ?? "mac" }
+    const system = matchMedia("(prefers-color-scheme: dark)")
+
+    let choice: Choice = { os: "auto", theme: "auto" }
+    try {
+        choice = {
+            ...choice,
+            ...JSON.parse(sessionStorage.getItem(KEY) ?? "{}"),
+        }
+    } catch {}
+
+    const frames = () => [
+        ...document.querySelectorAll<HTMLIFrameElement>("iframe[data-demo]"),
+    ]
+
+    function applyTheme() {
+        const dark =
+            choice.theme === "auto" ? system.matches : choice.theme === "dark"
+        root.classList.toggle("dark", dark)
+        for (const frame of frames())
+            frame.contentDocument?.documentElement?.classList.toggle(
+                "dark",
+                dark,
+            )
+    }
+
+    function apply(reloadApp: boolean) {
+        const os = choice.os === "auto" ? real.os : choice.os
+        root.dataset["os"] = os
+        if (reloadApp) {
+            // The app reads the system as it loads, so it loads again.
+            for (const frame of frames()) {
+                const url = new URL(frame.src)
+                url.searchParams.set("os", os)
+                frame.src = url.href
+            }
+        }
+        applyTheme()
+        for (const button of document.querySelectorAll<HTMLButtonElement>(
+            "[data-dev-switch] button",
+        )) {
+            const group = button.dataset["group"] as keyof Choice
+            button.setAttribute(
+                "aria-pressed",
+                String(choice[group] === button.dataset["option"]),
+            )
+        }
+        try {
+            sessionStorage.setItem(KEY, JSON.stringify(choice))
+        } catch {}
+    }
+
+    document
+        .querySelector("[data-dev-switch]")
+        ?.addEventListener("click", (event) => {
+            const button = (event.target as Element).closest("button")
+            const group = button?.dataset["group"] as keyof Choice | undefined
+            const option = button?.dataset["option"]
+            if (!group || !option) return
+            choice = { ...choice, [group]: option }
+            apply(group === "os")
+        })
+
+    // A reloaded app starts in the system's theme; give it the chosen one.
+    for (const frame of frames()) frame.addEventListener("load", applyTheme)
+    system.addEventListener("change", applyTheme)
+    apply(choice.os !== "auto")
+</script>

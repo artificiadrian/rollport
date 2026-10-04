@@ -1,0 +1,211 @@
+---
+// The help pages: the site's column, with the help navigation beside it. From
+// 1280 px up the navigation sits in the room left of the column and lists each
+// page, and the sections of the one open, so the column and the header stay where they are on
+// every page. Below that, the navigation is a row of the pages above the text.
+// The current page is marked (a pill on phones, heavier type from xl), and on
+// it the section being read, with a bar and heavier type (script below).
+import Author from "../components/Author.astro"
+import { help } from "../help"
+import Page from "./Page.astro"
+import { trademark, url } from "../site"
+
+interface Props {
+    title: string
+    description: string
+    /** From xl the main part also takes the room right of the column. */
+    wide?: boolean
+}
+const { title, description, wide } = Astro.props
+// Complete class names, so Tailwind finds them.
+const onlyOn = {
+    windows: "hidden windows:block",
+    linux: "hidden linux:block",
+} as const
+const here = Astro.url.pathname.replace(/\/$/, "")
+---
+
+<Page title={title} description={description} stickyHeader>
+    <div class="wrap pt-12 xl:grid xl:max-w-none xl:grid-cols-[1fr_var(--container-text)_1fr] xl:px-0">
+        <!-- Below xl one row that scrolls sideways, to the screen edges. From
+             xl a column that scrolls on its own when it is taller than the
+             screen. It sticks where it starts, under the header room, the
+             bar's 1 px line, and the 48 px above the text, so it does not move
+             as the page scrolls. A sticky box stays inside its grid, so the room under the
+             text is the text's own, and the grid reaches the page's end.
+             4 px at the left keep the focus ring inside it.
+             The 48 px to the text is a margin, so its scrollbar sits by the
+             links, and it never scrolls sideways: a scrollbar that takes room
+             would push the links out. -->
+        <nav
+            class="-mx-4 mb-12 flex gap-x-1 overflow-x-auto px-4 text-sm whitespace-nowrap [scrollbar-width:none] sm:-mx-6 sm:px-6 xl:sticky xl:top-[calc(var(--spacing-header)+var(--spacing-12)+1px)] xl:col-start-1 xl:row-start-1 xl:mx-0 xl:mb-0 xl:flex-col xl:gap-0 xl:self-start xl:-ml-1 xl:max-h-[calc(100svh-var(--spacing-header)-var(--spacing-12)-1px)] xl:justify-self-end xl:mr-12 xl:overflow-x-hidden xl:overflow-y-auto xl:overscroll-contain xl:px-0 xl:pt-1.5 xl:pb-4 xl:pl-1 xl:[scrollbar-width:thin] xl:whitespace-normal"
+            aria-label="Help"
+        >
+            {help.map(({ href, label, sections }, page) => (
+                <div class="xl:w-nav">
+                    <a
+                        style={`view-transition-name: help-page-${page}`}
+                        class="block rounded-full px-3 py-1 text-muted transition-colors hover:text-ink aria-[current=page]:bg-element aria-[current=page]:font-medium aria-[current=page]:text-ink xl:rounded-none xl:px-0 xl:font-medium xl:aria-[current=page]:bg-transparent xl:aria-[current=page]:font-semibold"
+                        href={url(href)}
+                        aria-current={here === url(href) ? "page" : undefined}
+                    >
+                        {label}
+                    </a>
+                    {sections.length > 0 && here === url(href) && (
+                        <ul
+                            class="mt-1 mb-3 hidden border-l border-line xl:block"
+                            style={`view-transition-name: help-sections-${page}; view-transition-class: help-sections`}
+                        >
+                            {sections.map(({ id, title, ...only }) => (
+                                <li
+                                    class={
+                                        "os" in only
+                                            ? onlyOn[only.os]
+                                            : undefined
+                                    }
+                                >
+                                    <a
+                                        class="-ml-px block border-l-2 border-transparent py-1 pr-2 pl-3 text-muted transition-colors hover:border-edge hover:text-ink aria-[current=location]:border-ink aria-[current=location]:font-medium aria-[current=location]:text-ink"
+                                        href={`#${id}`}
+                                        data-section={id}
+                                    >
+                                        {title}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            ))}
+        </nav>
+        <main
+            class:list={[
+                "pb-16 xl:col-start-2 xl:row-start-1",
+                wide && "xl:col-span-2 xl:max-w-wide",
+            ]}
+        >
+            <slot />
+            <p class="mt-16 text-sm text-muted">
+                Made by <Author />
+            </p>
+            <p class="mt-2 text-xs text-(--sand-8)">{trademark}</p>
+        </main>
+    </div>
+</Page>
+
+<script>
+    // Marks the section being read in the navigation: the last one whose top
+    // passed the reading line near the top of the window, else the first.
+    // Near the end the line moves down to the bottom of the window, so the
+    // last sections, which never reach the top, still get their turn. A
+    // section chosen by its link stays marked until the reader scrolls: on a
+    // short page it may never reach the line.
+    const links = [
+        ...document.querySelectorAll<HTMLAnchorElement>("[data-section]"),
+    ]
+    const ids = links.map((link) => link.dataset["section"] ?? "")
+    let chosen = location.hash.slice(1)
+    const nav = document.querySelector<HTMLElement>('nav[aria-label="Help"]')
+    // When the navigation scrolls on its own (from xl, on a short screen),
+    // it scrolls itself, never the page, to show this link.
+    function keepInView(link: Element | null) {
+        if (!nav || !link || nav.scrollHeight <= nav.clientHeight) return
+        const box = nav.getBoundingClientRect()
+        const { top, bottom } = link.getBoundingClientRect()
+        const room = 32
+        if (top < box.top + room) nav.scrollTop -= box.top + room - top
+        else if (bottom > box.bottom - room)
+            nav.scrollTop += bottom - (box.bottom - room)
+    }
+    keepInView(nav?.querySelector('[aria-current="page"]') ?? null)
+    let marked = ""
+    function mark(id: string) {
+        links.forEach((link, i) => {
+            if (ids[i] === id) link.setAttribute("aria-current", "location")
+            else link.removeAttribute("aria-current")
+        })
+        if (id !== marked) keepInView(links[ids.indexOf(id)] ?? null)
+        marked = id
+    }
+    // Questions open in place (HelpSection): the mark follows the open one.
+    const questions = document.querySelector("[data-question]") !== null
+    function update() {
+        if (questions) return mark(location.hash.slice(1))
+        if (ids.includes(chosen)) return mark(chosen)
+        const room = document.documentElement.scrollHeight - innerHeight
+        const span = Math.min(room, innerHeight * 0.5)
+        const near = span > 0 ? Math.max(0, 1 - (room - scrollY) / span) : 0
+        const line = 120 + (innerHeight - 120) * near
+        // Steps hidden for the chosen system have no box.
+        const shown = ids.filter(
+            (id) => document.getElementById(id)?.getClientRects().length,
+        )
+        let current = shown[0] ?? ""
+        for (const id of shown) {
+            const top = document.getElementById(id)?.getBoundingClientRect().top
+            if (top !== undefined && top <= line) current = id
+        }
+        mark(current)
+    }
+    if (links.length > 0) {
+        addEventListener("hashchange", () => {
+            chosen = location.hash.slice(1)
+            update()
+        })
+        // The reader's own scrolling, not the jump to a chosen section.
+        for (const event of ["wheel", "touchmove", "keydown"])
+            addEventListener(event, () => (chosen = ""), { passive: true })
+        let queued = false
+        addEventListener(
+            "scroll",
+            () => {
+                if (queued) return
+                queued = true
+                requestAnimationFrame(() => {
+                    queued = false
+                    update()
+                })
+            },
+            { passive: true },
+        )
+        addEventListener("resize", update)
+        update()
+    }
+</script>
+
+<style is:global>
+    /* Between help pages the sections of the old page fade out, the page
+       names slide to their places, and the sections of the new page fade in
+       once the names are nearly there, so they never cross. The rest of the
+       page changes at once, as it did. Only help pages opt in, so a visit
+       from the home page is an ordinary load. */
+    @media (prefers-reduced-motion: no-preference) {
+        @view-transition {
+            navigation: auto;
+        }
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+    ::view-transition-group(*) {
+        animation-duration: 300ms;
+    }
+    ::view-transition-old(*.help-sections) {
+        animation: 100ms ease-out both help-sections-out;
+    }
+    ::view-transition-new(*.help-sections) {
+        animation: 150ms ease-out 180ms both help-sections-in;
+    }
+    @keyframes help-sections-out {
+        to {
+            opacity: 0;
+        }
+    }
+    @keyframes help-sections-in {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+    }
+</style>

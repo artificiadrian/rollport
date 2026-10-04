@@ -1,0 +1,151 @@
+---
+import { readFile } from "node:fs/promises"
+import { url } from "../site"
+
+// The real app interface in a window frame. "live" runs against the fake
+// iPhone in demo/tauri.ts and can be clicked; the others are that app saved at
+// build time on one screen, without its code (scripts/demo.ts). Light and dark
+// follow the visitor's setting, as the app does.
+interface Props {
+    screen:
+        "live" | "trust" | "folder" | "ready" | "options" | "importing" | "done"
+    title: string
+    class?: string
+}
+const { screen, title, class: className } = Astro.props
+const live = screen === "live"
+// A still is saved once per system; the visitor's shows (windows: and linux:
+// variants), and lazy frames that are hidden are never loaded. Heights are as
+// tall as the app's window was. Read from site/, where astro runs:
+// import.meta.url is in dist/ once built.
+const stills: Record<string, number> = JSON.parse(
+    await readFile("public/demo/stills.json", "utf8"),
+)
+// By file name: Astro's dev server serves public/ files only by name.
+const frames = live
+    ? [{ os: "live", src: url("/demo/index.html"), height: 560, shown: "" }]
+    : [
+          { os: "mac", shown: "windows:hidden linux:hidden" },
+          { os: "windows", shown: "hidden windows:block" },
+          { os: "linux", shown: "hidden linux:block" },
+      ].map(({ os, shown }) => ({
+          os,
+          shown,
+          src: url(`/demo/${screen}-${os}.html`),
+          height: stills[`${screen}-${os}`] ?? 560,
+      }))
+---
+
+<!-- Title bar sizes are in container units, so the frame scales with the
+     app. The frame wears the title bar of the visitor's system (windows: and
+     linux: variants in global.css); a Mac's is the default. -->
+<figure
+    class:list={[
+        "@container overflow-hidden rounded-xl bg-canvas shadow-window ring-1 ring-window-edge windows:rounded-lg",
+        className,
+    ]}
+>
+    <!-- macOS: the window buttons on the left, the title in the middle. -->
+    <div
+        class="select-none relative flex h-[7cqi] items-center border-b border-line bg-titlebar px-[3cqi] windows:hidden linux:hidden"
+        aria-hidden="true"
+    >
+        <span class="flex gap-[2cqi]">
+            <i class="size-[3cqi] rounded-full bg-[#ff5f57]"></i>
+            <i class="size-[3cqi] rounded-full bg-[#febc2e]"></i>
+            <i class="size-[3cqi] rounded-full bg-[#28c840]"></i>
+        </span>
+        <span class="absolute inset-x-0 text-center text-[3.25cqi] font-semibold text-muted">
+            Rollport
+        </span>
+    </div>
+    <!-- Windows 11: the title on the left; minimise, maximise, close on the right. -->
+    <div
+        class="select-none hidden h-[8cqi] items-center bg-[#f3f3f3] font-[Segoe_UI_Variable,Segoe_UI,system-ui] text-[3cqi] text-[#1b1b1b] windows:flex dark:bg-[#202020] dark:text-white"
+        aria-hidden="true"
+    >
+        <span class="grow px-[3cqi] text-left">Rollport</span>
+        {["M1 5h8", "M1.5 1.5h7v7h-7z", "M1.5 1.5l7 7M8.5 1.5l-7 7"].map(
+            (path) => (
+                <span class="grid h-full w-[11.5cqi] place-items-center">
+                    <svg
+                        class="size-[2.5cqi]"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="0.8"
+                    >
+                        <path d={path} />
+                    </svg>
+                </span>
+            ),
+        )}
+    </div>
+    <!-- GNOME: a header bar with the title in the middle and a round close button. -->
+    <div
+        class="select-none relative hidden h-[10cqi] items-center justify-end bg-[#ebebeb] px-[2.5cqi] font-[Cantarell,Ubuntu,system-ui] text-[3.5cqi] text-[#2e2e2e] linux:flex dark:bg-[#303030] dark:text-white"
+        aria-hidden="true"
+    >
+        <span class="absolute inset-x-0 text-center font-bold">Rollport</span>
+        <span class="relative grid size-[6cqi] place-items-center rounded-full bg-black/10 dark:bg-white/10">
+            <svg
+                class="size-[2.4cqi]"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+            >
+                <path d="M2 2l6 6M8 2l-6 6" />
+            </svg>
+        </span>
+    </div>
+    <!-- The app lays out at its own 400 by its height, as its window does, and
+         is drawn scaled to the frame: the wrapper keeps the app's shape, the
+         script sets the scale. A transform, not zoom: zoom resized the app's
+         window and rounding cut off its last pixel. -->
+    {frames.map((frame) => (
+        <div
+            class:list={["relative overflow-hidden", frame.shown]}
+            style={`aspect-ratio: 400 / ${frame.height}`}
+            data-scaled
+        >
+            <!-- A still has no code, so its buttons would do nothing: it cannot be clicked. -->
+            <iframe
+                src={frame.src}
+                title={title}
+                width="400"
+                height={frame.height}
+                loading={live ? "eager" : "lazy"}
+                tabindex={live ? undefined : -1}
+                class:list={[
+                    "absolute top-0 left-0 block w-[400px] origin-top-left border-0 bg-canvas",
+                    !live && "pointer-events-none",
+                ]}
+                data-demo={live ? "live" : screen}
+            />
+        </div>
+    ))}
+</figure>
+
+<script>
+    import type { DemoMessage } from "../../demo/tauri"
+
+    // The app: drawn at the frame's width, and as tall as it asks its window to be.
+    for (const frame of document.querySelectorAll<HTMLIFrameElement>(
+        "iframe[data-demo]",
+    )) {
+        const wrapper = frame.closest<HTMLElement>("[data-scaled]")
+        if (!wrapper) continue
+        new ResizeObserver(() => {
+            frame.style.transform = `scale(${wrapper.clientWidth / 400})`
+        }).observe(wrapper)
+        addEventListener("message", (event: MessageEvent<DemoMessage>) => {
+            if (event.source !== frame.contentWindow) return
+            if (event.data.rollport === "height") {
+                frame.height = String(event.data.height)
+                wrapper.style.aspectRatio = `400 / ${event.data.height}`
+            }
+        })
+    }
+</script>

@@ -1,0 +1,47 @@
+name: Bug report
+description: Something went wrong while importing, or the app does not see your iPhone.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: The red text under the title in the window, if there is one. Copy it exactly.
+      render: text
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: System version
+      placeholder: Windows 11 24H2, macOS 26.1, Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: iphone
+    attributes:
+      label: iPhone model and iOS version
+      placeholder: iPhone 15 Pro, iOS 26.1
+    validations:
+      required: true
+  - type: input
+    id: rollport
+    attributes:
+      label: Rollport version
+      description: On a Mac, in Rollport → About Rollport. Elsewhere, hold the pointer over the ? at the bottom right of the window.
+      placeholder: 0.1.0

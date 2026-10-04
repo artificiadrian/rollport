@@ -1,0 +1,89 @@
+/* Only src/: the site in site/ has its own classes and its own stylesheet. */
+@import "tailwindcss" source(".");
+@import "./design.css";
+@import "@fontsource-variable/hanken-grotesk";
+
+/* The site's font, so the app looks the same on Windows, macOS and Linux,
+   and like its site. Tooltips the system draws keep its font. */
+@theme {
+    --font-sans: "Hanken Grotesk Variable", system-ui, sans-serif;
+    --default-font-family: var(--font-sans);
+}
+
+@theme {
+    /* A band of light across a print whose photo is on its way. */
+    --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+
+    @keyframes shimmer {
+        from {
+            background-position: 125% 0;
+        }
+        to {
+            background-position: -25% 0;
+        }
+    }
+}
+
+/* The window has one size and every screen is drawn to fit it, so it never
+   scrolls; a scrollbar would only take width from the layout. */
+html,
+body {
+    overflow: hidden;
+}
+
+/* Every screen's words are centred, and a line of one word under a full one
+   reads as a mistake. */
+[data-stage] p {
+    text-wrap: balance;
+}
+
+/* Increase Contrast, or Reduce Transparency where the webview reports it:
+   WebView2 does and WebKit does not, but on a Mac Increase Contrast turns
+   Reduce Transparency on as well. Glass turns solid and the photo tint goes. */
+@custom-variant plain {
+    @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+        @slot;
+    }
+}
+
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+    .glass,
+    .btn-glass {
+        background-color: var(--canvas);
+        border-color: var(--edge);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    /* Hover darkens the border here: the glass hover lightened it. */
+    .btn-glass:hover:not(:disabled) {
+        border-color: var(--sand-12);
+    }
+}
+
+/* Lines and quiet text a step or more darker. The order of what matters
+   still shows in size and weight. */
+@media (prefers-contrast: more) {
+    :root {
+        --line: var(--sand-8);
+        --edge: var(--sand-9);
+    }
+
+    :root.dark {
+        --line: var(--sand-9);
+        --edge: var(--sand-10);
+    }
+
+    .text-muted {
+        color: var(--sand-12);
+    }
+}
+
+/* Screen changes (see land() in +page.svelte): quick, and the prints ease
+   into place rather than spring. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+    animation-duration: 200ms;
+    animation-timing-function: ease-out;
+}
