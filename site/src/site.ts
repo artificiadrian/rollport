@@ -56,8 +56,7 @@ export const files = [
         name: "Rollport.AppImage",
         format: "AppImage",
         detail: "Any distribution",
-        command: "chmod +x Rollport.AppImage",
-        then: "Then open it.",
+        command: "chmod +x Rollport.AppImage && ./Rollport.AppImage",
     },
     {
         os: "linux",

@@ -1,8 +1,17 @@
 ---
-// What may happen the first time only, under a step's text.
+// What may happen the first time only, under a step's text: a quiet box, as
+// advice is Sand, not a colour.
+import Info from "@lucide/astro/icons/info"
 ---
 
-<p class="mt-6 text-sm leading-relaxed text-pretty text-muted [&_b]:font-semibold [&_b]:text-ink">
-    <b>First time only:</b>
-    <slot />
-</p>
+<div
+    class="mt-6 flex max-w-[34rem] gap-3 rounded-xl border border-line bg-subtle px-4 py-3 text-sm leading-relaxed text-pretty text-muted [&_b]:font-semibold [&_b]:text-ink"
+    role="note"
+>
+    <!-- Level with the first line of text. -->
+    <Info class="mt-[3px] shrink-0" size={18} aria-hidden="true" />
+    <p>
+        <b>First time only:</b>
+        <slot />
+    </p>
+</div>
