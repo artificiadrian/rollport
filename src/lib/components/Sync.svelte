@@ -16,6 +16,7 @@
     import Pause from "@lucide/svelte/icons/pause"
     import Unplug from "@lucide/svelte/icons/unplug"
     import TriangleAlert from "@lucide/svelte/icons/triangle-alert"
+    import HardDrive from "@lucide/svelte/icons/hard-drive"
     import Button from "$lib/components/Button.svelte"
     import Footer from "$lib/components/Footer.svelte"
     import HelpLink from "$lib/components/HelpLink.svelte"
@@ -585,6 +586,13 @@
                                         />
                                     {:else if view.badge === "unplugged"}
                                         <Unplug size={17} strokeWidth={2.5} />
+                                    {:else if view.badge === "full"}
+                                        <!-- A full disk, not a failure: its own shape, not only
+                                             another colour. -->
+                                        <HardDrive
+                                            size={17}
+                                            strokeWidth={2.5}
+                                        />
                                     {:else}
                                         <TriangleAlert
                                             size={17}
@@ -743,7 +751,7 @@
                         : 'text-muted'}"
                 >
                     {#if view.warning.tone === "short"}
-                        <TriangleAlert
+                        <HardDrive
                             size={16}
                             class="mr-1 inline align-[-3px]"
                             aria-hidden="true"
