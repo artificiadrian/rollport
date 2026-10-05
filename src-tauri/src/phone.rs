@@ -720,9 +720,14 @@ trait Local<T> {
     fn on_disk(self, what: &str) -> Result<T, Failed>;
 }
 
-impl<T, E: std::fmt::Display> Local<T> for Result<T, E> {
+impl<T> Local<T> for Result<T, std::io::Error> {
     fn on_disk(self, what: &str) -> Result<T, Failed> {
-        self.map_err(|e| Failed::Folder(format!("{what}: {e}")))
+        self.map_err(|e| match e.kind() {
+            // The disk filled while the file was written, by something else or
+            // past what the room check saw: the same as not fitting at all.
+            std::io::ErrorKind::StorageFull => Failed::Full,
+            _ => Failed::Folder(format!("{what}: {e}")),
+        })
     }
 }
 
@@ -1319,6 +1324,23 @@ mod tests {
         assert!(!is_iphone("05ac", "8600")); // T1 chip: usbmuxd, but no photos
         assert!(!is_iphone("1234", "12a8"));
         assert!(!is_iphone("05ac", "12a"));
+    }
+
+    #[test]
+    fn a_disk_that_fills_while_writing_is_full_not_failed() {
+        let full: Result<(), std::io::Error> =
+            Err(std::io::Error::from(std::io::ErrorKind::StorageFull));
+        assert!(matches!(
+            full.on_disk("cannot write the file"),
+            Err(Failed::Full)
+        ));
+
+        let denied: Result<(), std::io::Error> =
+            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
+        assert!(matches!(
+            denied.on_disk("cannot write the file"),
+            Err(Failed::Folder(_))
+        ));
     }
 
     #[test]
