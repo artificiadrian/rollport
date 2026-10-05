@@ -224,6 +224,18 @@ const STATES: State[] = [
         },
         roll: null,
     }),
+    state(
+        "prompt-no-usbmuxd-linux",
+        "",
+        {
+            source: {
+                source: "unavailable",
+                reason: "connection refused (os error 111)",
+            },
+            roll: null,
+        },
+        { agent: "Mozilla/5.0 (X11; Linux x86_64)" },
+    ),
     state("prompt-connect", "", { source: { source: "missing" }, roll: null }),
     state("prompt-trust", "", {
         source: waiting({ need: "trust" }),
