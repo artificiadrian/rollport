@@ -11,6 +11,7 @@ import Terminal from "@lucide/astro/icons/terminal"
 import Usb from "@lucide/astro/icons/usb"
 import appIcon from "../../../../src-tauri/app-icon.svg?url"
 import Button from "../../components/Button.astro"
+import Command from "../../components/Command.astro"
 import DownloadButton from "../../components/DownloadButton.astro"
 import FirstTime from "../../components/FirstTime.astro"
 import Step from "../../components/Step.astro"
@@ -103,12 +104,21 @@ const systems = [
             <StepBody>
                 <p>
                     Rollport reaches the iPhone through <code>usbmuxd</code>.
-                    Install it with your distribution's package manager:
+                    Install it with your package manager:
                 </p>
-                <p>
-                    <code>sudo apt install usbmuxd</code> on Debian and Ubuntu,
-                    or <code>sudo dnf install usbmuxd</code> on Fedora.
-                </p>
+                <dl
+                    slot="after"
+                    class="mt-4 grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center sm:gap-x-4"
+                >
+                    <dt class="text-sm text-muted">Debian, Ubuntu</dt>
+                    <dd class="min-w-0">
+                        <Command>sudo apt install usbmuxd</Command>
+                    </dd>
+                    <dt class="mt-2 text-sm text-muted sm:mt-0">Fedora</dt>
+                    <dd class="min-w-0">
+                        <Command>sudo dnf install usbmuxd</Command>
+                    </dd>
+                </dl>
                 <div
                     slot="art"
                     class="flex flex-col items-center gap-2 text-sm text-muted"
