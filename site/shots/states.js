@@ -19,13 +19,13 @@ async page => {
     await page.locator('#windows-heic summary').screenshot({path:`${out}/trouble-summary-hover-${scheme}.png`});
     // download page soft button hover + press
     await page.goto(base + '/download'); await hide(); await page.waitForTimeout(300);
-    const soft = page.locator('main section a.button').first();
+    const soft = page.locator('main section a.button:visible').first();
     await soft.hover(); await page.waitForTimeout(250);
     await page.locator('main section').screenshot({path:`${out}/download-soft-hover-${scheme}.png`});
     await page.mouse.down(); await page.waitForTimeout(100);
     await soft.screenshot({path:`${out}/download-soft-press-${scheme}.png`});
-    await page.mouse.up();
-    const solid = page.locator('main a.button').first();
+    await page.mouse.move(5,5); await page.mouse.up(); await page.goto(base + '/download'); await hide();
+    const solid = page.locator('main a.button:visible').first();
     await solid.hover(); await page.waitForTimeout(250);
     await solid.screenshot({path:`${out}/download-solid-hover-${scheme}.png`});
     // keyboard focus

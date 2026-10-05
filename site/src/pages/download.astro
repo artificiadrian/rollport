@@ -29,12 +29,6 @@ const yoursInline = {
     windows: "hidden windows:inline",
     linux: "hidden linux:inline",
 }
-// One column per file, at most 16 rem each; three fill the column.
-const row = {
-    mac: "sm:grid-cols-[minmax(0,16rem)]",
-    windows: "sm:grid-cols-[repeat(2,minmax(0,16rem))]",
-    linux: "sm:grid-cols-3",
-}
 const others = {
     mac: "hidden windows:block linux:block",
     windows: "windows:hidden",
@@ -62,10 +56,11 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
             </a>
         </p>
 
-        <!-- Your system's files side by side, centred; a phone stacks them. -->
+        <!-- Your system's files on the same two columns as the other systems
+             below, so every button is as wide and every edge lines up. -->
         {systems.map(({ os }) => (
-            <div class:list={["mt-8 w-full", yours[os]]}>
-                <div class:list={["grid gap-2 sm:justify-center", row[os]]}>
+            <div class:list={["mt-8 w-full text-left", yours[os]]}>
+                <div class="grid gap-2 sm:grid-cols-2 sm:gap-x-6">
                     {ofSystem(os).map((file) => (
                         <DownloadButton file={file} />
                     ))}
