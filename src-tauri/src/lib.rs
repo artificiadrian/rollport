@@ -647,16 +647,29 @@ fn menu(app: &AppHandle) -> tauri::Result<()> {
 }
 
 pub fn run() {
-    // WebKitGTK's DMA-BUF renderer crashes the window on NVIDIA with Error 71
-    // (Wayland protocol error). Safe: no other thread has started yet.
+    // NVIDIA's explicit sync on Wayland crashes WebKitGTK with Error 71; off,
+    // the GPU still draws. Safe: no other thread has started yet.
     #[cfg(target_os = "linux")]
     if std::path::Path::new("/proc/driver/nvidia").exists()
-        && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        && std::env::var_os("__NV_DISABLE_EXPLICIT_SYNC").is_none()
     {
-        unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
+        unsafe { std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1") };
     }
 
+    // Set by hand when the GPU path fails (see the help). WebKitGTK then
+    // aborts the page on a view transition, so the page skips them.
+    let without_gpu = cfg!(target_os = "linux")
+        && [
+            "WEBKIT_DISABLE_DMABUF_RENDERER",
+            "WEBKIT_DISABLE_COMPOSITING_MODE",
+        ]
+        .iter()
+        .any(|name| std::env::var(name).is_ok_and(|value| value != "0"));
+
     tauri::Builder::default()
+        .append_invoke_initialization_script(format!(
+            "window.__ROLLPORT_WITHOUT_GPU__ = {without_gpu};"
+        ))
         .manage(Current(Mutex::new(State::new())))
         .register_asynchronous_uri_scheme_protocol("thumb", |context, request, responder| {
             serve_thumbnail(context.app_handle(), request, responder)

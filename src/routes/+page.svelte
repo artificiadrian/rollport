@@ -8,18 +8,15 @@
     import FolderInput from "@lucide/svelte/icons/folder-input"
     import Setup from "$lib/components/Setup.svelte"
     import Sync from "$lib/components/Sync.svelte"
-    import {
-        QUIET,
-        count,
-        linux,
-        mac,
-        screen,
-        size,
-        tell,
-        type Flow,
-    } from "$lib/flow"
+    import { QUIET, count, mac, screen, size, tell, type Flow } from "$lib/flow"
 
     let flow = $state<Flow>(QUIET)
+
+    /// WebKitGTK told to draw without the GPU aborts the page on a view
+    /// transition; Rust says so before the page runs (lib.rs).
+    const withoutGpu =
+        (window as { __ROLLPORT_WITHOUT_GPU__?: boolean })
+            .__ROLLPORT_WITHOUT_GPU__ === true
 
     /// A folder is being dragged over the window. The whole window is the
     /// target: nobody drags a folder and then aims at a small rectangle.
@@ -38,14 +35,12 @@
             return
         }
 
-        // WebKitGTK aborts its page process on a view transition when it
-        // draws without the GPU, as Rollport makes it on NVIDIA.
         const other = screen(next).screen !== view.screen
         if (
             !other ||
             prefersReducedMotion.current ||
             !document.startViewTransition ||
-            linux
+            withoutGpu
         ) {
             flow = next
             return

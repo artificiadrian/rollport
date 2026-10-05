@@ -167,10 +167,16 @@ import { site } from "../../site"
     <HelpSection question id="linux-blank">
         <p>
             Some graphics drivers do not work with WebKitGTK, which draws
-            Rollport's window. Rollport already works around this on NVIDIA. If
-            the window still opens empty, or closes again at once, start
+            Rollport's window. With the NVIDIA driver, Rollport sets{" "}
+            <code>__NV_DISABLE_EXPLICIT_SYNC=1</code> itself, which stops the
+            crash on Wayland ("Error 71") and keeps the GPU drawing. A value you
+            set yourself wins.
+        </p>
+        <p>
+            If the window still opens empty, or closes again at once, start
             Rollport from a terminal with these commands, one at a time, until
-            one works:
+            one works. They draw without the GPU, so screens change without
+            animation:
         </p>
         <ul>
             <li>
