@@ -110,6 +110,11 @@ body {
     outline-color: color-mix(in srgb, var(--sand-12) 55%, transparent);
 }
 
+/* A button that cannot be pressed is not raised. */
+.btn-main:disabled {
+    box-shadow: none;
+}
+
 .btn-main:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--sand-12) 88%, var(--sand-1));
 }
