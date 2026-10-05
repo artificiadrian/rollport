@@ -1,7 +1,53 @@
 ---
-// A command to type, on its own line: it never wraps, it scrolls instead.
+// Something to type or find, on its own line: it never wraps, it scrolls, and
+// a fade at the end says so. A click selects all of it; the icon copies it.
+import Check from "@lucide/astro/icons/check"
+import Copy from "@lucide/astro/icons/copy"
 ---
 
-<code class="block overflow-x-auto rounded-lg bg-element px-3 py-2 font-mono text-sm whitespace-nowrap">
-    <slot />
-</code>
+<div class="flex min-w-0 items-center rounded-lg bg-element" data-command>
+    <code class="block min-w-0 flex-1 overflow-x-auto py-2 pl-3 font-mono text-sm whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] [scrollbar-width:none]">
+        <slot />
+    </code>
+    <button
+        class="grid size-8 shrink-0 cursor-pointer place-items-center text-muted transition-colors hover:text-ink"
+        type="button"
+        aria-label="Copy"
+        data-copy
+    >
+        <Copy size={15} aria-hidden="true" data-idle />
+        <Check size={15} class="hidden" aria-hidden="true" data-done />
+    </button>
+</div>
+
+<script>
+    // Click: the whole command selected, ready for the keyboard's copy.
+    // The icon: copied, and a check for a moment to say so.
+    for (const command of document.querySelectorAll<HTMLElement>(
+        "[data-command]",
+    )) {
+        const code = command.querySelector("code")!
+        code.addEventListener("click", () =>
+            getSelection()?.selectAllChildren(code),
+        )
+        const button = command.querySelector<HTMLButtonElement>("[data-copy]")!
+        button.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(
+                    code.textContent?.trim() ?? "",
+                )
+            } catch {
+                getSelection()?.selectAllChildren(code)
+                return
+            }
+            button.querySelector("[data-idle]")?.classList.add("hidden")
+            button.querySelector("[data-done]")?.classList.remove("hidden")
+            button.setAttribute("aria-label", "Copied")
+            setTimeout(() => {
+                button.querySelector("[data-idle]")?.classList.remove("hidden")
+                button.querySelector("[data-done]")?.classList.add("hidden")
+                button.setAttribute("aria-label", "Copy")
+            }, 1500)
+        })
+    }
+</script>

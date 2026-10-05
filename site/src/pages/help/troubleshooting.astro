@@ -1,4 +1,6 @@
 ---
+import Command from "../../components/Command.astro"
+import CommandList from "../../components/CommandList.astro"
 import HelpSection from "../../components/HelpSection.astro"
 import Help from "../../layouts/Help.astro"
 import { site } from "../../site"
@@ -39,18 +41,25 @@ import { site } from "../../site"
     <HelpSection question id="linux-usbmuxd">
         <p>
             Rollport reaches the iPhone through <code>usbmuxd</code>. Install it
-            with your distribution's package manager, for example{" "}
-            <code>sudo apt install usbmuxd</code> on Debian and Ubuntu, or{" "}
-            <code>sudo dnf install usbmuxd</code> on Fedora. Then connect the
-            iPhone again.
+            with your package manager, then connect the iPhone again:
         </p>
+        <CommandList
+            items={[
+                {
+                    label: "Debian, Ubuntu",
+                    command: "sudo apt install usbmuxd",
+                },
+                { label: "Fedora", command: "sudo dnf install usbmuxd" },
+            ]}
+        />
         <p>
             usbmuxd starts when an iPhone is plugged in and stops when the last
             one is unplugged, so until then Rollport asks you to connect the
             iPhone. If Rollport says <b>Cannot see iPhones</b> while the iPhone
             is plugged in, usbmuxd did not start or stopped answering. Restart
-            it with <code>sudo systemctl restart usbmuxd</code>.
+            it:
         </p>
+        <Command>sudo systemctl restart usbmuxd</Command>
         <p>
             If your usbmuxd listens somewhere else than{" "}
             <code>/var/run/usbmuxd</code>, set{" "}
@@ -186,19 +195,13 @@ import { site } from "../../site"
             one works. They draw without the GPU, so screens change without
             animation:
         </p>
-        <ul>
-            <li>
-                <code>WEBKIT_DISABLE_DMABUF_RENDERER=1 rollport</code>
-            </li>
-            <li>
-                <code>WEBKIT_DISABLE_COMPOSITING_MODE=1 rollport</code>
-            </li>
-        </ul>
+        <Command>WEBKIT_DISABLE_DMABUF_RENDERER=1 rollport</Command>
+        <Command>WEBKIT_DISABLE_COMPOSITING_MODE=1 rollport</Command>
         <p>
             With the AppImage, run it from its folder instead of{" "}
-            <code>rollport</code>, for example{" "}
-            <code>WEBKIT_DISABLE_DMABUF_RENDERER=1 ./Rollport.AppImage</code>.
+            <code>rollport</code>, for example:
         </p>
+        <Command>WEBKIT_DISABLE_DMABUF_RENDERER=1 ./Rollport.AppImage</Command>
         <p>
             Please also <a href={`${site.repo}/issues`}>open an issue</a> with
             your Linux distribution and graphics card, so we can fix it for
@@ -224,20 +227,23 @@ import { site } from "../../site"
 
     <HelpSection question id="forget">
         <p>Quit Rollport, then delete its settings folder:</p>
-        <ul>
-            <li>
-                Mac:{" "}
-                <code>
-                    ~/Library/Application Support/com.artificiadrian.rollport
-                </code>
-            </li>
-            <li>
-                Windows: <code>%APPDATA%\com.artificiadrian.rollport</code>
-            </li>
-            <li>
-                Linux: <code>~/.config/com.artificiadrian.rollport</code>
-            </li>
-        </ul>
+        <CommandList
+            items={[
+                {
+                    label: "Mac",
+                    command:
+                        "~/Library/Application Support/com.artificiadrian.rollport",
+                },
+                {
+                    label: "Windows",
+                    command: "%APPDATA%\\com.artificiadrian.rollport",
+                },
+                {
+                    label: "Linux",
+                    command: "~/.config/com.artificiadrian.rollport",
+                },
+            ]}
+        />
         <p>
             That folder holds only the folder you used last, the folder of each
             iPhone, and the window size. Your photos and folders are not

@@ -1,0 +1,22 @@
+---
+// Commands or paths, one per line, each after what it is for.
+import Command from "./Command.astro"
+
+interface Props {
+    items: { label: string; command: string }[]
+}
+const { items } = Astro.props
+---
+
+<dl class="mt-4 grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center sm:gap-x-4">
+    {items.map(({ label, command }, i) => (
+        <>
+            <dt class:list={["text-sm text-muted", i > 0 && "mt-2 sm:mt-0"]}>
+                {label}
+            </dt>
+            <dd class="min-w-0">
+                <Command>{command}</Command>
+            </dd>
+        </>
+    ))}
+</dl>

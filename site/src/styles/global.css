@@ -106,13 +106,15 @@
     & a {
         @apply link;
     }
-    /* In em, as its size: it follows the text around it. */
-    & code {
+    /* In em, as its size: it follows the text around it. A short token in
+       a sentence never breaks; anything long is a Command on its own line,
+       which has its own look. */
+    & code:not([data-command] code) {
         border-radius: var(--radius-md);
         background-color: var(--color-element);
         padding: 0.125em 0.4em;
         font-size: 0.9em;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
     }
     & ul {
         list-style-type: disc;
