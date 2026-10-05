@@ -240,11 +240,11 @@ const STATES: State[] = [
     state("prompt-connect-failed", "", {
         source: waiting({
             need: "failed",
-            reason: "lockdown refused the session: PasswordProtected",
+            reason: "lockdown refused the connection: the iPhone stopped responding",
         }),
         roll: null,
     }),
-    state("prompt-roll-locked", "The camera roll cannot be read", {
+    state("prompt-roll-locked", "A trusted iPhone, locked", {
         roll: {
             roll: "reading",
             seen: 0,

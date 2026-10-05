@@ -340,9 +340,19 @@ describe("which screen wins", () => {
     })
 
     test("a camera roll that cannot be read asks for the phone unlocked", () => {
-        const shown = screen(flow({ roll: reading("locked") }))
+        const shown = screen(flow({ roll: reading("the iPhone is locked") }))
+        assert.ok(shown.screen === "prompt")
+        assert.equal(shown.said.title, "Unlock the iPhone")
+        assert.equal(shown.said.art, "lock")
+    })
+
+    test("a camera roll that will not open for another reason is a failure", () => {
+        const shown = screen(
+            flow({ roll: reading("AFC refused the connection") }),
+        )
         assert.ok(shown.screen === "prompt")
         assert.equal(shown.said.title, "Cannot read the camera roll")
+        assert.equal(shown.said.art, "trouble")
     })
 
     test("a full disk is said before a network drive", () => {

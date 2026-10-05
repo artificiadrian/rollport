@@ -1207,6 +1207,11 @@ pub async fn describe(device: &UsbmuxdDevice) -> Result<(String, String), Need> 
     };
 
     if let Some(refused) = refused {
+        // Trusted, but locked: the same ask as a locked phone that has not
+        // paired yet, not a failure.
+        if matches!(refused, IdeviceError::PasswordProtected) {
+            return Err(Need::Unlock);
+        }
         if !matches!(refused, IdeviceError::InvalidHostID) {
             return Err(format!("lockdown refused the session: {refused}").into());
         }

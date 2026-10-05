@@ -510,8 +510,20 @@ export function screen(flow: Flow): Screen {
     if (need) return { screen: "prompt", said: need }
 
     // A locked phone answers lockdown but not its files. Rust keeps asking,
-    // so unlocking it is the whole of what to do.
+    // so unlocking it is the whole of what to do: the calm lock screen, not a
+    // failure. Any other reason the roll will not open is one.
     if (roll?.roll === "reading" && roll.failed !== null) {
+        if (/locked|passwordprotected/i.test(roll.failed))
+            return {
+                screen: "prompt",
+                said: {
+                    art: "lock",
+                    title: "Unlock the iPhone",
+                    detail: "Rollport reads the camera roll as soon as it is unlocked.",
+                    reason: "",
+                    status: "Waiting for the iPhone",
+                },
+            }
         return {
             screen: "prompt",
             said: {
