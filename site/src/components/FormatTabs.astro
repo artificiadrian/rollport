@@ -21,7 +21,7 @@ const ofSystem = files.filter((file) => file.os === os)
     >
         {ofSystem.map((file, i) => (
             <button
-                class="cursor-pointer rounded-lg px-4 py-1.5 text-muted transition-colors hover:text-ink aria-selected:bg-canvas aria-selected:font-medium aria-selected:text-ink"
+                class="cursor-pointer rounded-lg px-4 py-1.5 text-muted transition-colors hover:text-ink aria-selected:bg-canvas aria-selected:font-medium aria-selected:text-ink dark:aria-selected:bg-fill"
                 type="button"
                 role="tab"
                 aria-selected={i === 0 ? "true" : "false"}

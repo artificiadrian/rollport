@@ -62,7 +62,7 @@ const systems = [
     <fieldset class="mt-6 inline-grid grid-cols-3 gap-1 self-start rounded-xl bg-element p-1">
         <legend class="sr-only">Steps for</legend>
         {systems.map(({ os, label }) => (
-            <label class="cursor-pointer rounded-lg px-4 py-1.5 text-center text-muted transition-colors hover:text-ink has-checked:bg-canvas has-checked:font-medium has-checked:text-ink has-checked:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink">
+            <label class="cursor-pointer rounded-lg px-4 py-1.5 text-center text-muted transition-colors hover:text-ink has-checked:bg-canvas dark:has-checked:bg-fill has-checked:font-medium has-checked:text-ink has-checked:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink">
                 <input class="sr-only" type="radio" name="os" value={os} />
                 {label}
             </label>
