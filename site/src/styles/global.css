@@ -66,32 +66,6 @@
     --container-shot: 240px;
 }
 
-@theme inline {
-    /* The macOS window frame around each copy of the app. */
-    --color-titlebar: var(--titlebar);
-    --color-window-edge: var(--window-edge);
-    --shadow-window: var(--window-shadow);
-}
-
-:root {
-    --titlebar: #f4f3f1;
-    --window-edge: rgb(33 32 28 / 0.12);
-    --window-shadow:
-        0 40px 80px -24px rgb(60 30 40 / 0.35),
-        0 16px 32px -16px rgb(33 32 28 / 0.2);
-
-    /* How strongly the blurred front photo shows around the app. */
-    --glow-strength: 0.28;
-}
-
-:root.dark {
-    --titlebar: #2c2b29;
-    --window-edge: rgb(255 255 255 / 0.1);
-    --window-shadow:
-        0 30px 60px -24px rgb(0 0 0 / 0.55), 0 12px 24px -12px rgb(0 0 0 / 0.4);
-    --glow-strength: 0.22;
-}
-
 /* The page column, with room at the sides. */
 @utility wrap {
     width: 100%;

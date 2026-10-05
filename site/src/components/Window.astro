@@ -41,13 +41,13 @@ const frames = live
      linux: variants in global.css); a Mac's is the default. -->
 <figure
     class:list={[
-        "@container overflow-hidden rounded-xl bg-canvas shadow-window ring-1 ring-window-edge windows:rounded-lg",
+        "@container overflow-hidden rounded-xl bg-canvas shadow-[0_40px_80px_-24px_rgb(60_30_40/0.35),0_16px_32px_-16px_rgb(33_32_28/0.2)] ring-1 ring-[rgb(33_32_28/0.12)] windows:rounded-lg dark:shadow-[0_30px_60px_-24px_rgb(0_0_0/0.55),0_12px_24px_-12px_rgb(0_0_0/0.4)] dark:ring-white/10",
         className,
     ]}
 >
     <!-- macOS: the window buttons on the left, the title in the middle. -->
     <div
-        class="select-none relative flex h-[7cqi] items-center border-b border-line bg-titlebar px-[3cqi] windows:hidden linux:hidden"
+        class="select-none relative flex h-[7cqi] items-center border-b border-line bg-[#f4f3f1] px-[3cqi] dark:bg-[#2c2b29] windows:hidden linux:hidden"
         aria-hidden="true"
     >
         <span class="flex gap-[2cqi]">
