@@ -149,7 +149,7 @@ export const QUIET: Flow = {
 /// One thing the window is waiting for, said once: a drawing of what it is
 /// about, a title, one instruction, and what the machine said.
 export type Said = {
-    art: "phone" | "lock" | "folder" | "trouble"
+    art: "phone" | "lock" | "trust" | "folder" | "trouble"
     title: string
     detail: string
     /// What the machine said, under what a person can act on.
@@ -433,7 +433,7 @@ const WAITING: Record<Waiting, Omit<Said, "reason">> = {
         status: "Looking for an iPhone",
     },
     trust: {
-        art: "lock",
+        art: "trust",
         title: "Tap Trust on the iPhone",
         detail: "The iPhone asks whether to trust this computer. Tap Trust, then enter your passcode.",
         status: "Waiting for the iPhone",

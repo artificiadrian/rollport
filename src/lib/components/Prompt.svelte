@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Snippet } from "svelte"
+    import Check from "@lucide/svelte/icons/check"
     import FolderIcon from "@lucide/svelte/icons/folder"
     import LoaderCircle from "@lucide/svelte/icons/loader-circle"
     import Lock from "@lucide/svelte/icons/lock"
@@ -55,6 +56,10 @@
                 <span class="h-[3px] w-3 rounded-sm bg-edge"></span>
                 {#if said.art === "lock"}
                     <Lock size={17} strokeWidth={2} class="mt-4" />
+                {:else if said.art === "trust"}
+                    <!-- Trust and Unlock often follow each other: a check, so
+                         the change between them shows. -->
+                    <Check size={18} strokeWidth={2.5} class="mt-4" />
                 {/if}
             </div>
             <!-- The cable, from the bottom of the phone to the outer ring. -->
