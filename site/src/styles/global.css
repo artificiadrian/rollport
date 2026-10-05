@@ -9,6 +9,9 @@
 @custom-variant linux (&:where([data-os="linux"], [data-os="linux"] *));
 /* A short screen: the home page tightens its gaps to fit one screen. */
 @custom-variant short (@media (max-height: 40rem));
+/* Shorter still (200 % zoom and more): the home page leaves out the window, so
+   Download stays on the first screen. */
+@custom-variant shortest (@media (max-height: 30rem));
 
 @theme {
     /* The site's own typeface; the app keeps the system font. */

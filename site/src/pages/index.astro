@@ -24,9 +24,9 @@ import { sentence, url } from "../site"
                 <!-- The only part that gives way on a short screen: its full
                      size is the basis, and the window is as wide as fits in the
                      box both ways. Under 192 px tall it stops, and the page
-                     scrolls. The whole column wide, so the glow lines up with
-                     the header above. -->
-                <div class="relative flex max-h-[calc(min(440px,100cqw)*var(--frame))] min-h-[12rem] w-full grow basis-0 justify-center [container-type:size]">
+                     scrolls; on the shortest screens it is left out. The whole
+                     column wide, so the glow lines up with the header above. -->
+                <div class="relative flex shortest:hidden max-h-[calc(min(440px,100cqw)*var(--frame))] min-h-[12rem] w-full grow basis-0 justify-center [container-type:size]">
                     <!-- The app tints its window with the photo in front, blurred
                          past recognising. The same photo, blurred the same way,
                          spreads wide behind the window as a soft oval, and follows the demo.
