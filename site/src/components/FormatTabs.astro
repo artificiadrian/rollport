@@ -24,7 +24,10 @@ const ofSystem = files.filter((file) => file.os === os)
                 class="cursor-pointer rounded-lg px-4 py-1.5 text-muted transition-colors hover:text-ink aria-selected:bg-canvas aria-selected:font-medium aria-selected:text-ink dark:aria-selected:bg-fill"
                 type="button"
                 role="tab"
+                id={`tab-${file.name}`}
+                aria-controls={`panel-${file.name}`}
                 aria-selected={i === 0 ? "true" : "false"}
+                tabindex={i === 0 ? 0 : -1}
                 data-tab={file.name}
             >
                 {file.format}
@@ -35,6 +38,8 @@ const ofSystem = files.filter((file) => file.os === os)
         <div
             class="mt-4 grid max-w-[26rem] gap-3"
             role="tabpanel"
+            id={`panel-${file.name}`}
+            aria-labelledby={`tab-${file.name}`}
             data-panel={file.name}
             hidden={i !== 0}
         >
@@ -47,19 +52,42 @@ const ofSystem = files.filter((file) => file.os === os)
 
 <script>
     // A tab shows its own panel and hides the others of the same switch.
+    // Only the chosen tab is in the Tab order; arrow keys, Home and End move
+    // the choice, as in any tab list.
     for (const formats of document.querySelectorAll<HTMLElement>(
         "[data-formats]",
-    ))
-        formats.addEventListener("click", (event) => {
-            const tab = (event.target as Element).closest<HTMLElement>(
-                "[data-tab]",
-            )
-            if (!tab) return
-            for (const other of formats.querySelectorAll("[data-tab]"))
+    )) {
+        const tabs = [...formats.querySelectorAll<HTMLElement>("[data-tab]")]
+        const choose = (tab: HTMLElement) => {
+            for (const other of tabs) {
                 other.setAttribute("aria-selected", String(other === tab))
+                other.tabIndex = other === tab ? 0 : -1
+            }
             for (const panel of formats.querySelectorAll<HTMLElement>(
                 "[data-panel]",
             ))
                 panel.hidden = panel.dataset["panel"] !== tab.dataset["tab"]
+        }
+        formats.addEventListener("click", (event) => {
+            const tab = (event.target as Element).closest<HTMLElement>(
+                "[data-tab]",
+            )
+            if (tab) choose(tab)
         })
+        formats.addEventListener("keydown", (event) => {
+            const at = tabs.indexOf(event.target as HTMLElement)
+            if (at < 0) return
+            const to = {
+                ArrowLeft: at - 1,
+                ArrowRight: at + 1,
+                Home: 0,
+                End: tabs.length - 1,
+            }[event.key]
+            if (to === undefined) return
+            event.preventDefault()
+            const tab = tabs[(to + tabs.length) % tabs.length]!
+            choose(tab)
+            tab.focus()
+        })
+    }
 </script>
