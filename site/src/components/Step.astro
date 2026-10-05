@@ -45,6 +45,7 @@ const row = {
         own.length === all.length ? "grid" : own.map((os) => row[os]),
     ]}
     id={id}
+    data-only={own.length === 1 ? own[0] : undefined}
 >
     <span
         class="absolute top-8 bottom-0 left-4 my-2 w-px -translate-x-1/2 bg-line group-last:hidden"

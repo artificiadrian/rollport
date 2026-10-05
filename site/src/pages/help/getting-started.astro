@@ -335,5 +335,9 @@ const systems = [
         history.replaceState(null, "", location.pathname + location.hash)
         location.href = file.url
     }
-    show(file?.os ?? root.dataset["os"] ?? "mac")
+    // A link to a step for one system (#usbmuxd) opens on that system.
+    const step = location.hash
+        ? document.getElementById(decodeURIComponent(location.hash.slice(1)))
+        : null
+    show(file?.os ?? step?.dataset["only"] ?? root.dataset["os"] ?? "mac")
 </script>
