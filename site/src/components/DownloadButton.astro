@@ -17,26 +17,27 @@ const { file, big, solid } = Astro.props
 const main = mainFile(file.os) === file
 
 // Complete class names, so Tailwind finds them.
-const soft = "border-line bg-subtle hover:bg-element"
+const soft = "border-line bg-subtle transition-colors hover:bg-element"
 const solidOn = {
-    mac: "border-ink bg-ink text-canvas hover:bg-ink/85 windows:border-line windows:bg-subtle windows:text-ink windows:hover:bg-element linux:border-line linux:bg-subtle linux:text-ink linux:hover:bg-element",
+    mac: "border-ink bg-ink text-canvas windows:border-line windows:bg-subtle windows:text-ink windows:hover:bg-element linux:border-line linux:bg-subtle linux:text-ink linux:hover:bg-element",
     windows:
-        "border-line bg-subtle hover:bg-element windows:border-ink windows:bg-ink windows:text-canvas windows:hover:bg-ink/85",
-    linux: "border-line bg-subtle hover:bg-element linux:border-ink linux:bg-ink linux:text-canvas linux:hover:bg-ink/85",
+        "border-line bg-subtle hover:bg-element windows:border-ink windows:bg-ink windows:text-canvas",
+    linux: "border-line bg-subtle hover:bg-element linux:border-ink linux:bg-ink linux:text-canvas",
 }
 ---
 
 <a
     class:list={[
-        "flex items-center gap-3 rounded-xl border px-4 py-2 transition-colors",
+        "flex items-center gap-3 rounded-xl border px-4 py-2",
         big ? "min-h-[4.5rem] text-lg" : "min-h-[3.625rem]",
         solid
-            ? "border-ink bg-ink text-canvas hover:bg-ink/85"
+            ? "raised border-ink bg-ink text-canvas"
             : main
               ? solidOn[file.os]
               : soft,
     ]}
     href={downloadPage(file.name)}
+    data-main={main && !solid ? file.os : undefined}
 >
     <!-- As tall as the two lines beside it. -->
     <Download
@@ -52,3 +53,14 @@ const solidOn = {
         )}
     </span>
 </a>
+
+<style>
+    @reference "../styles/global.css";
+
+    /* The visitor's main file is raised; which one is the page's data-os. */
+    :global(html:not([data-os="windows"], [data-os="linux"])) [data-main="mac"],
+    :global(html[data-os="windows"]) [data-main="windows"],
+    :global(html[data-os="linux"]) [data-main="linux"] {
+        @apply raised;
+    }
+</style>

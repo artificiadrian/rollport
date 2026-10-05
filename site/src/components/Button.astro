@@ -11,9 +11,9 @@ const { href, variant, class: className } = Astro.props
 
 <a
     class:list={[
-        "inline-flex h-[2.75rem] items-center gap-2 rounded-xl px-4 font-medium transition-colors",
+        "inline-flex h-[2.75rem] items-center gap-2 rounded-xl px-4 font-medium",
         variant === "solid"
-            ? "bg-ink text-canvas hover:bg-ink/85"
+            ? "raised bg-ink text-canvas"
             : "border border-line bg-subtle hover:bg-element",
         className,
     ]}

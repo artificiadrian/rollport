@@ -63,16 +63,17 @@ import { sentence, site, url } from "../site"
             <div class="shrink-0 pt-2 pb-8 short:pb-4">
                 <!-- One button to the download page, which puts your system
                      first: no format is chosen for you here. -->
-                <a class="key" href={url("/download")} data-key>
+                <a class="key raised" href={url("/download")} data-key>
+                    <!-- As tall as both lines, like a drop cap. -->
                     <Download
                         class="shrink-0"
-                        size={24}
-                        stroke-width={1.75}
+                        size={32}
+                        stroke-width={1.5}
                         aria-hidden="true"
                     />
                     <span class="grid text-left leading-tight">
                         <span class="text-lg font-semibold">Download</span>
-                        <span class="text-sm opacity-70">
+                        <span class="key-for text-sm">
                             Mac, Windows and Linux
                         </span>
                     </span>
@@ -134,76 +135,59 @@ import { sentence, site, url } from "../site"
 </Page>
 
 <style>
-    /* The one action on the page, raised as the app raises its own: solid ink
-       on a soft shadow. On hover it rises a pixel; pressed, it settles. Its
-       edge catches the light where the mouse is. */
+    /* The one action on the page: raised like the app's own (the raised
+       utility), with a soft spotlight under the mouse while it is pointed at. */
     .key {
         --light-x: 0.3;
         --light-y: 0;
         position: relative;
         display: inline-flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.875rem;
+        overflow: hidden;
         padding: 0.625rem 1.75rem 0.625rem 1.25rem;
         border-radius: 0.875rem;
         background: var(--color-ink);
         color: var(--color-canvas);
-        box-shadow:
-            0 1px 2px rgb(0 0 0 / 0.18),
-            0 8px 20px -6px rgb(0 0 0 / 0.35);
-        transition:
-            box-shadow 0.15s ease-out,
-            transform 0.15s ease-out;
     }
-    .key:hover {
-        transform: translateY(-1px);
-        box-shadow:
-            0 2px 4px rgb(0 0 0 / 0.16),
-            0 14px 28px -8px rgb(0 0 0 / 0.4);
-    }
-    .key:active {
-        transform: translateY(1px) scale(0.98);
-        box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-        transition-duration: 0.05s;
-    }
-    /* The edge: a faint ring, brightest at the light. The mask keeps only the
-       ring, not the face inside it. */
+    /* The spotlight: the page's colour, faint, wide, where the mouse is. */
     .key::before {
-        --edge: color-mix(in oklab, white 16%, transparent);
         content: "";
         position: absolute;
         inset: 0;
-        padding: 1.5px;
-        border-radius: inherit;
-        background:
-            radial-gradient(
-                7rem 4rem at calc(var(--light-x) * 100%)
-                    calc(var(--light-y) * 100%),
-                rgb(255 255 255 / 0.9),
-                transparent 70%
-            ),
-            var(--edge);
-        mask:
-            linear-gradient(#000 0 0) content-box exclude,
-            linear-gradient(#000 0 0);
+        background: radial-gradient(
+            9rem 6rem at calc(var(--light-x) * 100%) calc(var(--light-y) * 100%),
+            color-mix(in oklab, var(--color-canvas) 16%, transparent),
+            transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.2s ease-out;
         pointer-events: none;
     }
-    /* On the near-white face of dark mode, the ring sits a step darker, so
-       the white light shows on it. */
-    :global(.dark) .key::before {
-        --edge: color-mix(in oklab, black 18%, transparent);
+    .key:hover::before {
+        opacity: 1;
     }
-
-    @media (prefers-reduced-motion: reduce) {
-        .key {
-            transition: none;
-        }
+    /* On dark mode's near-white face the page's colour shades rather than
+       lights, so it stays fainter. */
+    :global(.dark) .key:hover::before {
+        opacity: 0.5;
+    }
+    /* Above the spotlight. */
+    .key > :global(*) {
+        position: relative;
+    }
+    .key-for {
+        opacity: 0.7;
+        transition: opacity 0.15s ease-out;
+    }
+    .key:hover .key-for {
+        opacity: 0.85;
     }
 </style>
 
 <script>
-    // The edge's light sits where the mouse is, over the key; a touch screen
-    // leaves it where it is.
+    // The spotlight sits where the mouse is, over the key; a touch screen
+    // has no hover, so it never shows there.
     const key = document.querySelector<HTMLElement>("[data-key]")
     if (key)
         addEventListener("pointermove", (event) => {
