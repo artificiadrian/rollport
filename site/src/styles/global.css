@@ -90,31 +90,6 @@
     }
 }
 
-/* A main action, raised as the app raises its own: a soft shadow; on hover
-   it rises a pixel, pressed it settles a pixel and darkens a touch. Used by
-   Button (solid), DownloadButton (solid) and the home page's Download. */
-@utility raised {
-    box-shadow:
-        0 1px 2px rgb(0 0 0 / 0.18),
-        0 8px 20px -6px rgb(0 0 0 / 0.35);
-    transition-property: translate, box-shadow, filter, background-color;
-    transition-duration: 150ms;
-    transition-timing-function: ease-out;
-
-    &:hover {
-        translate: 0 -1px;
-        box-shadow:
-            0 2px 4px rgb(0 0 0 / 0.16),
-            0 14px 28px -8px rgb(0 0 0 / 0.4);
-    }
-    &:active {
-        translate: 0 1px;
-        filter: brightness(0.92);
-        box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-        transition-duration: 50ms;
-    }
-}
-
 /* Help text: bold names, links, inline code, and lists. */
 @utility prose {
     line-height: var(--leading-relaxed);

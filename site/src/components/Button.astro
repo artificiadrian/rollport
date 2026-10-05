@@ -1,23 +1,126 @@
 ---
-// A link that looks like a button: solid for the main action, soft (a light
-// fill with a faint edge) for the others beside it. 44 px tall, easy to hit.
-interface Props {
+// Every button on the site: a link that looks like one. Solid for the main
+// action, soft (a light fill with a faint edge) for the others. Both are
+// raised as the app raises its own: a shadow, a pixel up on hover, a pixel
+// down and a touch darker when pressed; the soft one more quietly.
+//
+// Slots: `icon` before the words, the default slot for the title, and
+// `detail` for a second line under it.
+import type { HTMLAttributes } from "astro/types"
+import type { Os } from "../site"
+
+interface Props extends HTMLAttributes<"a"> {
     href: string
     variant: "solid" | "soft"
-    class?: string
+    /** Solid only on this system (the page's data-os), soft on the others. */
+    solidOn?: Os
+    /** m: one line, 44 px. file: two lines. large: the page's one action. */
+    size?: "m" | "file" | "large"
+    /** Content in the middle instead of at the start. */
+    center?: boolean
 }
-const { href, variant, class: className } = Astro.props
+const {
+    href,
+    variant,
+    solidOn,
+    size = "m",
+    center,
+    class: className,
+    ...rest
+} = Astro.props
+const twoLines = Astro.slots.has("detail")
 ---
 
 <a
     class:list={[
-        "inline-flex h-[2.75rem] items-center gap-2 rounded-xl px-4 font-medium",
-        variant === "solid"
-            ? "raised bg-ink text-canvas"
-            : "border border-line bg-subtle hover:bg-element",
+        "button items-center border",
+        variant,
+        size === "m" && "h-[2.75rem] gap-2 rounded-xl px-4 font-medium",
+        size === "file" && "min-h-[3.625rem] gap-3 rounded-xl px-4 py-2",
+        size === "large" &&
+            "min-h-[4.25rem] gap-[0.875rem] rounded-[0.875rem] px-[1.75rem] py-[0.625rem]",
+        size === "m" ? "inline-flex" : "flex",
+        center && "justify-center",
         className,
     ]}
     href={href}
+    data-solid-on={solidOn}
+    {...rest}
 >
-    <slot />
+    <slot name="icon" />
+    {twoLines ? (
+        <span
+            class:list={[
+                "grid text-left",
+                size === "large" ? "leading-tight" : "leading-snug",
+            ]}
+        >
+            <span class:list={["font-semibold", size === "large" && "text-lg"]}>
+                <slot />
+            </span>
+            <span class="button-detail text-sm">
+                <slot name="detail" />
+            </span>
+        </span>
+    ) : (
+        <slot />
+    )}
 </a>
+
+<style>
+    .button {
+        position: relative;
+        background: var(--fill);
+        border-color: var(--edge);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        transition-property: translate, box-shadow, filter, background-color;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+    }
+    .button:hover {
+        translate: 0 -1px;
+        background: var(--fill-hover);
+        box-shadow: var(--shadow-hover);
+    }
+    .button:active {
+        translate: 0 1px;
+        filter: brightness(0.94);
+        box-shadow: var(--shadow-press);
+        transition-duration: 50ms;
+    }
+    .button-detail {
+        opacity: 0.7;
+        transition: opacity 150ms ease-out;
+    }
+    .button:hover .button-detail {
+        opacity: 0.85;
+    }
+
+    .soft,
+    [data-solid-on] {
+        --fill: var(--color-subtle);
+        --fill-hover: var(--color-element);
+        --edge: var(--color-line);
+        --ink: var(--color-ink);
+        --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+        --shadow-hover: 0 4px 10px -4px rgb(0 0 0 / 0.16);
+        --shadow-press: none;
+    }
+    /* Solid, or solid on the visitor's own system. */
+    .solid,
+    :global(html:not([data-os="windows"], [data-os="linux"]))
+        [data-solid-on="mac"],
+    :global(html[data-os="windows"]) [data-solid-on="windows"],
+    :global(html[data-os="linux"]) [data-solid-on="linux"] {
+        --fill: var(--color-ink);
+        --fill-hover: var(--color-ink);
+        --edge: var(--color-ink);
+        --ink: var(--color-canvas);
+        --shadow:
+            0 1px 2px rgb(0 0 0 / 0.18), 0 8px 20px -6px rgb(0 0 0 / 0.35);
+        --shadow-hover:
+            0 2px 4px rgb(0 0 0 / 0.16), 0 14px 28px -8px rgb(0 0 0 / 0.4);
+        --shadow-press: 0 1px 2px rgb(0 0 0 / 0.2);
+    }
+</style>

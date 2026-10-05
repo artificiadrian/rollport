@@ -60,7 +60,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
             <div class:list={["mt-12 w-full max-w-[24rem]", yours[os]]}>
                 <div class="grid gap-2">
                     {ofSystem(os).map((file, i) => (
-                        <DownloadButton file={file} big={i === 0} center />
+                        <DownloadButton file={file} large={i === 0} center />
                     ))}
                 </div>
                 {needs[os] && (

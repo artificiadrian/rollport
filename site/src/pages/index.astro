@@ -1,6 +1,7 @@
 ---
 import Download from "@lucide/astro/icons/download"
 import Author from "../components/Author.astro"
+import Button from "../components/Button.astro"
 import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
@@ -63,21 +64,24 @@ import { sentence, site, url } from "../site"
             <div class="shrink-0 pt-2 pb-8 short:pb-4">
                 <!-- One button to the download page, which puts your system
                      first: no format is chosen for you here. -->
-                <a class="key raised" href={url("/download")} data-key>
+                <Button
+                    class="key"
+                    href={url("/download")}
+                    variant="solid"
+                    size="large"
+                    data-key
+                >
                     <!-- As tall as both lines, like a drop cap. -->
                     <Download
+                        slot="icon"
                         class="shrink-0"
                         size={32}
                         stroke-width={1.5}
                         aria-hidden="true"
                     />
-                    <span class="grid text-left leading-tight">
-                        <span class="text-lg font-semibold">Download</span>
-                        <span class="key-for text-sm">
-                            Mac, Windows and Linux
-                        </span>
-                    </span>
-                </a>
+                    Download
+                    <Fragment slot="detail">Mac, Windows and Linux</Fragment>
+                </Button>
                 <!-- What someone needs at the moment they download; the rest is on /help. -->
                 <p class="mt-8 text-sm text-balance text-muted short:mt-4">
                     Needs a USB cable
@@ -135,22 +139,14 @@ import { sentence, site, url } from "../site"
 </Page>
 
 <style>
-    /* The one action on the page: raised like the app's own (the raised
-       utility), with a soft spotlight under the mouse while it is pointed at. */
+    /* The page's one action: a Button, with a faint sheen under the mouse
+       while it is pointed at. */
     .key {
         --light-x: 0.3;
         --light-y: 0;
-        position: relative;
         display: inline-flex;
-        align-items: center;
-        gap: 0.875rem;
         overflow: hidden;
-        padding: 0.625rem 1.75rem 0.625rem 1.25rem;
-        border-radius: 0.875rem;
-        background: var(--color-ink);
-        color: var(--color-canvas);
     }
-    /* The spotlight: the page's colour, faint, wide, where the mouse is. */
     .key::before {
         content: "";
         position: absolute;
@@ -172,16 +168,9 @@ import { sentence, site, url } from "../site"
     :global(.dark) .key:hover::before {
         opacity: 0.5;
     }
-    /* Above the spotlight. */
+    /* Above the sheen. */
     .key > :global(*) {
         position: relative;
-    }
-    .key-for {
-        opacity: 0.7;
-        transition: opacity 0.15s ease-out;
-    }
-    .key:hover .key-for {
-        opacity: 0.85;
     }
 </style>
 
