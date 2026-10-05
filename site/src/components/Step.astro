@@ -1,0 +1,64 @@
+---
+// One step of Get started: its number on a thin line, its title, and its
+// bodies (StepBody). The number is counted per system from src/help.ts, where
+// a step for one system only carries it; such a step's row shows only there.
+// From xl the title and the text are two rows beside the picture: the text row
+// takes the picture's extra height, so the text stays under its title.
+import { help, sectionTitle, type SectionId } from "../help"
+
+type Os = "mac" | "windows" | "linux"
+interface Props {
+    id: SectionId
+}
+const { id } = Astro.props
+
+const all: Os[] = ["mac", "windows", "linux"]
+const sections = help.find(({ href }) => href === "/help/getting-started")!
+    .sections as readonly { id: SectionId; os?: Os }[]
+const systems = (section: { os?: Os }) => (section.os ? [section.os] : all)
+const own = systems(sections.find((section) => section.id === id)!)
+// "Step 2" on one system can be "Step 3" on another.
+const numbers = own.map((os) => ({
+    os,
+    n:
+        sections
+            .filter((s) => systems(s).includes(os))
+            .findIndex((s) => s.id === id) + 1,
+}))
+
+// Complete class names, so Tailwind finds them. A Mac's is the default.
+const inline = {
+    mac: "windows:hidden linux:hidden",
+    windows: "hidden windows:inline",
+    linux: "hidden linux:inline",
+}
+const row = {
+    mac: "windows:hidden linux:hidden",
+    windows: "hidden windows:grid",
+    linux: "hidden linux:grid",
+}
+---
+
+<li
+    class:list={[
+        "group relative scroll-mt-12 grid-cols-[var(--spacing-8)_1fr] gap-x-4 pb-16 last:pb-0 xl:grid-cols-[var(--spacing-8)_1fr_var(--container-shot)] xl:grid-rows-[auto_1fr] xl:gap-x-12",
+        own.length === all.length ? "grid" : own.map((os) => row[os]),
+    ]}
+    id={id}
+>
+    <span
+        class="absolute top-8 bottom-0 left-4 my-2 w-px -translate-x-1/2 bg-line group-last:hidden"
+        aria-hidden="true"
+    ></span>
+    <span class="grid size-8 place-items-center rounded-full border border-edge bg-canvas text-sm font-medium tabular-nums">
+        {numbers.map(({ os, n }) => (
+            <span class={inline[os]}>{n}</span>
+        ))}
+    </span>
+    <h2 class="col-start-2 text-xl leading-8 font-semibold">
+        <a class="link [--link-rest:transparent]" href={`#${id}`}>
+            {sectionTitle(id)}
+        </a>
+    </h2>
+    <slot />
+</li>

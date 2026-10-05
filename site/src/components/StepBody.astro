@@ -1,0 +1,31 @@
+---
+// What a step says and shows: the text, then what comes after it (a button,
+// a note), and a picture, right of the text from xl and under it before. A
+// body for one system shows only on that system.
+type Os = "mac" | "windows" | "linux"
+interface Props {
+    os?: Os
+}
+const { os } = Astro.props
+
+// Complete class names, so Tailwind finds them. A Mac's is the default.
+const shown = {
+    mac: "contents windows:hidden linux:hidden",
+    windows: "hidden windows:contents",
+    linux: "hidden linux:contents",
+}
+---
+
+<div class={os ? shown[os] : "contents"}>
+    <div class="col-start-2">
+        <div class="prose mt-2">
+            <slot />
+        </div>
+        <slot name="after" />
+    </div>
+    {Astro.slots.has("art") && (
+        <div class="col-start-2 mt-8 flex xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:mt-0 xl:justify-center">
+            <slot name="art" />
+        </div>
+    )}
+</div>
