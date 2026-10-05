@@ -6,6 +6,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Rollport</title>
         <script>
+            // WebKitGTK serves tauri://localhost with no path, which SvelteKit
+            // reads as "" and reloads forever; give it the "/" it routes.
+            if (new URL(location.href).pathname === "")
+                history.replaceState(null, "", "/")
+        </script>
+        <script>
             // Before first paint, so a dark window never flashes light.
             const dark = matchMedia("(prefers-color-scheme: dark)")
             const follow = () =>
