@@ -105,7 +105,7 @@ const systems = [
         <Step id="install">
             <StepBody os="mac">
                 <p>
-                    Download Rollport, open the download, and drag Rollport to{" "}
+                    Download Rollport, open the .dmg file, and drag Rollport to{" "}
                     <b>Applications</b>.
                 </p>
                 <Fragment slot="after">
@@ -116,8 +116,8 @@ const systems = [
                         </Button>
                     </div>
                     <FirstTime>
-                        the Mac will not open Rollport, because Apple has not
-                        checked it yet. Close the message, then open{" "}
+                        macOS blocks Rollport, because Apple has not notarized
+                        it yet. Close the message, then open{" "}
                         <b>System Settings</b> › <b>Privacy &amp; Security</b>{" "}
                         and click <b>Open Anyway</b>.
                     </FirstTime>
@@ -148,7 +148,7 @@ const systems = [
                 </div>
             </StepBody>
             <StepBody os="windows">
-                <p>Download Rollport and open the download.</p>
+                <p>Download Rollport and run the installer.</p>
                 <Fragment slot="after">
                     <div class="mt-6">
                         <Button href={site.downloads.windows} variant="solid">
@@ -200,8 +200,8 @@ const systems = [
                     tells you what to do.
                 </p>
                 <p>
-                    Nothing goes over the internet. The photos go through the
-                    cable to your computer, and nowhere else.
+                    Nothing goes over the internet: the photos go only through
+                    the cable.
                 </p>
                 <Window
                     slot="art"
@@ -217,9 +217,9 @@ const systems = [
                 <p>
                     Choose where the photos go. Rollport suggests a folder:
                     click <b>Change…</b> to pick another, or drop a folder on
-                    the window. Then click <b>Use this folder</b>. The folder
-                    remembers what it already has, so you can use the same
-                    folder every time.
+                    the window. Then click <b>Use this folder</b>. Use the same
+                    folder every time: it keeps a record of what it already has,
+                    so each import adds only what is new.
                 </p>
                 <Window
                     slot="art"
@@ -237,9 +237,9 @@ const systems = [
                     have yet, and shows the newest. Click <b>Import</b>.
                 </p>
                 <p>
-                    Files are copied as they are: HEIC photos stay HEIC, and
-                    videos stay videos. Each file keeps the date and time it was
-                    taken. Nothing on the iPhone is deleted.
+                    Files are copied unchanged, so HEIC stays HEIC. Each file
+                    keeps the date and time it was taken. Nothing on the iPhone
+                    is deleted.
                 </p>
                 <p>
                     To import only some photos, or to name the files

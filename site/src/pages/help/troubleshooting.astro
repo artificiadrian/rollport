@@ -14,8 +14,8 @@ import { site } from "../../site"
 
     <HelpSection question id="mac-cannot-open">
         <p>
-            Apple has not checked Rollport yet, so the Mac blocks it the first
-            time. Try to open it once and close the message. Then open{" "}
+            Apple has not notarized Rollport yet, so macOS blocks it the first
+            time you open it. Close the message. Then open{" "}
             <b>System Settings</b> › <b>Privacy &amp; Security</b> and click{" "}
             <b>Open Anyway</b>.
         </p>
@@ -23,8 +23,8 @@ import { site } from "../../site"
 
     <HelpSection question id="windows-protected">
         <p>
-            Rollport is not signed yet, so Windows warns about it. Click{" "}
-            <b>More info</b>, then <b>Run anyway</b>.
+            Rollport is not signed yet, so Microsoft Defender SmartScreen warns
+            about it. Click <b>More info</b>, then <b>Run anyway</b>.
         </p>
     </HelpSection>
 
@@ -45,11 +45,11 @@ import { site } from "../../site"
             iPhone again.
         </p>
         <p>
-            usbmuxd starts by itself when an iPhone is plugged in, and stops
-            when the last one is unplugged, so Rollport asks you to connect the
-            iPhone until then. If Rollport says <b>Cannot see iPhones</b> while
-            the iPhone is plugged in, usbmuxd did not start: start it by hand
-            with <code>sudo systemctl start usbmuxd</code>.
+            usbmuxd starts when an iPhone is plugged in and stops when the last
+            one is unplugged, so until then Rollport asks you to connect the
+            iPhone. If Rollport says <b>Cannot see iPhones</b> while the iPhone
+            is plugged in, usbmuxd did not start. Start it with{" "}
+            <code>sudo systemctl start usbmuxd</code>.
         </p>
     </HelpSection>
 
@@ -69,8 +69,8 @@ import { site } from "../../site"
             passcode.
         </p>
         <p>
-            To be asked again later, open <b>Settings</b> › <b>General</b> ›{" "}
-            <b>Transfer or Reset iPhone</b> › <b>Reset</b> ›{" "}
+            If the iPhone does not ask again, open <b>Settings</b> ›{" "}
+            <b>General</b> › <b>Transfer or Reset iPhone</b> › <b>Reset</b> ›{" "}
             <b>Reset Location &amp; Privacy</b> on the iPhone.
         </p>
     </HelpSection>
@@ -87,8 +87,8 @@ import { site } from "../../site"
     <HelpSection question id="camera-roll">
         <p>
             The iPhone trusts this computer, but it is locked, so it does not
-            show its photos. Unlock it. Rollport keeps trying every few seconds
-            and goes on by itself.
+            show its photos. Unlock it. Rollport tries again every few seconds
+            and continues on its own.
         </p>
     </HelpSection>
 
@@ -102,7 +102,7 @@ import { site } from "../../site"
                 The folder was moved, renamed, or deleted, or the disk it is on
                 is not connected.
             </li>
-            <li>You are not allowed to write to the folder.</li>
+            <li>You do not have permission to write to the folder.</li>
             <li>
                 The folder stopped responding, which happens with network drives
                 and sleeping disks.
@@ -121,7 +121,7 @@ import { site } from "../../site"
         <p>
             Rollport always leaves 2 GB free on the disk, so the computer keeps
             working. Before an import, it tells you when everything will not fit
-            and how much to free up. You can also choose fewer dates in{" "}
+            and how much to free up. You can also choose a shorter date range in{" "}
             <b>Options</b>.
         </p>
         <p>
@@ -149,9 +149,9 @@ import { site } from "../../site"
     <HelpSection question id="folder-busy">
         <p>
             Only one import at a time can write into a folder, so two imports
-            never mix up its record. Another copy of Rollport, on this computer
-            or on another one, is importing into this folder now. Wait until it
-            is done, then import again.
+            never mix up its record. Rollport is already importing into this
+            folder, on this computer or another one. Wait until it is done, then
+            import again.
         </p>
     </HelpSection>
 
@@ -159,18 +159,18 @@ import { site } from "../../site"
         <p>
             Rollport can import into a folder on a network drive, but if the
             connection drops, the import stops. What is already copied stays
-            there, and you can click <b>Continue</b> later. A folder on the
-            computer's own disk, or on an external disk, is more reliable.
+            there, and you can click <b>Continue</b> later. A folder on an
+            internal or external disk is more reliable.
         </p>
     </HelpSection>
 
     <HelpSection question id="linux-blank">
         <p>
-            Some graphics drivers do not work with the part of Linux that draws
-            Rollport's window (WebKitGTK). Rollport already works around this on
-            NVIDIA. If the window still opens empty, or closes again at once,
-            start Rollport from a terminal with one of these, and use the first
-            one that helps:
+            Some graphics drivers do not work with WebKitGTK, which draws
+            Rollport's window. Rollport already works around this on NVIDIA. If
+            the window still opens empty, or closes again at once, start
+            Rollport from a terminal with these commands, one at a time, until
+            one works:
         </p>
         <ul>
             <li>
@@ -221,9 +221,9 @@ import { site } from "../../site"
         </ul>
         <p>
             That folder holds only the folder you used last, the folder of each
-            iPhone, and the window size. Your photos and your folders are not
-            touched. The next time you open Rollport, it starts as on the first
-            day.
+            iPhone, and the window size. Your photos and folders are not
+            touched. The next time you open Rollport, it starts as if newly
+            installed.
         </p>
     </HelpSection>
 

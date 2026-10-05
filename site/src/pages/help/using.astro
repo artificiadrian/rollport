@@ -48,8 +48,8 @@ const shortcuts = [
                 <b>Between two dates</b>. "Last 7 days" is today and the six
                 days before it, and both dates of "Between two dates" are
                 included. The date range is not saved: Rollport starts at Any
-                date each time you open it, so a range you forgot about never
-                leaves photos behind.
+                date each time you open it, so a forgotten range never leaves
+                photos behind.
             </li>
             <li>
                 <b>Media types</b>: <b>All media</b>,{" "}
@@ -121,8 +121,8 @@ const shortcuts = [
                 <code>%S</code> the second.
             </li>
             <li>
-                <code>/</code> makes a folder. Rollport makes the folders it
-                needs.
+                <code>/</code> starts a subfolder. Rollport creates the
+                subfolders it needs.
             </li>
             <li>Any other text is used as it is.</li>
         </ul>
@@ -144,15 +144,13 @@ const shortcuts = [
         alt="Rollport is 63 percent done, with about a minute left"
     >
         <p>
-            The photos go past as they are copied, and Rollport shows how much
-            is done, how many files are left and how large they are, and the
-            time left.
+            Rollport shows each photo as it is copied, with the progress, the
+            number of files and the amount of data left, and the time left.
         </p>
         <p>
             You can click <b>Stop</b> at any time: what is already copied stays
-            in the folder, and the next import goes on from there. A file that
-            was being copied when you stopped is removed, and copied again next
-            time.
+            in the folder, and the next import continues from there. A partly
+            copied file is removed and copied again next time.
         </p>
         <p>
             If you unplug the iPhone during an import, the import stops in the
@@ -160,13 +158,14 @@ const shortcuts = [
         </p>
         <p>
             Rollport tries each file three times. A file that still cannot be
-            copied does not stop the import: Rollport names it at the end, and
-            it stays on the iPhone for the next import.
+            copied does not stop the import: Rollport lists it at the end, and
+            the next import tries it again.
         </p>
         <p>
             While an import runs, you cannot change the iPhone, the folder, or
             Options. Only one import at a time can copy into a folder, even from
-            another computer, if the disk allows it.
+            another computer. The exception is a network drive that does not
+            support file locking.
         </p>
     </HelpSection>
 
@@ -185,8 +184,7 @@ const shortcuts = [
                 the iPhone was unplugged.
             </li>
             <li>
-                <b>Check again</b> looks for new photos, for example ones you
-                took since.
+                <b>Check again</b> looks for photos you took since.
             </li>
             <li>
                 <b>Show in Finder</b> (Mac), <b>Show in Explorer</b> (Windows),
@@ -199,17 +197,16 @@ const shortcuts = [
             <b>Up to date</b> and when the last import was.
         </p>
         <p>
-            The folder keeps a record of what it already has, in a small file
-            named <code>rollport-library.db</code>. Keep that file. Without it,
-            Rollport finds only the files that are still where it put them and
-            still have their date-and-time names, and copies everything else
-            again. Moving or renaming the photos in the folder is fine while the
-            file is there.
+            The folder records what it already has in{" "}
+            <code>rollport-library.db</code>. Do not delete this file. While it
+            is there, you can move and rename the photos in the folder. Without
+            it, Rollport recognizes a file only if it has the same size and date
+            and is still where the default naming (date and time in the name)
+            would put it. It copies everything else again.
         </p>
         <p>
-            Rollport never deletes anything on the iPhone. Once the photos are
-            in the folder, you can delete them on the iPhone yourself to free up
-            space.
+            Rollport never deletes anything on the iPhone. To free up space
+            there, delete the photos yourself once they are in the folder.
         </p>
     </HelpSection>
 
@@ -224,9 +221,9 @@ const shortcuts = [
             its own record, so each one gets only what it does not have yet.
         </p>
         <p>
-            Each iPhone remembers its folder: when you connect it, Rollport
-            opens the folder it last imported into. An iPhone that never
-            imported is offered the folder in use. With more than one iPhone
+            Rollport remembers each iPhone's folder: when you connect an iPhone,
+            it opens the folder that iPhone last imported into. An iPhone that
+            has never imported gets the folder in use. With more than one iPhone
             connected, click the iPhone's name at the top of the window to
             choose one.
         </p>
@@ -271,8 +268,8 @@ const shortcuts = [
         </div>
         <p>
             Rollport remembers the window size you choose. The <b>?</b> button
-            at the bottom of the window also opens this help. Point at it to see
-            which version of Rollport you have.
+            at the bottom of the window also opens this help. Hover over it to
+            see which version of Rollport you have.
         </p>
     </HelpSection>
 
@@ -283,16 +280,14 @@ const shortcuts = [
             how large you made the window. It does not keep your iPhone's name.
         </p>
         <p>
-            Each folder keeps track of itself: which photos it already has, and
-            how its files are named. So you can move the folder to another disk
-            or another computer, and the next import goes on from where it
-            stopped.
+            Each folder records which photos it already has and how its files
+            are named. You can move the folder to another disk or computer, and
+            the next import continues from there.
         </p>
         <p>
-            To do that, Rollport adds a small file named{" "}
-            <code>rollport-library.db</code> to the folder. Leave it there, and
-            leave any other files whose names start with <code>rollport</code>{" "}
-            or <code>.rollport</code>.
+            This record is the file <code>rollport-library.db</code> in the
+            folder. Do not delete it, or any other file whose name starts with{" "}
+            <code>rollport</code> or <code>.rollport</code>.
         </p>
     </HelpSection>
 </Help>
