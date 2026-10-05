@@ -31,7 +31,7 @@ const yoursInline = {
 }
 // Two columns; a system with one file centres it, one column wide.
 const columns = {
-    mac: "sm:grid-cols-[calc(50%-0.75rem)] sm:justify-center",
+    mac: "sm:grid-cols-[calc(50%-0.5rem)] sm:justify-center",
     windows: "sm:grid-cols-2",
     linux: "sm:grid-cols-2",
 }
@@ -66,7 +66,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
              below, so every button is as wide and every edge lines up. -->
         {systems.map(({ os }) => (
             <div class:list={["mt-8 w-full text-left", yours[os]]}>
-                <div class:list={["grid gap-2 sm:gap-x-6", columns[os]]}>
+                <div class:list={["grid gap-2 sm:gap-x-4", columns[os]]}>
                     {ofSystem(os).map((file) => (
                         <DownloadButton file={file} />
                     ))}
@@ -89,7 +89,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
 
         <section class="mt-8 w-full border-t border-line pt-6 text-left">
             <h2 class="text-sm font-medium text-muted">Other systems</h2>
-            <div class="mt-4 grid gap-8 sm:grid-cols-2 sm:gap-6">
+            <div class="mt-4 grid gap-8 sm:grid-cols-2 sm:gap-x-4">
                 {systems.map(({ os, label }) => (
                     <div class={others[os]}>
                         <h3 class="mb-3 text-xl font-semibold">{label}</h3>
