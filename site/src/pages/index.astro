@@ -1,7 +1,6 @@
 ---
 import Download from "@lucide/astro/icons/download"
 import Author from "../components/Author.astro"
-import Button from "../components/Button.astro"
 import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
@@ -61,15 +60,25 @@ import { sentence, site, url } from "../site"
                     {sentence}
                 </p>
             </div>
-            <div class="shrink-0 pt-4 pb-8 short:pb-4">
+            <div class="shrink-0 pt-2 pb-8 short:pb-4">
                 <!-- One button to the download page, which puts your system
                      first: no format is chosen for you here. -->
-                <Button href={url("/download")} variant="solid">
-                    <Download size={16} aria-hidden="true" />
-                    Download
-                </Button>
+                <a class="key" href={url("/download")} data-key>
+                    <Download
+                        class="shrink-0"
+                        size={24}
+                        stroke-width={1.75}
+                        aria-hidden="true"
+                    />
+                    <span class="grid text-left leading-tight">
+                        <span class="text-lg font-semibold">Download</span>
+                        <span class="text-sm opacity-70">
+                            Mac, Windows and Linux
+                        </span>
+                    </span>
+                </a>
                 <!-- What someone needs at the moment they download; the rest is on /help. -->
-                <p class="mt-4 text-sm text-balance text-muted">
+                <p class="mt-8 text-sm text-balance text-muted short:mt-4">
                     Needs a USB cable
                     <span class="hidden windows:inline">
                         {" "}
@@ -123,3 +132,85 @@ import { sentence, site, url } from "../site"
         })
     </script>
 </Page>
+
+<style>
+    /* The one action on the page, as a key: a face on a foot. On hover the face
+       rises a pixel and the foot grows one, so the foot's bottom stays;
+       pressed, it drops to the ground. Its edge catches the light where the
+       mouse is. */
+    .key {
+        --depth: 3px;
+        --light-x: 0.3;
+        --foot: color-mix(in oklab, var(--color-ink), black 45%);
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 1.75rem 0.625rem 1.25rem;
+        border-radius: 0.875rem;
+        background: var(--color-ink);
+        color: var(--color-canvas);
+        box-shadow:
+            0 var(--depth) 0 var(--foot),
+            0 6px 14px rgb(0 0 0 / 0.22);
+        transition:
+            box-shadow 0.12s ease-out,
+            transform 0.12s ease-out;
+    }
+    /* The edge: a faint ring, brightest at the light. The mask keeps only the
+       ring, not the face inside it. */
+    .key::before {
+        --edge: color-mix(in oklab, white 16%, transparent);
+        content: "";
+        position: absolute;
+        inset: 0;
+        padding: 1.5px;
+        border-radius: inherit;
+        background:
+            radial-gradient(
+                7rem 3rem at calc(var(--light-x) * 100%) 0%,
+                rgb(255 255 255 / 0.9),
+                transparent 70%
+            ),
+            var(--edge);
+        mask:
+            linear-gradient(#000 0 0) content-box exclude,
+            linear-gradient(#000 0 0);
+        pointer-events: none;
+    }
+    /* On the near-white face of dark mode, the ring sits a step darker, so
+       the white light shows on it. */
+    :global(.dark) .key::before {
+        --edge: color-mix(in oklab, black 18%, transparent);
+    }
+    .key:hover {
+        --depth: 4px;
+        transform: translateY(-1px);
+    }
+    .key:active {
+        box-shadow: 0 0 0 var(--foot);
+        transform: translateY(3px);
+        transition-duration: 0.05s;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .key {
+            transition: none;
+        }
+    }
+</style>
+
+<script>
+    // The foil's bright band sits where the mouse is, across the key; a touch
+    // screen leaves it where it is.
+    const key = document.querySelector<HTMLElement>("[data-key]")
+    if (key)
+        addEventListener("pointermove", (event) => {
+            if (event.pointerType !== "mouse") return
+            const box = key.getBoundingClientRect()
+            const x = (event.clientX - box.left) / box.width
+            key.style.setProperty(
+                "--light-x",
+                Math.max(-0.4, Math.min(1.4, x)).toFixed(3),
+            )
+        })
+</script>
