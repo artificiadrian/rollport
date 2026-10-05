@@ -1,5 +1,7 @@
 ---
 import HelpSection from "../../components/HelpSection.astro"
+import Kbd from "../../components/Kbd.astro"
+import Keys from "../../components/Keys.astro"
 import Help from "../../layouts/Help.astro"
 ---
 
@@ -22,7 +24,7 @@ import Help from "../../layouts/Help.astro"
         <p>
             Open <b>Options</b> at the bottom of the window. Each choice applies
             at once, and the count of what will be imported changes with it.
-            Press <b>Esc</b> or click outside to close Options.
+            Press <Kbd>Esc</Kbd> or click outside to close Options.
         </p>
         <ul>
             <li>
@@ -88,7 +90,7 @@ import Help from "../../layouts/Help.astro"
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
-            and type it, then press <b>Enter</b>:
+            and type it, then press <Kbd>Enter</Kbd>:
         </p>
         <ul>
             <li>
@@ -214,27 +216,29 @@ import Help from "../../layouts/Help.astro"
     </HelpSection>
 
     <HelpSection id="keys">
-        <p>On a Mac, use ⌘. On Windows and Linux, use Ctrl.</p>
+        <p>On a Mac, use <Kbd>⌘</Kbd>. On Windows and Linux, use <Kbd>Ctrl</Kbd>.</p>
         <ul>
             <li>
-                <b>⌘ Return</b> or <b>Ctrl+Enter</b>: Import, or the main button
-                after an import (Continue, Import, or Check again).
+                <Keys mac={["⌘", "Return"]} pc={["Ctrl", "Enter"]} />: Import,
+                or the main button after an import (Continue, Import, or Check
+                again).
             </li>
             <li>
-                <b>⌘ .</b> or <b>Ctrl+.</b>: stop the import.
+                <Keys mac={["⌘", "."]} pc={["Ctrl", "."]} />: stop the import.
             </li>
-            <li><b>Esc</b>: close Options.</li>
+            <li><Kbd>Esc</Kbd>: close Options.</li>
             <li>
-                <b>⌘ +</b> or <b>Ctrl++</b>: make the window larger.{" "}
-                <b>⌘ −</b> or <b>Ctrl+−</b>: smaller. <b>⌘ 0</b> or{" "}
-                <b>Ctrl+0</b>: back to actual size. The window grows with its
-                contents, up to twice the size, as far as the screen allows.
-                Rollport remembers the size.
+                <Keys mac={["⌘", "+"]} pc={["Ctrl", "+"]} />: make the window
+                larger. <Keys mac={["⌘", "−"]} pc={["Ctrl", "−"]} />: smaller.{" "}
+                <Keys mac={["⌘", "0"]} pc={["Ctrl", "0"]} />: back to actual
+                size. The window grows with its contents, up to twice the size,
+                as far as the screen allows. Rollport remembers the size.
             </li>
             <li>
-                <b>⌘ ?</b> on a Mac, or <b>F1</b> on Windows and Linux: open
-                this help. The <b>?</b> button at the bottom of the window does
-                the same; point at it to see the version of Rollport.
+                <Keys mac={["⌘", "?"]} /> on a Mac, or <Kbd>F1</Kbd> on Windows
+                and Linux: open this help. The <b>?</b> button at the bottom of
+                the window does the same; point at it to see the version of
+                Rollport.
             </li>
         </ul>
         <p>

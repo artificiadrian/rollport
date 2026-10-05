@@ -27,7 +27,8 @@
 - Choose a date range, and leave out videos, photos or Live Photo videos
 - Stop at any time and continue later; unplugging mid-import loses nothing
 - Remembers each iPhone's folder; drop a folder on the window to switch
-- Keyboard: ⌘/Ctrl+Enter imports, ⌘/Ctrl+. stops, ⌘/Ctrl +/−/0 zooms, ⌘? or F1 opens help
+- Keyboard: <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> imports, <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>.</kbd> stops,
+  <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> zooms, <kbd>⌘</kbd><kbd>?</kbd> or <kbd>F1</kbd> opens help
 - Windows, macOS and Linux (Linux untested)
 - Free and open source, no account, works offline
 
