@@ -86,6 +86,36 @@ const twoLines = Astro.slots.has("detail")
         box-shadow: var(--shadow-press);
         transition-duration: 50ms;
     }
+    /* A faint sheen under the mouse on a solid button (the script below
+       places it); on dark mode's near-white face it shades, so half. */
+    .button {
+        --light-x: 0.3;
+        --light-y: 0;
+        overflow: hidden;
+    }
+    .button::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+            6rem 4rem at calc(var(--light-x) * 100%) calc(var(--light-y) * 100%),
+            color-mix(in oklab, var(--color-canvas) 6%, transparent),
+            transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.2s ease-out;
+        pointer-events: none;
+    }
+    .button:hover::before {
+        opacity: calc(var(--sheen) * var(--sheen-theme, 1));
+    }
+    :global(.dark) .button {
+        --sheen-theme: 0.5;
+    }
+    /* Above the sheen. */
+    .button > :global(*) {
+        position: relative;
+    }
     .button-detail {
         opacity: 0.7;
         transition: opacity 150ms ease-out;
@@ -104,6 +134,7 @@ const twoLines = Astro.slots.has("detail")
         --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
         --shadow-hover: 0 4px 10px -4px rgb(0 0 0 / 0.16);
         --shadow-press: none;
+        --sheen: 0;
     }
     /* Solid, or solid on the visitor's own system. */
     .solid,
@@ -121,5 +152,25 @@ const twoLines = Astro.slots.has("detail")
         --shadow-hover:
             0 2px 4px rgb(0 0 0 / 0.16), 0 14px 28px -8px rgb(0 0 0 / 0.4);
         --shadow-press: 0 1px 2px rgb(0 0 0 / 0.2);
+        --sheen: 1;
     }
 </style>
+
+<script>
+    // The sheen sits where the mouse is, over the button it is on; a touch
+    // screen has no hover, so it never shows there.
+    addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse") return
+        const button = (event.target as Element).closest<HTMLElement>(".button")
+        if (!button) return
+        const box = button.getBoundingClientRect()
+        button.style.setProperty(
+            "--light-x",
+            ((event.clientX - box.left) / box.width).toFixed(3),
+        )
+        button.style.setProperty(
+            "--light-y",
+            ((event.clientY - box.top) / box.height).toFixed(3),
+        )
+    })
+</script>

@@ -64,13 +64,7 @@ import { sentence, url } from "../site"
             <div class="shrink-0 pt-2 pb-8 short:pb-4">
                 <!-- One button to the download page, which puts your system
                      first: no format is chosen for you here. -->
-                <Button
-                    class="key"
-                    href={url("/download")}
-                    variant="solid"
-                    size="large"
-                    data-key
-                >
+                <Button href={url("/download")} variant="solid" size="large">
                     <!-- As tall as both lines, like a drop cap. -->
                     <Download
                         slot="icon"
@@ -132,60 +126,3 @@ import { sentence, url } from "../site"
         })
     </script>
 </Page>
-
-<style>
-    /* The page's one action: a Button, with a faint sheen under the mouse
-       while it is pointed at. */
-    .key {
-        --light-x: 0.3;
-        --light-y: 0;
-        display: inline-flex;
-        overflow: hidden;
-    }
-    .key::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(
-            6rem 4rem at calc(var(--light-x) * 100%) calc(var(--light-y) * 100%),
-            color-mix(in oklab, var(--color-canvas) 6%, transparent),
-            transparent 70%
-        );
-        opacity: 0;
-        transition: opacity 0.2s ease-out;
-        pointer-events: none;
-    }
-    .key:hover::before {
-        opacity: 1;
-    }
-    /* On dark mode's near-white face the page's colour shades rather than
-       lights, so it stays fainter. */
-    :global(.dark) .key:hover::before {
-        opacity: 0.5;
-    }
-    /* Above the sheen. */
-    .key > :global(*) {
-        position: relative;
-    }
-</style>
-
-<script>
-    // The spotlight sits where the mouse is, over the key; a touch screen
-    // has no hover, so it never shows there.
-    const key = document.querySelector<HTMLElement>("[data-key]")
-    if (key)
-        addEventListener("pointermove", (event) => {
-            if (event.pointerType !== "mouse") return
-            const box = key.getBoundingClientRect()
-            const clamp = (n: number) =>
-                Math.max(-0.5, Math.min(1.5, n)).toFixed(3)
-            key.style.setProperty(
-                "--light-x",
-                clamp((event.clientX - box.left) / box.width),
-            )
-            key.style.setProperty(
-                "--light-y",
-                clamp((event.clientY - box.top) / box.height),
-            )
-        })
-</script>
