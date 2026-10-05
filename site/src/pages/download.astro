@@ -1,57 +1,113 @@
 ---
-// Every file of the newest release, by system, in a fixed order. The
-// visitor's system is marked and its main file solid; nothing moves.
+// Every file of the newest release. Your system's files come first, under the
+// app icon; the other two systems follow below a line. The page holds all
+// three in both places and shows the right ones by CSS (windows: and linux:
+// variants; a Mac's is the default), as the rest of the site does.
+import appIcon from "../../../src-tauri/app-icon.svg?url"
 import DownloadButton from "../components/DownloadButton.astro"
 import Page from "../layouts/Page.astro"
-import { files, site, type Os } from "../site"
+import { files, site, url, type Os } from "../site"
 
 const systems: { os: Os; label: string }[] = [
     { os: "mac", label: "Mac" },
     { os: "windows", label: "Windows" },
     { os: "linux", label: "Linux" },
 ]
+// What a system needs before Rollport sees the iPhone: its Get started step.
+const needs: Partial<Record<Os, { name: string; step: string }>> = {
+    windows: { name: "Apple Devices", step: "apple-devices" },
+    linux: { name: "usbmuxd", step: "usbmuxd" },
+}
 // Complete class names, so Tailwind finds them. A Mac's is the default.
 const yours = {
+    mac: "windows:hidden linux:hidden",
+    windows: "hidden windows:block",
+    linux: "hidden linux:block",
+}
+const yoursInline = {
     mac: "windows:hidden linux:hidden",
     windows: "hidden windows:inline",
     linux: "hidden linux:inline",
 }
+const others = {
+    mac: "hidden windows:block linux:block",
+    windows: "windows:hidden",
+    linux: "linux:hidden",
+}
+const ofSystem = (os: Os) => files.filter((file) => file.os === os)
 ---
 
 <Page
     title="Download Rollport"
     description="Rollport for Mac, Windows, and Linux: every download of the newest version."
 >
-    <main class="wrap pt-12 pb-16">
-        <h1 class="text-3xl font-semibold">Download Rollport</h1>
-        <p class="mt-3 flex flex-wrap gap-x-4 text-muted">
+    <main class="wrap flex flex-col items-center pt-12 pb-16 text-center">
+        <img class="size-[6rem]" src={appIcon} alt="" />
+        <h1 class="mt-6 text-3xl font-semibold text-balance">
+            Download Rollport
+            {systems.map(({ os, label }) => (
+                <span class={yoursInline[os]}> for {label}</span>
+            ))}
+        </h1>
+        <p class="mt-3 flex flex-wrap justify-center gap-x-4 text-muted">
             <span>Version {site.version}</span>
             <a class="link" href={site.releases}>
                 All releases
             </a>
         </p>
 
-        <div class="mt-12 grid gap-12 sm:grid-cols-3 sm:gap-6">
-            {systems.map(({ os, label }) => (
-                <section class="flex flex-col gap-2">
-                    <h2 class="mb-1 flex flex-wrap items-baseline gap-x-2 text-xl font-semibold">
-                        {label}
-                        <span
-                            class:list={[
-                                "text-sm font-normal text-muted",
-                                yours[os],
-                            ]}
+        {systems.map(({ os }) => (
+            <div
+                class:list={["mt-12 w-full max-w-[24rem] text-left", yours[os]]}
+            >
+                <div class="grid gap-2">
+                    {ofSystem(os).map((file, i) => (
+                        <DownloadButton file={file} big={i === 0} />
+                    ))}
+                </div>
+                {needs[os] && (
+                    <p class="mt-2 text-sm text-muted">
+                        Needs{" "}
+                        <a
+                            class="link"
+                            href={url(
+                                `/help/getting-started#${needs[os].step}`,
+                            )}
                         >
-                            Your system
-                        </span>
-                    </h2>
-                    {files
-                        .filter((file) => file.os === os)
-                        .map((file) => (
-                            <DownloadButton file={file} />
-                        ))}
-                </section>
-            ))}
-        </div>
+                            {needs[os].name}
+                        </a>
+                    </p>
+                )}
+            </div>
+        ))}
+
+        <section class="mt-16 w-full border-t border-line pt-8 text-left">
+            <h2 class="text-sm font-medium text-muted">Other systems</h2>
+            <div class="mt-4 grid gap-8 sm:grid-cols-2 sm:gap-6">
+                {systems.map(({ os, label }) => (
+                    <div class={others[os]}>
+                        <h3 class="mb-3 text-xl font-semibold">{label}</h3>
+                        <div class="grid gap-2">
+                            {ofSystem(os).map((file) => (
+                                <DownloadButton file={file} />
+                            ))}
+                        </div>
+                        {needs[os] && (
+                            <p class="mt-2 text-sm text-muted">
+                                Needs{" "}
+                                <a
+                                    class="link"
+                                    href={url(
+                                        `/help/getting-started#${needs[os].step}`,
+                                    )}
+                                >
+                                    {needs[os].name}
+                                </a>
+                            </p>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </section>
     </main>
 </Page>

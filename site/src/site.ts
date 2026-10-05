@@ -37,8 +37,18 @@ export const files = [
         format: ".dmg",
         detail: "Apple silicon and Intel",
     },
-    { os: "windows", name: "Rollport-setup.exe", format: "Installer" },
-    { os: "windows", name: "Rollport.exe", format: "Portable" },
+    {
+        os: "windows",
+        name: "Rollport-setup.exe",
+        format: "Installer",
+        detail: "Adds it to the Start menu",
+    },
+    {
+        os: "windows",
+        name: "Rollport.exe",
+        format: "Portable",
+        detail: "Runs from any folder",
+    },
     {
         os: "linux",
         name: "Rollport.AppImage",
