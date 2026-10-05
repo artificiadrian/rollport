@@ -77,11 +77,10 @@ import { site } from "../../site"
 
     <HelpSection question id="cannot-connect">
         <p>
-            The iPhone is plugged in, but it did not answer as expected. The
-            red text under the message says what went wrong. Unplug the iPhone,
+            The iPhone is plugged in, but it did not answer as expected. The red
+            text under the message says what went wrong. Unplug the iPhone,
             unlock it, and plug it in again. Rollport keeps trying every few
-            seconds. If that does not help, restart the computer and the
-            iPhone.
+            seconds. If that does not help, restart the computer and the iPhone.
         </p>
     </HelpSection>
 
@@ -121,13 +120,13 @@ import { site } from "../../site"
     <HelpSection question id="not-enough-space">
         <p>
             Rollport always leaves 2 GB free on the disk, so the computer keeps
-            working. Before an import, it tells you when everything will not
-            fit and how much to free up. You can also choose fewer dates in{" "}
+            working. Before an import, it tells you when everything will not fit
+            and how much to free up. You can also choose fewer dates in{" "}
             <b>Options</b>.
         </p>
         <p>
-            If the disk fills up during an import, Rollport copies what fits
-            and says how much space the rest needs. Free up space, then click{" "}
+            If the disk fills up during an import, Rollport copies what fits and
+            says how much space the rest needs. Free up space, then click{" "}
             <b>Continue</b>.
         </p>
     </HelpSection>
@@ -168,14 +167,18 @@ import { site } from "../../site"
     <HelpSection question id="linux-blank">
         <p>
             Some graphics drivers do not work with the part of Linux that draws
-            Rollport's window (WebKitGTK). Rollport already works around this
-            on NVIDIA. If the window still opens empty, or closes again at
-            once, start Rollport from a terminal with one of these, and use the
-            first one that helps:
+            Rollport's window (WebKitGTK). Rollport already works around this on
+            NVIDIA. If the window still opens empty, or closes again at once,
+            start Rollport from a terminal with one of these, and use the first
+            one that helps:
         </p>
         <ul>
-            <li><code>WEBKIT_DISABLE_DMABUF_RENDERER=1 rollport</code></li>
-            <li><code>WEBKIT_DISABLE_COMPOSITING_MODE=1 rollport</code></li>
+            <li>
+                <code>WEBKIT_DISABLE_DMABUF_RENDERER=1 rollport</code>
+            </li>
+            <li>
+                <code>WEBKIT_DISABLE_COMPOSITING_MODE=1 rollport</code>
+            </li>
         </ul>
         <p>
             Please also <a href={`${site.repo}/issues`}>open an issue</a> with

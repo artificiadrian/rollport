@@ -185,10 +185,9 @@ import Help from "../../layouts/Help.astro"
         <p>
             The folder keeps a record of what it already has, in a small file
             named <code>rollport-library.db</code>. Keep that file. Without it,
-            Rollport recognizes only the files that are still where it put
-            them, with the default naming, and copies everything else again.
-            Moving or renaming the photos in the folder is fine while the file
-            is there.
+            Rollport recognizes only the files that are still where it put them,
+            with the default naming, and copies everything else again. Moving or
+            renaming the photos in the folder is fine while the file is there.
         </p>
         <p>
             Rollport never deletes anything on the iPhone. Once the photos are
@@ -208,15 +207,19 @@ import Help from "../../layouts/Help.astro"
             its own record, so each one gets only what it does not have yet.
         </p>
         <p>
-            Each iPhone remembers its folder: when you connect it, Rollport opens
-            the folder it last imported into. An iPhone that never imported is
-            offered the folder in use. With more than one iPhone connected,
-            click the iPhone's name at the top of the window to choose one.
+            Each iPhone remembers its folder: when you connect it, Rollport
+            opens the folder it last imported into. An iPhone that never
+            imported is offered the folder in use. With more than one iPhone
+            connected, click the iPhone's name at the top of the window to
+            choose one.
         </p>
     </HelpSection>
 
     <HelpSection id="keys">
-        <p>On a Mac, use <Kbd>⌘</Kbd>. On Windows and Linux, use <Kbd>Ctrl</Kbd>.</p>
+        <p>
+            On a Mac, use <Kbd>⌘</Kbd>. On Windows and Linux, use{" "}
+            <Kbd>Ctrl</Kbd>.
+        </p>
         <ul>
             <li>
                 <Keys mac={["⌘", "Return"]} pc={["Ctrl", "Enter"]} />: Import,
@@ -226,7 +229,9 @@ import Help from "../../layouts/Help.astro"
             <li>
                 <Keys mac={["⌘", "."]} pc={["Ctrl", "."]} />: stop the import.
             </li>
-            <li><Kbd>Esc</Kbd>: close Options.</li>
+            <li>
+                <Kbd>Esc</Kbd>: close Options.
+            </li>
             <li>
                 <Keys mac={["⌘", "+"]} pc={["Ctrl", "+"]} />: make the window
                 larger. <Keys mac={["⌘", "−"]} pc={["Ctrl", "−"]} />: smaller.{" "}
@@ -268,8 +273,8 @@ import Help from "../../layouts/Help.astro"
             </li>
         </ul>
         <p>
-            The file names no iPhone: each one is stored as a scrambled code
-            (a hash), not by its name or serial number.
+            The file names no iPhone: each one is stored as a scrambled code (a
+            hash), not by its name or serial number.
         </p>
         <p>
             Everything about a folder is kept in the folder: what it already

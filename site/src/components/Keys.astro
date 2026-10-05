@@ -10,20 +10,24 @@ interface Props {
 const { mac, pc } = Astro.props
 ---
 
-<span class="whitespace-nowrap"
-    >{mac.map((key, i) => <>{i > 0 && " "}<Kbd>{key}</Kbd></>)}</span
->{
-    pc && (
+<span class="whitespace-nowrap">
+    {mac.map((key, i) => (
         <>
-            {" or "}
-            <span class="whitespace-nowrap">
-                {pc.map((key, i) => (
-                    <>
-                        {i > 0 && <span class="mx-[0.15em] text-muted">+</span>}
-                        <Kbd>{key}</Kbd>
-                    </>
-                ))}
-            </span>
+            {i > 0 && " "}
+            <Kbd>{key}</Kbd>
         </>
-    )
-}
+    ))}
+</span>
+{pc && (
+    <>
+        {" or "}
+        <span class="whitespace-nowrap">
+            {pc.map((key, i) => (
+                <>
+                    {i > 0 && <span class="mx-[0.15em] text-muted">+</span>}
+                    <Kbd>{key}</Kbd>
+                </>
+            ))}
+        </span>
+    </>
+)}
