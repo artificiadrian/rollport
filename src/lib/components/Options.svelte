@@ -284,6 +284,8 @@
             </Menu>
 
             {#if own}
+                <!-- The field is positioned, so its focus ring paints over the
+                     highlighted row above it, which is positioned too. -->
                 <div class="px-4 pb-3">
                     <input
                         bind:this={field}
@@ -297,7 +299,7 @@
                         aria-describedby="{id}-help"
                         oninput={() => (trouble = "")}
                         onchange={(event) => commit(event.currentTarget.value)}
-                        class="{input} w-full font-mono text-xs"
+                        class="{input} relative w-full font-mono text-xs"
                     />
                     <p
                         id="{id}-help"
