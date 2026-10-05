@@ -641,7 +641,9 @@
                     </Button>
                 {:else if view.screen === "counting"}
                     <p class="{hero} text-muted">{view.count}</p>
-                    <p class="mt-2 text-lg font-medium">{view.caption}</p>
+                    <p class="mt-2 text-lg font-medium">
+                        photos and videos found
+                    </p>
                     <!-- Where the button will be, so nothing jumps when it arrives. -->
                     <div class="mt-6 h-11"></div>
                 {:else if view.screen === "importing"}
@@ -781,7 +783,7 @@
 <Footer variant="status">
     {#if view.screen === "importing"}
         <span class="grow pl-7 text-center">
-            Stop keeps what is copied. The next import goes on from there.
+            Stop keeps what is copied.
         </span>
     {:else if view.screen === "done"}
         <span

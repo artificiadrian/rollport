@@ -174,7 +174,7 @@ export type Screen =
       }
     /// The phone will not talk to us yet, or its camera roll will not open.
     | { screen: "prompt"; said: Said }
-    | { screen: "counting"; count: string; caption: string }
+    | { screen: "counting"; count: string }
     | { screen: "current"; detail: string }
     | {
           screen: "ready"
@@ -550,19 +550,8 @@ export function screen(flow: Flow): Screen {
         }
     }
 
-    if (roll?.roll !== "done") {
-        return roll
-            ? {
-                  screen: "counting",
-                  count: count(roll.seen),
-                  caption: "photos and videos found",
-              }
-            : {
-                  screen: "counting",
-                  count: "0",
-                  caption: "Looking through the camera roll",
-              }
-    }
+    if (roll?.roll !== "done")
+        return { screen: "counting", count: count(roll?.seen ?? 0) }
 
     if (roll.new.files === 0) {
         const last = folder.lastImport
