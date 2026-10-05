@@ -10,8 +10,10 @@ interface Props {
     file: ReleaseFile
     /** The download page's main button: taller, larger type. */
     big?: boolean
+    /** Solid on every system: the one file a format tab shows. */
+    solid?: boolean
 }
-const { file, big } = Astro.props
+const { file, big, solid } = Astro.props
 const main = mainFile(file.os) === file
 
 // Complete class names, so Tailwind finds them.
@@ -28,7 +30,11 @@ const solidOn = {
     class:list={[
         "flex items-center gap-3 rounded-xl border px-4 py-2 transition-colors",
         big ? "min-h-[4.5rem] text-lg" : "min-h-[3.625rem]",
-        main ? solidOn[file.os] : soft,
+        solid
+            ? "border-ink bg-ink text-canvas hover:bg-ink/85"
+            : main
+              ? solidOn[file.os]
+              : soft,
     ]}
     href={downloadPage(file.name)}
 >

@@ -1,0 +1,65 @@
+---
+// A system's files, one at a time: a switch picks the format, and only its
+// button and how to install it show. Get started picks the downloaded file's
+// tab (data-tab) when it opens from a download.
+import { files, type Os } from "../site"
+import Command from "./Command.astro"
+import DownloadButton from "./DownloadButton.astro"
+
+interface Props {
+    os: Os
+}
+const { os } = Astro.props
+const ofSystem = files.filter((file) => file.os === os)
+---
+
+<div class="mt-6" data-formats>
+    <div
+        class="inline-flex gap-1 rounded-xl bg-element p-1"
+        role="tablist"
+        aria-label="Format"
+    >
+        {ofSystem.map((file, i) => (
+            <button
+                class="cursor-pointer rounded-lg px-4 py-1.5 text-muted transition-colors hover:text-ink aria-selected:bg-canvas aria-selected:font-medium aria-selected:text-ink"
+                type="button"
+                role="tab"
+                aria-selected={i === 0 ? "true" : "false"}
+                data-tab={file.name}
+            >
+                {file.format}
+            </button>
+        ))}
+    </div>
+    {ofSystem.map((file, i) => (
+        <div
+            class="mt-4 grid max-w-[26rem] gap-3"
+            role="tabpanel"
+            data-panel={file.name}
+            hidden={i !== 0}
+        >
+            <DownloadButton file={file} solid />
+            {"command" in file && <Command>{file.command}</Command>}
+            {"then" in file && <p class="text-sm text-muted">{file.then}</p>}
+        </div>
+    ))}
+</div>
+
+<script>
+    // A tab shows its own panel and hides the others of the same switch.
+    for (const formats of document.querySelectorAll<HTMLElement>(
+        "[data-formats]",
+    ))
+        formats.addEventListener("click", (event) => {
+            const tab = (event.target as Element).closest<HTMLElement>(
+                "[data-tab]",
+            )
+            if (!tab) return
+            for (const other of formats.querySelectorAll("[data-tab]"))
+                other.setAttribute("aria-selected", String(other === tab))
+            for (const panel of formats.querySelectorAll<HTMLElement>(
+                "[data-panel]",
+            ))
+                panel.hidden = panel.dataset["panel"] !== tab.dataset["tab"]
+        })
+</script>

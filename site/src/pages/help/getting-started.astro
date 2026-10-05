@@ -14,6 +14,7 @@ import Button from "../../components/Button.astro"
 import Command from "../../components/Command.astro"
 import DownloadButton from "../../components/DownloadButton.astro"
 import FirstTime from "../../components/FirstTime.astro"
+import FormatTabs from "../../components/FormatTabs.astro"
 import Step from "../../components/Step.astro"
 import StepBody from "../../components/StepBody.astro"
 import Window from "../../components/Window.astro"
@@ -178,19 +179,9 @@ const systems = [
                 </div>
             </StepBody>
             <StepBody os="windows">
-                <p data-file="Rollport-setup.exe">Run the installer.</p>
-                <p data-file="Rollport.exe">
-                    Or take the portable Rollport.exe, which runs without
-                    installing.
-                </p>
+                <p>Download Rollport and install it:</p>
                 <Fragment slot="after">
-                    <div class="mt-6 grid max-w-[16rem] gap-2">
-                        {files
-                            .filter((file) => file.os === "windows")
-                            .map((file) => (
-                                <DownloadButton file={file} />
-                            ))}
-                    </div>
+                    <FormatTabs os="windows" />
                     <FirstTime>
                         Windows may say it protected your PC, because Rollport
                         is not signed yet. Click <b>More info</b>, then{" "}
@@ -206,26 +197,8 @@ const systems = [
                 </div>
             </StepBody>
             <StepBody os="linux">
-                <p data-file="Rollport.AppImage">
-                    The AppImage runs on any distribution: make it executable
-                    with <code>chmod +x Rollport.AppImage</code>, then open it.
-                </p>
-                <p data-file="Rollport.deb">
-                    On Debian and Ubuntu:{" "}
-                    <code>sudo apt install ./Rollport.deb</code>
-                </p>
-                <p data-file="Rollport.rpm">
-                    On Fedora: <code>sudo dnf install ./Rollport.rpm</code>
-                </p>
-                <Fragment slot="after">
-                    <div class="mt-6 grid max-w-[16rem] gap-2">
-                        {files
-                            .filter((file) => file.os === "linux")
-                            .map((file) => (
-                                <DownloadButton file={file} />
-                            ))}
-                    </div>
-                </Fragment>
+                <p>Download the format for your distribution and install it:</p>
+                <FormatTabs slot="after" os="linux" />
                 <div
                     slot="art"
                     class="flex flex-col items-center gap-1 text-sm text-muted"
@@ -338,10 +311,9 @@ const systems = [
         banner.querySelector("b")!.textContent = name
         banner.querySelector("a")!.href = file.url
         banner.toggleAttribute("data-shown", true)
-        for (const line of document.querySelectorAll<HTMLElement>(
-            "[data-file]",
-        ))
-            line.hidden = line.dataset["file"] !== name
+        document
+            .querySelector<HTMLElement>(`[data-tab="${CSS.escape(name)}"]`)
+            ?.click()
         history.replaceState(null, "", location.pathname + location.hash)
         location.href = file.url
     }

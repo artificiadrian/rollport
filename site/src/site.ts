@@ -42,31 +42,45 @@ export const files = [
         name: "Rollport-setup.exe",
         format: "Installer",
         detail: "Adds it to the Start menu",
+        then: "Run it and follow its steps.",
     },
     {
         os: "windows",
         name: "Rollport.exe",
         format: "Portable",
         detail: "Runs from any folder",
+        then: "Open Rollport.exe from where you saved it.",
     },
     {
         os: "linux",
         name: "Rollport.AppImage",
         format: "AppImage",
         detail: "Any distribution",
+        command: "chmod +x Rollport.AppImage",
+        then: "Then open it.",
     },
     {
         os: "linux",
         name: "Rollport.deb",
         format: ".deb",
         detail: "Debian, Ubuntu",
+        command: "sudo apt install ./Rollport.deb",
     },
-    { os: "linux", name: "Rollport.rpm", format: ".rpm", detail: "Fedora" },
+    {
+        os: "linux",
+        name: "Rollport.rpm",
+        format: ".rpm",
+        detail: "Fedora",
+        command: "sudo dnf install ./Rollport.rpm",
+    },
 ] as const satisfies readonly {
     os: Os
     name: string
     format: string
     detail?: string
+    /** How to install it, on Get started: a command to type, then a note. */
+    command?: string
+    then?: string
 }[]
 
 export type ReleaseFile = (typeof files)[number]
