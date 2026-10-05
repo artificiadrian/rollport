@@ -186,6 +186,15 @@ describe("the report's button and the line under it", () => {
             const { next, after } = done(of)
             assert.deepEqual({ next, after }, expected)
         })
+
+    test("only a phone being read turns the spinner", () => {
+        const reading = cases
+            .filter(([, of]) => done(of).reading)
+            .map(([name]) => name)
+        assert.deepEqual(reading, [
+            "a run that did all of it shows no button while it counts",
+        ])
+    })
 })
 
 describe("the report's title, badge and words", () => {

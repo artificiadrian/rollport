@@ -3,6 +3,7 @@
     import { cubicOut } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
     import { fade, fly } from "svelte/transition"
+    import LoaderCircle from "@lucide/svelte/icons/loader-circle"
     import ArrowDownToLine from "@lucide/svelte/icons/arrow-down-to-line"
     import ArrowRight from "@lucide/svelte/icons/arrow-right"
     import Check from "@lucide/svelte/icons/check"
@@ -773,7 +774,20 @@
             Stop keeps what is copied. The next import goes on from there.
         </span>
     {:else if view.screen === "done"}
-        <span class="grow pl-7 text-center">{view.after}</span>
+        <span
+            class="flex grow items-center justify-center gap-2 pl-7 text-center"
+        >
+            {#if view.reading}
+                <!-- The prompts' spinner: the phone is being read. -->
+                <LoaderCircle
+                    size={12}
+                    strokeWidth={2.5}
+                    class="shrink-0 animate-spin text-ink motion-reduce:animate-none"
+                    aria-hidden="true"
+                />
+            {/if}
+            {view.after}
+        </span>
     {:else}
         <button
             bind:this={opener}

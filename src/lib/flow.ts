@@ -208,6 +208,8 @@ export type Screen =
           next: "continue" | "counting" | "rescan" | null
           /// What to do now, under the buttons.
           after: string
+          /// The camera roll is being read now: the line turns a spinner.
+          reading: boolean
       }
 
 /// The answers worth one click. Anything else is two dates.
@@ -644,7 +646,7 @@ function report(
 
     const next: Pick<
         Extract<Screen, { screen: "done" }>,
-        "next" | "after"
+        "next" | "after" | "reading"
     > = ready && left === null
         ? {
               // A run that did not do all of it most likely leaves some.
@@ -656,23 +658,42 @@ function report(
                   : unfinished
                     ? goOn
                     : "Looking through the camera roll…",
+              reading: !unreadable && !unfinished,
           }
         : ready && left
           ? {
                 next: "continue",
                 after: goOn,
+                reading: false,
             }
           : ready
-            ? { next: "rescan", after: "You can unplug the iPhone." }
+            ? {
+                  next: "rescan",
+                  after: "You can unplug the iPhone.",
+                  reading: false,
+              }
             : chosen?.state === "waiting" && unfinished
-              ? { next: null, after: GO_ON[chosen.need.need] }
+              ? {
+                    next: null,
+                    after: GO_ON[chosen.need.need],
+                    reading: false,
+                }
               : unfinished
-                ? { next: null, after: "Connect the iPhone again to continue." }
+                ? {
+                      next: null,
+                      after: "Connect the iPhone again to continue.",
+                      reading: false,
+                  }
                 : chosen
-                  ? { next: null, after: "You can unplug the iPhone." }
+                  ? {
+                        next: null,
+                        after: "You can unplug the iPhone.",
+                        reading: false,
+                    }
                   : {
                         next: null,
                         after: "Connect the iPhone to look for new photos.",
+                        reading: false,
                     }
 
     // Another import holds the folder (phone.rs, lock_folder): nothing went
