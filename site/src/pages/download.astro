@@ -29,6 +29,12 @@ const yoursInline = {
     windows: "hidden windows:inline",
     linux: "hidden linux:inline",
 }
+// One column per file, at most 16 rem each; three fill the column.
+const row = {
+    mac: "sm:grid-cols-[minmax(0,16rem)]",
+    windows: "sm:grid-cols-[repeat(2,minmax(0,16rem))]",
+    linux: "sm:grid-cols-3",
+}
 const others = {
     mac: "hidden windows:block linux:block",
     windows: "windows:hidden",
@@ -56,15 +62,16 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
             </a>
         </p>
 
+        <!-- Your system's files side by side, centred; a phone stacks them. -->
         {systems.map(({ os }) => (
-            <div class:list={["mt-8 w-full max-w-[24rem] text-left", yours[os]]}>
-                <div class="grid gap-2">
+            <div class:list={["mt-8 w-full", yours[os]]}>
+                <div class:list={["grid gap-2 sm:justify-center", row[os]]}>
                     {ofSystem(os).map((file) => (
                         <DownloadButton file={file} />
                     ))}
                 </div>
                 {needs[os] && (
-                    <p class="mt-2 text-sm text-muted">
+                    <p class="mt-3 text-sm text-muted">
                         Needs{" "}
                         <a
                             class="link hover:text-ink"
@@ -91,7 +98,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
                             ))}
                         </div>
                         {needs[os] && (
-                            <p class="mt-2 text-sm text-muted">
+                            <p class="mt-3 text-sm text-muted">
                                 Needs{" "}
                                 <a
                                     class="link hover:text-ink"
