@@ -22,7 +22,7 @@
 <!-- The thing it is about, in two faint rings: small enough that the title
      and the instruction lead. In a box as tall as Sync's prints, with the
      same 12 px under the art. -->
-<div class="flex h-[164px] justify-center pt-4" aria-hidden="true">
+<div class="flex h-[164px] justify-center pt-4" aria-hidden="true" data-art>
     <div class="relative grid size-34 place-items-center">
         <!-- Red rings when something is wrong, in the muted reds borders use. -->
         <span

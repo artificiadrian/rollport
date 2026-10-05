@@ -804,6 +804,8 @@ await mkdir(out, { recursive: true })
 
 const browser = await webkit.launch()
 const results: { state: State; problems: string[] }[] = []
+/// Where each screen's art starts: it should not move between screens.
+const arts: [string, number | null][] = []
 
 for (const s of states) {
     const problems: string[] = []
@@ -844,6 +846,16 @@ for (const s of states) {
         if (s.act) await s.act(page)
         await page.waitForTimeout(400)
 
+        if (theme === THEMES[0])
+            arts.push([
+                s.name,
+                await page.evaluate(
+                    () =>
+                        document
+                            .querySelector("[data-art]")
+                            ?.getBoundingClientRect().top ?? null,
+                ),
+            ])
         for (const low of await overflow(page))
             problems.push(`${theme.name}: too near the footer: ${low}`)
         await page.screenshot({
@@ -890,6 +902,11 @@ await writeFile(
 ${rows}
 `,
 )
+
+const tops = Map.groupBy(arts, ([, top]) => top)
+console.log("\nArt top, and the screens that put it there:")
+for (const [top, names] of [...tops].sort(([a], [b]) => (a ?? 0) - (b ?? 0)))
+    console.log(`  ${top ?? "none"}: ${names.map(([name]) => name).join(", ")}`)
 
 const bad = results.filter((r) => r.problems.length).length
 const shots = (await readdir(out)).filter((f) => f.endsWith(".png")).length

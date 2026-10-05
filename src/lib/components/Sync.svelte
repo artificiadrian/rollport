@@ -475,16 +475,18 @@
         </button>
     </div>
 
-    <!-- Every screen is centred between two spacers that grow alike. The
-         warning sits in the lower one: it does not move the rest, and when it
-         needs more room than that spacer has, flexbox takes it from the upper
-         one. The prints slide between screens in a view transition. -->
+    <!-- The art starts 72 px from the window's top on every screen, as on
+         Setup, so a new screen does not move it; only a screen too tall for
+         that takes room from above (28 px here: the pills take 44). 72 px
+         leaves room for the warning, which sits in the lower spacer, so
+         it does not move the rest. The prints slide between screens in a view
+         transition. -->
     <div
         data-stage
         tabindex="-1"
         class="relative flex grow flex-col items-center px-8 text-center outline-none"
     >
-        <div class="min-h-6 flex-1"></div>
+        <div class="min-h-6 shrink-1 grow-0 basis-[28px]"></div>
         <div class="flex w-full shrink-0 flex-col items-center">
             {#if view.screen === "prompt"}
                 <Prompt said={view.said} />
@@ -497,6 +499,7 @@
                 <div
                     class="relative h-[164px] w-[340px] [view-transition-name:prints]"
                     aria-hidden="true"
+                    data-art
                 >
                     <!-- Back to front, each keyed by its picture so it keeps its element
      when it moves to another place in the fan. -->

@@ -10,13 +10,15 @@
     let { view }: { view: Extract<Screen, { screen: "setup" }> } = $props()
 </script>
 
-<!-- Centred: setup has no pills or prints to line up with, and the help
-     row under it puts the centre a little high, where it looks right. -->
+<!-- The art starts 72 px from the top, where Sync has it, so going from
+     setup to the phone's screens does not move it; only a screen too tall for
+     that takes room from above. -->
 <div
     data-stage
     tabindex="-1"
-    class="flex min-h-0 grow flex-col items-center justify-center-safe px-8 text-center outline-none"
+    class="flex min-h-0 grow flex-col items-center px-8 text-center outline-none"
 >
+    <div class="min-h-6 shrink-1 grow-0 basis-[72px]"></div>
     <Prompt said={view.said}>
         {#if view.offer?.suggested}
             <!-- The folder to take: the suggested one, or one picked here or
@@ -65,6 +67,7 @@
             </p>
         {/if}
     </Prompt>
+    <div class="min-h-6 flex-1"></div>
 </div>
 
 <Footer variant="help" />
