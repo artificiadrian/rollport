@@ -5,7 +5,7 @@ import Button from "../components/Button.astro"
 import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
-import { sentence, site, url } from "../site"
+import { sentence, url } from "../site"
 ---
 
 <Page
@@ -82,10 +82,10 @@ import { sentence, site, url } from "../site"
                     Download
                     <Fragment slot="detail">Mac, Windows and Linux</Fragment>
                 </Button>
-                <!-- What a system needs is on the download page and in Get
-                     started; here, only who made it. -->
+                <!-- What a system needs, and the version, are on the download
+                     page; here, only who made it, on one line. -->
                 <p class="mt-8 text-sm text-balance text-muted short:mt-4">
-                    Version {site.version}, free and open source by <Author />.
+                    Free and open source by <Author />.
                 </p>
                 <Trademark class="mt-2 text-balance" />
             </div>
