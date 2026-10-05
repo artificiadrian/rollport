@@ -67,3 +67,7 @@ export const fileUrl = (name: string) =>
 
 /** A system's main file: the one its button gives. */
 export const mainFile = (os: Os) => files.find((file) => file.os === os)!
+
+/** Every download button opens Get started, which starts the file and shows its steps. */
+export const downloadPage = (name: string) =>
+    `${url("/help/getting-started")}?file=${encodeURIComponent(name)}`

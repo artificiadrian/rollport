@@ -4,13 +4,13 @@
 // variants; a Mac's is the default). It opens Get started, which starts the
 // download and shows the steps for that file.
 import Download from "@lucide/astro/icons/download"
-import { mainFile, url, type ReleaseFile } from "../site"
+import { downloadPage, mainFile, type ReleaseFile } from "../site"
 
 interface Props {
     file: ReleaseFile
 }
 const { file } = Astro.props
-const href = `${url("/help/getting-started")}?file=${encodeURIComponent(file.name)}`
+const href = downloadPage(file.name)
 const main = mainFile(file.os) === file
 
 // Complete class names, so Tailwind finds them.
