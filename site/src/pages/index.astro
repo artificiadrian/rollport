@@ -6,6 +6,11 @@ import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
 import { sentence, url } from "../site"
+
+// The demo's first tint, there from the first paint: the last photo its count
+// finds (found in demo/tauri.ts). The app tints before this page listens, so
+// its first "photo" message is lost.
+const firstPhoto = "sunset.svg"
 ---
 
 <Page
@@ -38,14 +43,19 @@ import { sentence, url } from "../site"
                         class="pointer-events-none absolute -inset-x-[30%] -inset-y-[10%] -z-1 overflow-hidden opacity-[0.28] dark:opacity-[0.22] mask-radial-[closest-side] mask-radial-from-20% mask-radial-to-100%"
                         aria-hidden="true"
                     >
-                        {[0, 1].map(() => (
+                        {[firstPhoto, null].map((photo) => (
                             <div
                                 class="absolute inset-0 transition-opacity duration-600 data-hidden:opacity-0"
                                 data-glow
-                                data-hidden
+                                data-hidden={photo ? undefined : ""}
                             >
                                 <img
                                     class="absolute -inset-[90px] size-[calc(100%+180px)] max-w-none object-fill blur-[90px] saturate-150"
+                                    src={
+                                        photo
+                                            ? url(`/demo/photos/${photo}`)
+                                            : undefined
+                                    }
                                     alt=""
                                 />
                             </div>
@@ -91,15 +101,18 @@ import { sentence, url } from "../site"
         import type { DemoMessage } from "../../demo/tauri"
         import { url } from "../site"
 
-        // The glow follows the app's tint. Both layers start hidden: the
-        // glow shows with the app's first tint, not before it.
+        // The glow follows the app's tint. The first layer starts with the
+        // app's first tint (firstPhoto above); a new photo cross-fades in.
         const live = document.querySelector<HTMLIFrameElement>(
             'iframe[data-demo="live"]',
         )
         const main = document.querySelector("main")
         const glows = [...document.querySelectorAll<HTMLElement>("[data-glow]")]
-        let front = 1
+        let front = 0
+        let shown = glows[0]?.querySelector("img")?.src.split("/").pop()
         function showPhoto(name: string) {
+            if (name === shown) return
+            shown = name
             const next = glows[1 - front]
             const current = glows[front]
             const image = next?.querySelector("img")

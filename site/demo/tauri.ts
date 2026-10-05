@@ -41,6 +41,8 @@ function demo() {
     const REST_MS = 4000
 
     const photo = (name: string) => `/DCIM/100APPLE/${name}.svg`
+    // The last one found is the first tint; the home page starts its glow
+    // with it (firstPhoto in src/pages/index.astro).
     const found = ["lake", "city", "sunset"]
     const landed = ["forest", "dunes", "flowers", "aurora", "beach", "forest"]
 
