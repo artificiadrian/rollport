@@ -82,15 +82,10 @@ import { sentence, site, url } from "../site"
                     Download
                     <Fragment slot="detail">Mac, Windows and Linux</Fragment>
                 </Button>
-                <!-- What someone needs at the moment they download; the rest is on /help. -->
+                <!-- What a system needs is on the download page and in Get
+                     started; here, only who made it. -->
                 <p class="mt-8 text-sm text-balance text-muted short:mt-4">
-                    Needs a USB cable
-                    <span class="hidden windows:inline">
-                        {" "}
-                        and Apple Devices from the Microsoft Store
-                    </span>
-                    . Version {site.version}, free and open source by <Author />
-                    .
+                    Version {site.version}, free and open source by <Author />.
                 </p>
                 <Trademark class="mt-2 text-balance" />
             </div>
