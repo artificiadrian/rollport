@@ -100,6 +100,31 @@ const here = Astro.url.pathname.replace(/\/$/, "")
 </Page>
 
 <script>
+    // Below xl the pages are one row that scrolls sideways: the current one is
+    // brought into it, and an edge fades where there is more beyond it.
+    const row = document.querySelector<HTMLElement>('nav[aria-label="Help"]')
+    const wide = matchMedia("(min-width: 80rem)")
+    if (row) {
+        const fade = () => {
+            if (wide.matches) return row.style.removeProperty("mask-image")
+            const start = row.scrollLeft > 1 ? "transparent" : "black"
+            const end =
+                row.scrollLeft + row.clientWidth < row.scrollWidth - 1
+                    ? "transparent"
+                    : "black"
+            row.style.maskImage = `linear-gradient(to right, ${start}, black 2rem, black calc(100% - 2rem), ${end})`
+        }
+        const current = row.querySelector<HTMLElement>('[aria-current="page"]')
+        if (current && !wide.matches)
+            row.scrollLeft =
+                current.offsetLeft -
+                row.clientWidth / 2 +
+                current.offsetWidth / 2
+        fade()
+        row.addEventListener("scroll", fade, { passive: true })
+        wide.addEventListener("change", fade)
+    }
+
     // Marks the section being read in the navigation: the last one whose top
     // passed the reading line near the top of the window, else the first.
     // Near the end the line moves down to the bottom of the window, so the
