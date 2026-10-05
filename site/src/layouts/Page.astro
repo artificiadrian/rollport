@@ -12,8 +12,11 @@ interface Props {
     description: string
     /** From 768 px up the header stays in view as the page scrolls (help). */
     stickyHeader?: boolean
+    /** One screen that does not scroll (home): no room kept for a
+     *  scrollbar, since that strip cuts its glow on Windows and Linux. */
+    oneScreen?: boolean
 }
-const { title, description, stickyHeader } = Astro.props
+const { title, description, stickyHeader, oneScreen } = Astro.props
 const path = Astro.url.pathname
 // Full addresses, as link previews and search engines need them.
 const canonical = new URL(path, site.origin).href
@@ -24,7 +27,13 @@ const ogAlt = `The Rollport window with 312 new photos and videos ready to impor
 
 <!doctype html>
 <!-- A sticky header covers the top: a link to a section lands below it. -->
-<html lang="en" class:list={[stickyHeader && "md:scroll-pt-12"]}>
+<html
+    lang="en"
+    class:list={[
+        stickyHeader && "md:scroll-pt-12",
+        oneScreen && "[scrollbar-gutter:auto]",
+    ]}
+>
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
