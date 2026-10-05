@@ -203,9 +203,10 @@ export type Screen =
           reason: string
           badge: "done" | "stopped" | "full" | "unplugged" | "trouble"
           /// The one button: go on with what is left, or look again once
-          /// nothing is left. "counting" is Continue, shown but not yet
-          /// usable, while what is left is counted.
-          next: "continue" | "counting" | "rescan" | null
+          /// nothing is left. "later" is Continue, shown but not yet usable:
+          /// what is left is being counted, or the phone must be connected,
+          /// trusted or unlocked first.
+          next: "continue" | "later" | "rescan" | null
           /// What to do now, under the buttons.
           after: string
           /// The camera roll is being read now: the line turns a spinner.
@@ -656,7 +657,7 @@ function report(
     > = ready && left === null
         ? {
               // A run that did not do all of it most likely leaves some.
-              next: unfinished ? "counting" : null,
+              next: unfinished ? "later" : null,
               after: unreadable
                   ? unfinished
                       ? "Unlock the iPhone to continue."
@@ -680,13 +681,13 @@ function report(
               }
             : chosen?.state === "waiting" && unfinished
               ? {
-                    next: null,
+                    next: "later",
                     after: GO_ON[chosen.need.need],
                     reading: false,
                 }
               : unfinished
                 ? {
-                      next: null,
+                      next: "later",
                       after: "Connect the iPhone again to continue.",
                       reading: false,
                   }

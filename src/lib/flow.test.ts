@@ -98,7 +98,7 @@ describe("the report's button and the line under it", () => {
         [
             "a stopped run waits for the count, with Continue shown",
             flow({ run: finished({ end: "stopped" }), roll: null }),
-            { next: "counting", after: "Continue imports what is left." },
+            { next: "later", after: "Continue imports what is left." },
         ],
         [
             "a run that did all of it shows no button while it counts",
@@ -126,7 +126,7 @@ describe("the report's button and the line under it", () => {
         [
             "the cable came out and the phone is gone",
             flow({ run: finished({ end: "unplugged" }), source: missing }),
-            { next: null, after: "Connect the iPhone again to continue." },
+            { next: "later", after: "Connect the iPhone again to continue." },
         ],
         [
             "the cable came out and another phone is there",
@@ -134,7 +134,7 @@ describe("the report's button and the line under it", () => {
                 run: finished({ end: "unplugged" }),
                 source: { source: "listed", devices: [phone], chosen: null },
             }),
-            { next: null, after: "Connect the iPhone again to continue." },
+            { next: "later", after: "Connect the iPhone again to continue." },
         ],
         [
             "back, but locked",
@@ -142,7 +142,7 @@ describe("the report's button and the line under it", () => {
                 run: finished({ end: "unplugged" }),
                 source: waiting("unlock"),
             }),
-            { next: null, after: "Unlock the iPhone to continue." },
+            { next: "later", after: "Unlock the iPhone to continue." },
         ],
         [
             "back, but asking to be trusted",
@@ -150,7 +150,7 @@ describe("the report's button and the line under it", () => {
                 run: finished({ end: "stopped" }),
                 source: waiting("trust"),
             }),
-            { next: null, after: "Tap Trust on the iPhone to continue." },
+            { next: "later", after: "Tap Trust on the iPhone to continue." },
         ],
         [
             "back, but its files cannot be read yet",
@@ -158,7 +158,7 @@ describe("the report's button and the line under it", () => {
                 run: finished({ end: "unplugged" }),
                 roll: reading("locked"),
             }),
-            { next: "counting", after: "Unlock the iPhone to continue." },
+            { next: "later", after: "Unlock the iPhone to continue." },
         ],
         [
             "a run that did all of it, its phone gone",
@@ -168,7 +168,7 @@ describe("the report's button and the line under it", () => {
         [
             "a stopped run, its phone gone",
             flow({ run: finished({ end: "stopped" }), source: missing }),
-            { next: null, after: "Connect the iPhone again to continue." },
+            { next: "later", after: "Connect the iPhone again to continue." },
         ],
         [
             "a run that did all of it, back but its files cannot be read yet",

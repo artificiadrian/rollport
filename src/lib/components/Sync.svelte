@@ -472,7 +472,8 @@
                 class="shrink-0 text-muted"
                 aria-hidden="true"
             />
-            <span class="truncate" {@attach fitText(places(folder.path))}></span>
+            <span class="truncate" {@attach fitText(places(folder.path))}
+            ></span>
         </button>
     </div>
 
@@ -690,11 +691,11 @@
                         >
                     {/if}
                     <div class="mt-6 flex items-center gap-2">
-                        {#if view.next === "continue" || view.next === "counting"}
+                        {#if view.next === "continue" || view.next === "later"}
                             <Button
                                 variant="main"
                                 onclick={start}
-                                disabled={view.next === "counting"}
+                                disabled={view.next === "later"}
                                 class="disabled:opacity-50"
                                 title={`${again ? "Import again" : "Import what is left"} (${shownEnter})`}
                                 aria-keyshortcuts={enter}
