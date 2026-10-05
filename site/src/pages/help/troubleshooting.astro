@@ -48,8 +48,8 @@ import { site } from "../../site"
             usbmuxd starts when an iPhone is plugged in and stops when the last
             one is unplugged, so until then Rollport asks you to connect the
             iPhone. If Rollport says <b>Cannot see iPhones</b> while the iPhone
-            is plugged in, usbmuxd did not start. Start it with{" "}
-            <code>sudo systemctl start usbmuxd</code>.
+            is plugged in, usbmuxd did not start or stopped answering. Restart
+            it with <code>sudo systemctl restart usbmuxd</code>.
         </p>
     </HelpSection>
 

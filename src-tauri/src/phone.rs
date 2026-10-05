@@ -987,8 +987,12 @@ pub fn claim(target: PathBuf) -> Result<PathBuf, Failed> {
 
 pub const RETRY: Duration = Duration::from_secs(1);
 
-/// Whether the USB bus holds an iPhone, iPad or iPod, read from sysfs.
-#[cfg(target_os = "linux")]
+/// How long usbmuxd may list no phone while one is on the cable before it
+/// counts as hung: udev starts it within about a second of the plug.
+const SILENT: Duration = Duration::from_secs(5);
+
+/// Whether the USB bus holds an iPhone, iPad or iPod, read from sysfs. Where
+/// there is no sysfs, as on a Mac or Windows, never.
 fn iphone_on_usb() -> bool {
     let Ok(devices) = fs::read_dir("/sys/bus/usb/devices") else {
         return false;
@@ -1001,7 +1005,6 @@ fn iphone_on_usb() -> bool {
 
 /// The products usbmuxd's own udev rule starts it for: 05ac:12[9a]x and
 /// 05ac:190[1-5]. A Mac's built-in keyboard is Apple too, and is not one.
-#[cfg(any(target_os = "linux", test))]
 fn is_iphone(vendor: &str, product: &str) -> bool {
     let product = product.to_ascii_lowercase();
     let bytes = product.as_bytes();
@@ -1032,9 +1035,7 @@ pub fn watch(app: AppHandle) {
             // On Linux, udev starts usbmuxd when an iPhone is plugged in and
             // stops it after the last one leaves: silence there means no phone.
             #[cfg(target_os = "linux")]
-            Ok(Err(_)) if !iphone_on_usb() => {
-                heard(&app, Devices::Listed(Vec::new()))
-            }
+            Ok(Err(_)) if !iphone_on_usb() => heard(&app, Devices::Listed(Vec::new())),
             Ok(Err(reason)) => heard(&app, Devices::Unavailable { reason }),
             Err(panic) => heard(
                 &app,
@@ -1066,9 +1067,21 @@ async fn watch_once(app: &AppHandle) -> Result<(), String> {
     let mut roster: Vec<(u32, Option<Device>, AbortHandle)> = Vec::new();
     let mut asks = JoinSet::new();
     let (answer, mut answers) = tokio::sync::mpsc::unbounded_channel();
+    let mut check = tokio::time::interval(SILENT);
+    let mut alone = false;
 
     loop {
         tokio::select! {
+            // usbmuxd can hang and still take connections, listing nothing:
+            // an iPhone on the cable and none listed, twice in a row, is that.
+            _ = check.tick() => {
+                let was = alone;
+                alone = roster.is_empty() && iphone_on_usb();
+                if was && alone {
+                    heard(app, Devices::Unavailable { reason: "usbmuxd lists no iPhone, but one is plugged in".into() });
+                }
+                continue;
+            }
             event = events.next() => match event {
                 // A phone that is also paired over Wi-Fi is attached twice, once
                 // per transport, under one udid. This app imports over the
