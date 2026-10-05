@@ -7,36 +7,21 @@ import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
 import { downloadPage, mainFile, sentence, site, url } from "../site"
 
-// The main download, one per system, each shown only on its own system.
+// The main download, one per system, each shown only on its own system. A
+// phone is none of the three, so it gets the download page instead (sm:).
 const mains = [
     {
         os: "mac",
         name: "Mac",
-        shown: "inline-flex windows:hidden linux:hidden",
+        shown: "hidden sm:inline-flex sm:windows:hidden sm:linux:hidden",
     },
-    { os: "windows", name: "Windows", shown: "hidden windows:inline-flex" },
-    { os: "linux", name: "Linux", shown: "hidden linux:inline-flex" },
-] as const
-
-// The downloads beside the main one: each hides for its own system.
-const others = [
     {
-        os: "mac",
-        name: "Mac",
-        shown: "hidden windows:inline-flex linux:inline-flex",
+        os: "windows",
+        name: "Windows",
+        shown: "hidden sm:windows:inline-flex",
     },
-    { os: "windows", name: "Windows", shown: "inline-flex windows:hidden" },
-    { os: "linux", name: "Linux", shown: "inline-flex linux:hidden" },
+    { os: "linux", name: "Linux", shown: "hidden sm:linux:inline-flex" },
 ] as const
-
-// The main one says "Download for" on a phone too; the others only to a
-// screen reader.
-const downloads = [
-    ...mains.map(
-        (d) => ({ ...d, variant: "solid", lead: "max-sm:sr-only" }) as const,
-    ),
-    ...others.map((d) => ({ ...d, variant: "soft", lead: "sr-only" }) as const),
-]
 ---
 
 <Page
@@ -93,29 +78,33 @@ const downloads = [
                 </p>
             </div>
             <div class="shrink-0 pt-4 pb-8 short:pb-4">
-                <!-- The visitor's system gets the main button; the others sit
-                     beside it. Mac is the default. On a phone, which is none of
-                     the three, all three share one row, with the names only, and
-                     under 360 px without their icons. -->
-                <div class="flex flex-wrap items-center justify-center gap-3 max-sm:grid max-sm:grid-cols-3 max-sm:gap-2">
-                    {downloads.map(({ os, name, shown, variant, lead }) => (
+                <!-- One button: your system's main file, through Get started.
+                     Every other file is on the download page. -->
+                <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+                    {mains.map(({ os, name, shown }) => (
                         <Button
                             href={downloadPage(mainFile(os).name)}
-                            variant={variant}
+                            variant="solid"
                             shown={shown}
-                            class="justify-center max-sm:px-2"
                         >
-                            <Download
-                                class="shrink-0 max-[22.5rem]:hidden"
-                                size={16}
-                                aria-hidden="true"
-                            />
-                            <span>
-                                <span class={lead}>Download for </span>
-                                {name}
-                            </span>
+                            <Download size={16} aria-hidden="true" />
+                            Download for {name}
                         </Button>
                     ))}
+                    <Button
+                        href={url("/download")}
+                        variant="solid"
+                        shown="inline-flex sm:hidden"
+                    >
+                        <Download size={16} aria-hidden="true" />
+                        Download
+                    </Button>
+                    <a
+                        class="link hidden text-muted hover:text-ink sm:inline"
+                        href={url("/download")}
+                    >
+                        Other systems and formats
+                    </a>
                 </div>
                 <!-- What someone needs at the moment they download; the rest is on /help. -->
                 <p class="mt-4 text-sm text-balance text-muted">
@@ -125,13 +114,7 @@ const downloads = [
                         and Apple Devices from the Microsoft Store
                     </span>
                     . Version {site.version}, free and open source by <Author />
-                    .{" "}
-                    <a
-                        class="link whitespace-nowrap hover:text-ink"
-                        href={url("/download")}
-                    >
-                        All downloads
-                    </a>
+                    .
                 </p>
                 <Trademark class="mt-2 text-balance" />
             </div>
