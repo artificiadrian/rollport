@@ -574,7 +574,7 @@ export function screen(flow: Flow): Screen {
             roll.new.bytes > folder.free
                 ? {
                       tone: "short",
-                      text: `Free up ${size(roll.new.bytes - folder.free)}, or choose fewer dates in Options.`,
+                      text: `Free up ${size(roll.new.bytes - folder.free)}, or choose fewer dates or media types in Options.`,
                   }
                 : folder.network
                   ? {
