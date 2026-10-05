@@ -1,15 +1,16 @@
 ---
 // One release file as a button: its format, and under it who it is for. The
 // visitor's main file is solid, every other one outline (windows: and linux:
-// variants; a Mac's is the default).
+// variants; a Mac's is the default). It opens Get started, which starts the
+// download and shows the steps for that file.
 import Download from "@lucide/astro/icons/download"
-import { mainFile, type ReleaseFile } from "../site"
+import { mainFile, url, type ReleaseFile } from "../site"
 
 interface Props {
     file: ReleaseFile
-    href: string
 }
-const { file, href } = Astro.props
+const { file } = Astro.props
+const href = `${url("/help/getting-started")}?file=${encodeURIComponent(file.name)}`
 const main = mainFile(file.os) === file
 
 // Complete class names, so Tailwind finds them.

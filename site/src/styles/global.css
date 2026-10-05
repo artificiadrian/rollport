@@ -95,7 +95,9 @@
     line-height: var(--leading-relaxed);
     text-wrap: pretty;
 
-    & > * + * {
+    /* After the first shown child: a hidden one (Get started's ?file=) takes
+       no room. */
+    & > :not([hidden]) ~ :not([hidden]) {
         margin-top: var(--spacing-3);
     }
     & b {

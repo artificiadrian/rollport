@@ -3,7 +3,7 @@
 // visitor's system is marked and its main file solid; nothing moves.
 import DownloadButton from "../components/DownloadButton.astro"
 import Page from "../layouts/Page.astro"
-import { fileUrl, files, site, type Os } from "../site"
+import { files, site, type Os } from "../site"
 
 const systems: { os: Os; label: string }[] = [
     { os: "mac", label: "Mac" },
@@ -48,10 +48,7 @@ const yours = {
                     {files
                         .filter((file) => file.os === os)
                         .map((file) => (
-                            <DownloadButton
-                                file={file}
-                                href={fileUrl(file.name)}
-                            />
+                            <DownloadButton file={file} />
                         ))}
                 </section>
             ))}

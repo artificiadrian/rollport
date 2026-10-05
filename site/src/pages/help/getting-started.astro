@@ -6,18 +6,18 @@
 // default). Each step is on the page once, so its id is unique.
 import ArrowRight from "@lucide/astro/icons/arrow-right"
 import ArrowUpRight from "@lucide/astro/icons/arrow-up-right"
-import Download from "@lucide/astro/icons/download"
 import Folder from "@lucide/astro/icons/folder"
 import Terminal from "@lucide/astro/icons/terminal"
 import Usb from "@lucide/astro/icons/usb"
 import appIcon from "../../../../src-tauri/app-icon.svg?url"
 import Button from "../../components/Button.astro"
+import DownloadButton from "../../components/DownloadButton.astro"
 import FirstTime from "../../components/FirstTime.astro"
 import Step from "../../components/Step.astro"
 import StepBody from "../../components/StepBody.astro"
 import Window from "../../components/Window.astro"
 import Help from "../../layouts/Help.astro"
-import { fileUrl, mainFile, site, url } from "../../site"
+import { fileUrl, files, site, url } from "../../site"
 
 const systems = [
     { os: "mac", label: "Mac" },
@@ -31,6 +31,26 @@ const systems = [
     description="Install Rollport, connect your iPhone, choose a folder, and do the first import. For Mac, Windows, and Linux."
     wide
 >
+    <!-- A download from any button lands here (?file=): it starts, and this
+         says which, with the steps for that file's system below. -->
+    <p
+        class="mb-8 hidden self-start rounded-xl bg-element px-4 py-3 text-sm text-muted data-shown:block [&_b]:font-semibold [&_b]:text-ink"
+        data-downloading
+        data-files={JSON.stringify(
+            Object.fromEntries(
+                files.map((file) => [
+                    file.name,
+                    { os: file.os, url: fileUrl(file.name) },
+                ]),
+            ),
+        )}
+    >
+        <b></b> is downloading. If it does not start,{" "}
+        <a class="link text-ink" href="#">
+            download it again
+        </a>
+        .
+    </p>
     <h1 class="text-3xl font-semibold">Get started</h1>
     <p class="mt-4 text-lg text-muted text-pretty">
         A few steps, the first time only. After that, connect the iPhone and
@@ -105,18 +125,15 @@ const systems = [
         <Step id="install">
             <StepBody os="mac">
                 <p>
-                    Download Rollport, open the .dmg file, and drag Rollport to{" "}
-                    <b>Applications</b>.
+                    Open the .dmg file and drag Rollport to <b>Applications</b>.
                 </p>
                 <Fragment slot="after">
-                    <div class="mt-6">
-                        <Button
-                            href={fileUrl(mainFile("mac").name)}
-                            variant="solid"
-                        >
-                            <Download size={16} aria-hidden="true" />
-                            Download for Mac
-                        </Button>
+                    <div class="mt-6 grid max-w-[16rem] gap-2">
+                        {files
+                            .filter((file) => file.os === "mac")
+                            .map((file) => (
+                                <DownloadButton file={file} />
+                            ))}
                     </div>
                     <FirstTime>
                         macOS blocks Rollport, because Apple has not notarized
@@ -151,16 +168,18 @@ const systems = [
                 </div>
             </StepBody>
             <StepBody os="windows">
-                <p>Download Rollport and run the installer.</p>
+                <p data-file="Rollport-setup.exe">Run the installer.</p>
+                <p data-file="Rollport.exe">
+                    Or take the portable Rollport.exe, which runs without
+                    installing.
+                </p>
                 <Fragment slot="after">
-                    <div class="mt-6">
-                        <Button
-                            href={fileUrl(mainFile("windows").name)}
-                            variant="solid"
-                        >
-                            <Download size={16} aria-hidden="true" />
-                            Download for Windows
-                        </Button>
+                    <div class="mt-6 grid max-w-[16rem] gap-2">
+                        {files
+                            .filter((file) => file.os === "windows")
+                            .map((file) => (
+                                <DownloadButton file={file} />
+                            ))}
                     </div>
                     <FirstTime>
                         Windows may say it protected your PC, because Rollport
@@ -177,19 +196,26 @@ const systems = [
                 </div>
             </StepBody>
             <StepBody os="linux">
-                <p>
-                    Download Rollport for your distribution, install it, and
-                    open it.
+                <p data-file="Rollport.AppImage">
+                    The AppImage runs on any distribution: make it executable
+                    with <code>chmod +x Rollport.AppImage</code>, then open it.
                 </p>
-                <div slot="after" class="mt-6">
-                    <Button
-                        href={fileUrl(mainFile("linux").name)}
-                        variant="solid"
-                    >
-                        <Download size={16} aria-hidden="true" />
-                        Download for Linux
-                    </Button>
-                </div>
+                <p data-file="Rollport.deb">
+                    On Debian and Ubuntu:{" "}
+                    <code>sudo apt install ./Rollport.deb</code>
+                </p>
+                <p data-file="Rollport.rpm">
+                    On Fedora: <code>sudo dnf install ./Rollport.rpm</code>
+                </p>
+                <Fragment slot="after">
+                    <div class="mt-6 grid max-w-[16rem] gap-2">
+                        {files
+                            .filter((file) => file.os === "linux")
+                            .map((file) => (
+                                <DownloadButton file={file} />
+                            ))}
+                    </div>
+                </Fragment>
                 <div
                     slot="art"
                     class="flex flex-col items-center gap-1 text-sm text-muted"
@@ -288,5 +314,26 @@ const systems = [
     }
     for (const radio of radios)
         radio.addEventListener("change", () => show(radio.value))
-    show(root.dataset["os"] ?? "mac")
+
+    // ?file=: start that download, say so, show its system, and narrow the
+    // install step to it. The address loses it, so a reload does not download
+    // again.
+    const banner = document.querySelector<HTMLElement>("[data-downloading]")!
+    const known: Record<string, { os: string; url: string }> = JSON.parse(
+        banner.dataset["files"] ?? "{}",
+    )
+    const name = new URLSearchParams(location.search).get("file") ?? ""
+    const file = known[name]
+    if (file) {
+        banner.querySelector("b")!.textContent = name
+        banner.querySelector("a")!.href = file.url
+        banner.toggleAttribute("data-shown", true)
+        for (const line of document.querySelectorAll<HTMLElement>(
+            "[data-file]",
+        ))
+            line.hidden = line.dataset["file"] !== name
+        history.replaceState(null, "", location.pathname + location.hash)
+        location.href = file.url
+    }
+    show(file?.os ?? root.dataset["os"] ?? "mac")
 </script>
