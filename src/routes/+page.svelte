@@ -8,7 +8,16 @@
     import FolderInput from "@lucide/svelte/icons/folder-input"
     import Setup from "$lib/components/Setup.svelte"
     import Sync from "$lib/components/Sync.svelte"
-    import { QUIET, count, mac, screen, size, tell, type Flow } from "$lib/flow"
+    import {
+        QUIET,
+        count,
+        linux,
+        mac,
+        screen,
+        size,
+        tell,
+        type Flow,
+    } from "$lib/flow"
 
     let flow = $state<Flow>(QUIET)
 
@@ -29,11 +38,14 @@
             return
         }
 
+        // WebKitGTK aborts its page process on a view transition when it
+        // draws without the GPU, as Rollport makes it on NVIDIA.
         const other = screen(next).screen !== view.screen
         if (
             !other ||
             prefersReducedMotion.current ||
-            !document.startViewTransition
+            !document.startViewTransition ||
+            linux
         ) {
             flow = next
             return
