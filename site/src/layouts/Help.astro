@@ -43,42 +43,48 @@ const here = Astro.url.pathname.replace(/\/$/, "")
             class="-mx-4 mb-12 flex gap-x-1 overflow-x-auto px-4 text-sm whitespace-nowrap [scrollbar-width:none] sm:-mx-6 sm:px-6 xl:sticky xl:top-[calc(var(--spacing-header)+var(--spacing-12)+1px)] xl:col-start-1 xl:row-start-1 xl:mx-0 xl:mb-0 xl:flex-col xl:gap-0 xl:self-start xl:-ml-1 xl:max-h-[calc(100svh-var(--spacing-header)-var(--spacing-12)-1px)] xl:justify-self-end xl:mr-12 xl:overflow-x-hidden xl:overflow-y-auto xl:overscroll-contain xl:px-0 xl:pt-1.5 xl:pb-4 xl:pl-1 xl:[scrollbar-width:thin] xl:whitespace-normal"
             aria-label="Help"
         >
-            {help.map(({ href, label, sections }, page) => (
-                <div class="xl:w-[13rem]">
-                    <a
-                        style={`view-transition-name: help-page-${page}`}
-                        class="block rounded-full px-3 py-1 text-muted transition-colors hover:text-ink aria-[current=page]:bg-element aria-[current=page]:font-medium aria-[current=page]:text-ink xl:rounded-none xl:px-0 xl:font-medium xl:aria-[current=page]:bg-transparent xl:aria-[current=page]:font-semibold"
-                        href={url(href)}
-                        aria-current={here === url(href) ? "page" : undefined}
-                    >
-                        {label}
-                    </a>
-                    {sections.length > 0 && here === url(href) && (
-                        <ul
-                            class="mt-1 mb-3 hidden border-l border-line xl:block"
-                            style={`view-transition-name: help-sections-${page}; view-transition-class: help-sections`}
+            {help.map((entry, page) => {
+                const { href, label, sections } = entry
+                const listed = !("listed" in entry) && sections.length > 0
+                return (
+                    <div class="xl:w-[13rem]">
+                        <a
+                            style={`view-transition-name: help-page-${page}`}
+                            class="block rounded-full px-3 py-1 text-muted transition-colors hover:text-ink aria-[current=page]:bg-element aria-[current=page]:font-medium aria-[current=page]:text-ink xl:rounded-none xl:px-0 xl:font-medium xl:aria-[current=page]:bg-transparent xl:aria-[current=page]:font-semibold"
+                            href={url(href)}
+                            aria-current={
+                                here === url(href) ? "page" : undefined
+                            }
                         >
-                            {sections.map(({ id, title, ...only }) => (
-                                <li
-                                    class={
-                                        "os" in only
-                                            ? onlyOn[only.os]
-                                            : undefined
-                                    }
-                                >
-                                    <a
-                                        class="-ml-px block border-l-2 border-transparent py-1 pr-2 pl-3 text-muted transition-colors hover:border-edge hover:text-ink aria-[current=location]:border-ink aria-[current=location]:font-medium aria-[current=location]:text-ink"
-                                        href={`#${id}`}
-                                        data-section={id}
+                            {label}
+                        </a>
+                        {listed && here === url(href) && (
+                            <ul
+                                class="mt-1 mb-3 hidden border-l border-line xl:block"
+                                style={`view-transition-name: help-sections-${page}; view-transition-class: help-sections`}
+                            >
+                                {sections.map(({ id, title, ...only }) => (
+                                    <li
+                                        class={
+                                            "os" in only
+                                                ? onlyOn[only.os]
+                                                : undefined
+                                        }
                                     >
-                                        {title}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            ))}
+                                        <a
+                                            class="-ml-px block border-l-2 border-transparent py-1 pr-2 pl-3 text-muted transition-colors hover:border-edge hover:text-ink aria-[current=location]:border-ink aria-[current=location]:font-medium aria-[current=location]:text-ink"
+                                            href={`#${id}`}
+                                            data-section={id}
+                                        >
+                                            {title}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )
+            })}
         </nav>
         <main
             class:list={[

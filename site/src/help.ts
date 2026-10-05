@@ -37,6 +37,9 @@ export const help = [
     {
         href: "/help/troubleshooting",
         label: "Troubleshooting",
+        // The page is itself a list of these questions: the sidebar would
+        // only repeat it.
+        listed: false,
         sections: [
             {
                 id: "mac-cannot-open",
@@ -87,6 +90,8 @@ export const help = [
 ] as const satisfies readonly {
     href: string
     label: string
+    /** The sidebar lists the sections of the open page, unless false. */
+    listed?: false
     sections: readonly {
         id: string
         title: string
