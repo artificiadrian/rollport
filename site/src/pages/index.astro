@@ -1,6 +1,7 @@
 ---
 import Download from "@lucide/astro/icons/download"
 import Author from "../components/Author.astro"
+import Button from "../components/Button.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
 import { sentence, site, trademark, url } from "../site"
@@ -26,6 +27,17 @@ const others = [
     { os: "windows", name: "Windows", shown: "inline-flex windows:hidden" },
     { os: "linux", name: "Linux", shown: "inline-flex linux:hidden" },
 ] as const
+
+// The main one says "Download for" on a phone too; the others only to a
+// screen reader.
+const downloads = [
+    ...mains.map(
+        (d) => ({ ...d, variant: "solid", lead: "max-sm:sr-only" }) as const,
+    ),
+    ...others.map(
+        (d) => ({ ...d, variant: "outline", lead: "sr-only" }) as const,
+    ),
+]
 ---
 
 <Page
@@ -87,10 +99,12 @@ const others = [
                      the three, all three share one row, with the names only, and
                      under 360 px without their icons. -->
                 <div class="flex flex-wrap items-center justify-center gap-3 max-sm:grid max-sm:grid-cols-3 max-sm:gap-2">
-                    {mains.map(({ os, name, shown }) => (
-                        <a
-                            class={`${shown} button button-solid justify-center max-sm:px-2`}
+                    {downloads.map(({ os, name, shown, variant, lead }) => (
+                        <Button
                             href={site.downloads[os]}
+                            variant={variant}
+                            shown={shown}
+                            class="justify-center max-sm:px-2"
                         >
                             <Download
                                 class="shrink-0 max-[22.5rem]:hidden"
@@ -98,28 +112,10 @@ const others = [
                                 aria-hidden="true"
                             />
                             <span>
-                                <span class="max-sm:sr-only">
-                                    Download for{" "}
-                                </span>
+                                <span class={lead}>Download for </span>
                                 {name}
                             </span>
-                        </a>
-                    ))}
-                    {others.map(({ os, name, shown }) => (
-                        <a
-                            class={`${shown} button button-outline justify-center max-sm:px-2`}
-                            href={site.downloads[os]}
-                        >
-                            <Download
-                                class="shrink-0 max-[22.5rem]:hidden"
-                                size={16}
-                                aria-hidden="true"
-                            />
-                            <span>
-                                <span class="sr-only">Download for </span>
-                                {name}
-                            </span>
-                        </a>
+                        </Button>
                     ))}
                 </div>
                 <!-- What someone needs at the moment they download; the rest is on /help. -->
@@ -132,7 +128,9 @@ const others = [
                     . Version {site.version}, free and open source by <Author />
                     .
                 </p>
-                <p class="mt-2 text-xs text-balance text-(--sand-8)">{trademark}</p>
+                <p class="mt-2 text-xs text-balance text-(--sand-8)">
+                    {trademark}
+                </p>
             </div>
         </main>
     </div>

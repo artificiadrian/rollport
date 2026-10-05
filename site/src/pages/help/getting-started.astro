@@ -11,6 +11,7 @@ import Folder from "@lucide/astro/icons/folder"
 import Terminal from "@lucide/astro/icons/terminal"
 import Usb from "@lucide/astro/icons/usb"
 import appIcon from "../../../../src-tauri/app-icon.svg?url"
+import Button from "../../components/Button.astro"
 import Window from "../../components/Window.astro"
 import { sectionTitle, type SectionId } from "../../help"
 import Help from "../../layouts/Help.astro"
@@ -214,29 +215,30 @@ const rowClass = (step: Step) => {
                             </div>
                             {step.id === "install" && os && (
                                 <div class="mt-6">
-                                    <a
-                                        class="button button-solid inline-flex"
+                                    <Button
                                         href={site.downloads[os]}
+                                        variant="solid"
                                     >
                                         <Download
                                             size={16}
                                             aria-hidden="true"
                                         />
                                         Download for {labels[os]}
-                                    </a>
+                                    </Button>
                                 </div>
                             )}
                             {p.action && (
-                                <a
-                                    class="button button-outline mt-6 inline-flex"
+                                <Button
                                     href={p.action.href}
+                                    variant="outline"
+                                    class="mt-6"
                                 >
                                     {p.action.label}
                                     <ArrowUpRight
                                         size={16}
                                         aria-hidden="true"
                                     />
-                                </a>
+                                </Button>
                             )}
                             {p.note && (
                                 <p class="mt-6 text-sm leading-relaxed text-pretty text-muted [&_b]:font-semibold [&_b]:text-ink">

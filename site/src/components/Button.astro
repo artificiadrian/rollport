@@ -1,0 +1,26 @@
+---
+// A link that looks like a button: solid for the main action, outline for the
+// others beside it. 44 px tall, easy to hit.
+interface Props {
+    href: string
+    variant: "solid" | "outline"
+    /** Display classes, for a button shown on some systems only. */
+    shown?: string
+    class?: string
+}
+const { href, variant, shown = "inline-flex", class: className } = Astro.props
+---
+
+<a
+    class:list={[
+        shown,
+        "h-[2.75rem] items-center gap-2 rounded-xl px-4 font-medium transition-colors",
+        variant === "solid"
+            ? "bg-ink text-canvas hover:bg-ink/85"
+            : "border border-edge hover:bg-element",
+        className,
+    ]}
+    href={href}
+>
+    <slot />
+</a>
