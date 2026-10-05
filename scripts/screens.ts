@@ -345,6 +345,12 @@ const STATES: State[] = [
         }),
     }),
 
+    state("ready-drive", "A folder on a drive with a short name", {
+        folder: folder({
+            path: "/Volumes/PHOTOS/Family/iPhone imports/September",
+        }),
+    }),
+
     // Importing.
     state("importing-start", "The rate is not worth quoting yet", {
         run: {

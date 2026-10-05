@@ -378,20 +378,27 @@ export function tell(command: string, args?: Record<string, unknown>) {
     invoke(command, args).catch((e) => console.error(command, e))
 }
 
-/// A folder as the window names it: the home folder as ~, and a long path
-/// without its start, so the folder's own name is the part that stays.
-export function place(path: string) {
-    const short = path.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~")
-    if (short.length <= 24) return short
-
-    const sep = short.includes("\\") ? "\\" : "/"
+/// A folder as the window names it, from whole to shortest, for a place too
+/// narrow for all of it. The home folder is ~ and a drive is its name, kept
+/// first, so the shorter forms leave out the middle; the folder's own name
+/// always stays.
+export function places(path: string): string[] {
+    const sep = path.includes("\\") ? "\\" : "/"
+    const short = path
+        .replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~")
+        .replace(
+            /^\/(Volumes|mnt|media\/[^/]+|run\/media\/[^/]+)\/(?=[^/])/,
+            "",
+        )
     const parts = short.split(sep)
-    let tail = parts.pop() ?? short
-
-    while (parts.length && tail.length + parts.at(-1)!.length < 22)
-        tail = `${parts.pop()}${sep}${tail}`
-
-    return `…${sep}${tail}`
+    const root = parts[0]
+    const name = parts.at(-1) ?? short
+    const all = [short]
+    // The root, then the last `kept` folders: the middle gives way first.
+    for (let kept = parts.length - 2; kept >= 1; kept--)
+        all.push([root, "…", ...parts.slice(-kept)].join(sep))
+    if (parts.length > 1) all.push(`…${sep}${name}`)
+    return all
 }
 
 /// ⌘ and Finder on a Mac; Ctrl and Explorer on Windows; Ctrl and the
@@ -599,7 +606,7 @@ function folderStep(
             art: broken ? "trouble" : "folder",
             title: broken ? "Cannot use this folder" : "Choose where photos go",
             detail: broken
-                ? `Choose another folder, or check that ${place(folder.path)} is there and you can write to it.`
+                ? `Choose another folder, or check that ${places(folder.path)[0]} is there and you can write to it.`
                 : "Each import adds the new photos and videos here.",
             status: folder.folder === "opening" ? "Opening the folder" : null,
             reason: broken ? folder.reason : "",

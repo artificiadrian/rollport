@@ -19,6 +19,7 @@
     import TriangleAlert from "@lucide/svelte/icons/triangle-alert"
     import HardDrive from "@lucide/svelte/icons/hard-drive"
     import Button from "$lib/components/Button.svelte"
+    import { fitText } from "$lib/fit"
     import Footer from "$lib/components/Footer.svelte"
     import HelpLink from "$lib/components/HelpLink.svelte"
     import Menu from "$lib/components/Menu.svelte"
@@ -29,7 +30,7 @@
         count,
         linux,
         mac,
-        place,
+        places,
         size,
         summary,
         tell,
@@ -471,7 +472,7 @@
                 class="shrink-0 text-muted"
                 aria-hidden="true"
             />
-            <span class="truncate">{place(folder.path)}</span>
+            <span class="truncate" {@attach fitText(places(folder.path))}></span>
         </button>
     </div>
 

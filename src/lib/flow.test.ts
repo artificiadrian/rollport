@@ -8,6 +8,7 @@ import {
     screen,
     duration,
     elapsed,
+    places,
     since,
     size,
     type Batch,
@@ -469,5 +470,49 @@ describe("sizes and times, as a person says them", () => {
         const earlier = daysBack(3)
         if (earlier.getFullYear() === noon.getFullYear())
             assert.doesNotMatch(since(at(earlier)), /\d{4}/)
+    })
+})
+
+describe("a folder's path, from whole to shortest", () => {
+    test("a drive keeps its name first, and the middle gives way", () => {
+        assert.deepEqual(
+            places(
+                "/Volumes/Photo Archive 2026/Family/Anna/iPhone imports/September",
+            ),
+            [
+                "Photo Archive 2026/Family/Anna/iPhone imports/September",
+                "Photo Archive 2026/…/Anna/iPhone imports/September",
+                "Photo Archive 2026/…/iPhone imports/September",
+                "Photo Archive 2026/…/September",
+                "…/September",
+            ],
+        )
+    })
+
+    test("the home folder is ~", () => {
+        assert.deepEqual(places("/Users/anna/Pictures/iPhone"), [
+            "~/Pictures/iPhone",
+            "~/…/iPhone",
+            "…/iPhone",
+        ])
+        assert.deepEqual(places("/home/anna"), ["~"])
+    })
+
+    test("a Linux drive is its name", () => {
+        assert.equal(
+            places("/run/media/anna/PHOTOS/iPhone")[0],
+            "PHOTOS/iPhone",
+        )
+        assert.equal(places("/media/anna/PHOTOS/iPhone")[0], "PHOTOS/iPhone")
+        assert.equal(places("/mnt/photos/iPhone")[0], "photos/iPhone")
+    })
+
+    test("a Windows drive keeps its letter", () => {
+        assert.deepEqual(places("D:\\Photos\\Family\\iPhone"), [
+            "D:\\Photos\\Family\\iPhone",
+            "D:\\…\\Family\\iPhone",
+            "D:\\…\\iPhone",
+            "…\\iPhone",
+        ])
     })
 })

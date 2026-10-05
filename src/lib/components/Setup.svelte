@@ -3,7 +3,8 @@
     import Button from "$lib/components/Button.svelte"
     import Footer from "$lib/components/Footer.svelte"
     import Prompt from "$lib/components/Prompt.svelte"
-    import { place, tell, type Screen } from "$lib/flow"
+    import { fitText } from "$lib/fit"
+    import { places, tell, type Screen } from "$lib/flow"
 
     // What the window says before there is a folder: no phone to import from
     // yet, or no folder to import into.
@@ -35,9 +36,10 @@
                     class="shrink-0 text-muted"
                     aria-hidden="true"
                 />
-                <span class="grow truncate text-sm font-medium">
-                    {place(view.offer.suggested)}
-                </span>
+                <span
+                    class="grow truncate text-sm font-medium"
+                    {@attach fitText(places(view.offer.suggested))}
+                ></span>
                 <span
                     class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted transition-colors group-hover:bg-element group-hover:text-ink group-active:bg-fill"
                 >
