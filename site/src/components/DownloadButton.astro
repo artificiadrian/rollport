@@ -8,14 +8,10 @@ import Button from "./Button.astro"
 
 interface Props {
     file: ReleaseFile
-    /** The download page's main button. */
-    large?: boolean
-    /** Content in the middle: the download page's block for your system. */
-    center?: boolean
     /** Solid on every system: the one file a format tab shows. */
     solid?: boolean
 }
-const { file, large, center, solid } = Astro.props
+const { file, solid } = Astro.props
 const main = mainFile(file.os) === file
 ---
 
@@ -23,15 +19,14 @@ const main = mainFile(file.os) === file
     href={downloadPage(file.name)}
     variant={solid ? "solid" : "soft"}
     solidOn={!solid && main ? file.os : undefined}
-    size={large ? "large" : "file"}
-    center={center}
+    size="file"
 >
-    <!-- As tall as the two lines beside it, like a drop cap. -->
+    <!-- As tall as the two lines beside it. -->
     <Download
         slot="icon"
         class="shrink-0"
-        size={large ? 32 : 24}
-        stroke-width={large ? 1.5 : 1.75}
+        size={24}
+        stroke-width={1.75}
         aria-hidden="true"
     />
     {file.format}
