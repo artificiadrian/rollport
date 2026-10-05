@@ -45,8 +45,6 @@
        centre in the room under it, and the help sidebar stops this far down
        (the 48 px stuck bar and 24 px). */
     --spacing-header: 4.5rem;
-    /* The picture beside a step that has no screen: an icon or the app icon. */
-    --spacing-art: 6rem;
 
     --radius-*: initial;
     --radius-md: 0.375rem; /* code */
@@ -60,8 +58,6 @@
     --container-text: 39rem;
     /* A help page with pictures beside the text, from xl. */
     --container-wide: 56rem;
-    /* The help sidebar, from xl. */
-    --container-nav: 13rem;
     /* A picture of the app in the help. */
     --container-shot: 240px;
 }

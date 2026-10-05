@@ -45,7 +45,7 @@ const here = Astro.url.pathname.replace(/\/$/, "")
             aria-label="Help"
         >
             {help.map(({ href, label, sections }, page) => (
-                <div class="xl:w-nav">
+                <div class="xl:w-[13rem]">
                     <a
                         style={`view-transition-name: help-page-${page}`}
                         class="block rounded-full px-3 py-1 text-muted transition-colors hover:text-ink aria-[current=page]:bg-element aria-[current=page]:font-medium aria-[current=page]:text-ink xl:rounded-none xl:px-0 xl:font-medium xl:aria-[current=page]:bg-transparent xl:aria-[current=page]:font-semibold"
