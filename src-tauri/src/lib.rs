@@ -647,6 +647,15 @@ fn menu(app: &AppHandle) -> tauri::Result<()> {
 }
 
 pub fn run() {
+    // WebKitGTK's DMA-BUF renderer crashes the window on NVIDIA with Error 71
+    // (Wayland protocol error). Safe: no other thread has started yet.
+    #[cfg(target_os = "linux")]
+    if std::path::Path::new("/proc/driver/nvidia").exists()
+        && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+    {
+        unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
+    }
+
     tauri::Builder::default()
         .manage(Current(Mutex::new(State::new())))
         .register_asynchronous_uri_scheme_protocol("thumb", |context, request, responder| {
