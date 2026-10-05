@@ -5,6 +5,7 @@
 // variants; a Mac's is the default), as the rest of the site does.
 import appIcon from "../../../src-tauri/app-icon.svg?url"
 import DownloadButton from "../components/DownloadButton.astro"
+import Footer from "../components/Footer.astro"
 import Page from "../layouts/Page.astro"
 import { files, site, url, type Os } from "../site"
 
@@ -47,7 +48,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
     title="Download Rollport"
     description="Rollport for Mac, Windows, and Linux: every download of the newest version."
 >
-    <main class="wrap flex flex-col items-center pt-12 pb-16 text-center">
+    <main class="wrap flex flex-1 flex-col items-center pt-12 text-center">
         <img class="size-[6rem]" src={appIcon} alt="" />
         <h1 class="mt-4 text-3xl font-semibold text-balance">
             Download Rollport
@@ -115,5 +116,6 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
                 ))}
             </div>
         </section>
+        <Footer />
     </main>
 </Page>

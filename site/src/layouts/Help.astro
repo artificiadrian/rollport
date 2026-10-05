@@ -5,8 +5,7 @@
 // every page. Below that, the navigation is a row of the pages above the text.
 // The current page is marked (a pill on phones, heavier type from xl), and on
 // it the section being read, with a bar and heavier type (script below).
-import Author from "../components/Author.astro"
-import Trademark from "../components/Trademark.astro"
+import Footer from "../components/Footer.astro"
 import { help } from "../help"
 import Page from "./Page.astro"
 import { url } from "../site"
@@ -88,13 +87,7 @@ const here = Astro.url.pathname.replace(/\/$/, "")
             ]}
         >
             <slot />
-            <!-- As far from the page's end as the header is from its top. -->
-            <footer class="mt-auto pt-16 pb-6">
-                <p class="text-sm text-muted">
-                    Made by <Author />
-                </p>
-                <Trademark class="mt-2" />
-            </footer>
+            <Footer />
         </main>
     </div>
 </Page>

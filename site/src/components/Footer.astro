@@ -1,0 +1,19 @@
+---
+// The end of a page: who made it, and Apple's credit line. As far from the
+// page's end as the header is from its top; mt-auto keeps it at the bottom of
+// a short page, inside a column that fills the height.
+import Author from "./Author.astro"
+import Trademark from "./Trademark.astro"
+
+interface Props {
+    class?: string
+}
+const { class: className } = Astro.props
+---
+
+<footer class:list={["mt-auto pt-16 pb-6", className]}>
+    <p class="text-sm text-muted">
+        Made by <Author />
+    </p>
+    <Trademark class="mt-2" />
+</footer>
