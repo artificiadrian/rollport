@@ -5,23 +5,7 @@ import Button from "../components/Button.astro"
 import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
-import { downloadPage, mainFile, sentence, site, url } from "../site"
-
-// The main download, one per system, each shown only on its own system. A
-// phone is none of the three, so it gets the download page instead (sm:).
-const mains = [
-    {
-        os: "mac",
-        name: "Mac",
-        shown: "hidden sm:inline-flex sm:windows:hidden sm:linux:hidden",
-    },
-    {
-        os: "windows",
-        name: "Windows",
-        shown: "hidden sm:windows:inline-flex",
-    },
-    { os: "linux", name: "Linux", shown: "hidden sm:linux:inline-flex" },
-] as const
+import { sentence, site, url } from "../site"
 ---
 
 <Page
@@ -78,34 +62,12 @@ const mains = [
                 </p>
             </div>
             <div class="shrink-0 pt-4 pb-8 short:pb-4">
-                <!-- One button: your system's main file, through Get started.
-                     Every other file is on the download page. -->
-                <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-                    {mains.map(({ os, name, shown }) => (
-                        <Button
-                            href={downloadPage(mainFile(os).name)}
-                            variant="solid"
-                            shown={shown}
-                        >
-                            <Download size={16} aria-hidden="true" />
-                            Download for {name}
-                        </Button>
-                    ))}
-                    <Button
-                        href={url("/download")}
-                        variant="solid"
-                        shown="inline-flex sm:hidden"
-                    >
-                        <Download size={16} aria-hidden="true" />
-                        Download
-                    </Button>
-                    <a
-                        class="link hidden text-muted hover:text-ink sm:inline"
-                        href={url("/download")}
-                    >
-                        Other systems and formats
-                    </a>
-                </div>
+                <!-- One button to the download page, which puts your system
+                     first: no format is chosen for you here. -->
+                <Button href={url("/download")} variant="solid">
+                    <Download size={16} aria-hidden="true" />
+                    Download
+                </Button>
                 <!-- What someone needs at the moment they download; the rest is on /help. -->
                 <p class="mt-4 text-sm text-balance text-muted">
                     Needs a USB cable
