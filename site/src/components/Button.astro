@@ -1,9 +1,9 @@
 ---
-// A link that looks like a button: solid for the main action, outline for the
-// others beside it. 44 px tall, easy to hit.
+// A link that looks like a button: solid for the main action, soft (a light
+// fill with a faint edge) for the others beside it. 44 px tall, easy to hit.
 interface Props {
     href: string
-    variant: "solid" | "outline"
+    variant: "solid" | "soft"
     /** Display classes, for a button shown on some systems only. */
     shown?: string
     class?: string
@@ -17,7 +17,7 @@ const { href, variant, shown = "inline-flex", class: className } = Astro.props
         "h-[2.75rem] items-center gap-2 rounded-xl px-4 font-medium transition-colors",
         variant === "solid"
             ? "bg-ink text-canvas hover:bg-ink/85"
-            : "border border-edge hover:bg-element",
+            : "border border-line bg-subtle hover:bg-element",
         className,
     ]}
     href={href}
