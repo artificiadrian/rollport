@@ -134,14 +134,12 @@ import { sentence, site, url } from "../site"
 </Page>
 
 <style>
-    /* The one action on the page, as a key: a face on a foot. On hover the face
-       rises a pixel and the foot grows one, so the foot's bottom stays;
-       pressed, it drops to the ground. Its edge catches the light where the
-       mouse is. */
+    /* The one action on the page, raised as the app raises its own: solid ink
+       on a soft shadow. On hover it rises a pixel; pressed, it settles. Its
+       edge catches the light where the mouse is. */
     .key {
-        --depth: 3px;
         --light-x: 0.3;
-        --foot: color-mix(in oklab, var(--color-ink), black 45%);
+        --light-y: 0;
         position: relative;
         display: inline-flex;
         align-items: center;
@@ -151,11 +149,22 @@ import { sentence, site, url } from "../site"
         background: var(--color-ink);
         color: var(--color-canvas);
         box-shadow:
-            0 var(--depth) 0 var(--foot),
-            0 6px 14px rgb(0 0 0 / 0.22);
+            0 1px 2px rgb(0 0 0 / 0.18),
+            0 8px 20px -6px rgb(0 0 0 / 0.35);
         transition:
-            box-shadow 0.12s ease-out,
-            transform 0.12s ease-out;
+            box-shadow 0.15s ease-out,
+            transform 0.15s ease-out;
+    }
+    .key:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 2px 4px rgb(0 0 0 / 0.16),
+            0 14px 28px -8px rgb(0 0 0 / 0.4);
+    }
+    .key:active {
+        transform: translateY(1px) scale(0.98);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+        transition-duration: 0.05s;
     }
     /* The edge: a faint ring, brightest at the light. The mask keeps only the
        ring, not the face inside it. */
@@ -168,7 +177,8 @@ import { sentence, site, url } from "../site"
         border-radius: inherit;
         background:
             radial-gradient(
-                7rem 3rem at calc(var(--light-x) * 100%) 0%,
+                7rem 4rem at calc(var(--light-x) * 100%)
+                    calc(var(--light-y) * 100%),
                 rgb(255 255 255 / 0.9),
                 transparent 70%
             ),
@@ -183,15 +193,7 @@ import { sentence, site, url } from "../site"
     :global(.dark) .key::before {
         --edge: color-mix(in oklab, black 18%, transparent);
     }
-    .key:hover {
-        --depth: 4px;
-        transform: translateY(-1px);
-    }
-    .key:active {
-        box-shadow: 0 0 0 var(--foot);
-        transform: translateY(3px);
-        transition-duration: 0.05s;
-    }
+
     @media (prefers-reduced-motion: reduce) {
         .key {
             transition: none;
@@ -200,17 +202,22 @@ import { sentence, site, url } from "../site"
 </style>
 
 <script>
-    // The foil's bright band sits where the mouse is, across the key; a touch
-    // screen leaves it where it is.
+    // The edge's light sits where the mouse is, over the key; a touch screen
+    // leaves it where it is.
     const key = document.querySelector<HTMLElement>("[data-key]")
     if (key)
         addEventListener("pointermove", (event) => {
             if (event.pointerType !== "mouse") return
             const box = key.getBoundingClientRect()
-            const x = (event.clientX - box.left) / box.width
+            const clamp = (n: number) =>
+                Math.max(-0.5, Math.min(1.5, n)).toFixed(3)
             key.style.setProperty(
                 "--light-x",
-                Math.max(-0.4, Math.min(1.4, x)).toFixed(3),
+                clamp((event.clientX - box.left) / box.width),
+            )
+            key.style.setProperty(
+                "--light-y",
+                clamp((event.clientY - box.top) / box.height),
             )
         })
 </script>
