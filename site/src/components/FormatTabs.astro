@@ -43,7 +43,7 @@ const ofSystem = files.filter((file) => file.os === os)
             data-panel={file.name}
             hidden={i !== 0}
         >
-            <DownloadButton file={file} solid />
+            <DownloadButton file={file} solid direct />
             {"command" in file && <Command>{file.command}</Command>}
             {"then" in file && <p class="text-sm text-muted">{file.then}</p>}
         </div>

@@ -1,22 +1,25 @@
 ---
 // One release file as a Button: its format, and under it who it is for. The
 // visitor's main file is solid, every other one soft. It opens Get started,
-// which starts the download and shows the steps for that file.
+// which starts the download and shows the steps for that file; on Get started
+// itself it downloads the file at once.
 import Download from "@lucide/astro/icons/download"
-import { downloadPage, mainFile, type ReleaseFile } from "../site"
+import { downloadPage, fileUrl, mainFile, type ReleaseFile } from "../site"
 import Button from "./Button.astro"
 
 interface Props {
     file: ReleaseFile
     /** Solid on every system: the one file a format tab shows. */
     solid?: boolean
+    /** Download the file itself: the page already shows its steps. */
+    direct?: boolean
 }
-const { file, solid } = Astro.props
+const { file, solid, direct } = Astro.props
 const main = mainFile(file.os) === file
 ---
 
 <Button
-    href={downloadPage(file.name)}
+    href={direct ? fileUrl(file.name) : downloadPage(file.name)}
     variant={solid ? "solid" : "soft"}
     solidOn={!solid && main ? file.os : undefined}
     size="file"
