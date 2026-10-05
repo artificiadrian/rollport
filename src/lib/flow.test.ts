@@ -277,6 +277,21 @@ describe("the report's title, badge and words", () => {
         assert.equal(shown.reason, "disk gone")
     })
 
+    test("another import in the folder is a wait, not a failure", () => {
+        const shown = done(
+            flow({
+                run: finished({
+                    end: "failed",
+                    imported: 0,
+                    reason: "Another import is writing into this folder. Import again once it is done.",
+                }),
+            }),
+        )
+        assert.equal(shown.title, "Another import is running")
+        assert.equal(shown.badge, "stopped")
+        assert.equal(shown.reason, "")
+    })
+
     test("a camera roll that cannot be read is not said to be counted", () => {
         const shown = done(
             flow({

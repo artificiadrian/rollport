@@ -671,6 +671,22 @@ function report(
                         after: "Connect the iPhone to look for new photos.",
                     }
 
+    // Another import holds the folder (phone.rs, lock_folder): nothing went
+    // wrong, so it is a wait, not a failure.
+    if (
+        run.end === "failed" &&
+        run.reason.startsWith("Another import is writing")
+    ) {
+        return {
+            title: "Another import is running",
+            detail: "It is writing into this folder now. Import again once it is done.",
+            reason: "",
+            badge: "stopped",
+            screen: "done",
+            ...next,
+        }
+    }
+
     if (run.end === "failed") {
         return {
             title: "Import failed",
