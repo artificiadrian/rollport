@@ -1,33 +1,22 @@
 ---
-// A shortcut as keys: the Mac's side by side, as Apple writes them, then
+// The keys of one shortcut: a Mac's side by side, as Apple writes them;
 // Windows and Linux joined by a muted +, as Microsoft writes them.
 import Kbd from "./Kbd.astro"
 
 interface Props {
-    mac: string[]
-    pc?: string[]
+    keys: string[]
+    /** Windows and Linux: join the keys with a +. */
+    joined?: boolean
 }
-const { mac, pc } = Astro.props
+const { keys, joined } = Astro.props
 ---
 
 <span class="whitespace-nowrap">
-    {mac.map((key, i) => (
+    {keys.map((key, i) => (
         <>
-            {i > 0 && " "}
+            {i > 0 &&
+                (joined ? <span class="mx-[0.15em] text-muted">+</span> : " ")}
             <Kbd>{key}</Kbd>
         </>
     ))}
 </span>
-{pc && (
-    <>
-        {" or "}
-        <span class="whitespace-nowrap">
-            {pc.map((key, i) => (
-                <>
-                    {i > 0 && <span class="mx-[0.15em] text-muted">+</span>}
-                    <Kbd>{key}</Kbd>
-                </>
-            ))}
-        </span>
-    </>
-)}

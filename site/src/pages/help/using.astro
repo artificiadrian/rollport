@@ -3,6 +3,21 @@ import HelpSection from "../../components/HelpSection.astro"
 import Kbd from "../../components/Kbd.astro"
 import Keys from "../../components/Keys.astro"
 import Help from "../../layouts/Help.astro"
+
+// The keyboard shortcuts, in the table under "keys": what each does first.
+const shortcuts = [
+    {
+        to: "Start the import, or click the main button after one",
+        mac: ["⌘", "Return"],
+        pc: ["Ctrl", "Enter"],
+    },
+    { to: "Stop the import", mac: ["⌘", "."], pc: ["Ctrl", "."] },
+    { to: "Close Options", mac: ["Esc"], pc: ["Esc"] },
+    { to: "Make the window larger", mac: ["⌘", "+"], pc: ["Ctrl", "+"] },
+    { to: "Make the window smaller", mac: ["⌘", "−"], pc: ["Ctrl", "−"] },
+    { to: "Back to the normal size", mac: ["⌘", "0"], pc: ["Ctrl", "0"] },
+    { to: "Open this help", mac: ["⌘", "?"], pc: ["F1"] },
+]
 ---
 
 <Help
@@ -22,8 +37,8 @@ import Help from "../../layouts/Help.astro"
         alt="Rollport with Options open: date taken, media types, and file names"
     >
         <p>
-            Open <b>Options</b> at the bottom of the window. Each choice applies
-            at once, and the count of what will be imported changes with it.
+            Open <b>Options</b> at the bottom of the window. Each choice takes
+            effect at once, and the number of files to import changes with it.
             Press <Kbd>Esc</Kbd> or click outside to close Options.
         </p>
         <ul>
@@ -85,8 +100,8 @@ import Help from "../../layouts/Help.astro"
         <p>
             The date in a name is when the photo was taken, in this computer's
             time zone. If two files would get the same name, the second gets{" "}
-            <code>_1</code> before its extension, the next <code>_2</code>, and
-            so on.
+            <code>_1</code> before the ending (such as <code>.HEIC</code>), the
+            next <code>_2</code>, and so on.
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
@@ -95,7 +110,7 @@ import Help from "../../layouts/Help.astro"
         <ul>
             <li>
                 <code>{"{name}"}</code> is the iPhone's name for the file, with
-                its extension, such as <code>IMG_0001.HEIC</code>. Every pattern
+                its ending, such as <code>IMG_0001.HEIC</code>. Every pattern
                 needs it.
             </li>
             <li>
@@ -116,9 +131,10 @@ import Help from "../../layouts/Help.astro"
             <code>2026/09-02_IMG_0001.HEIC</code>. Rollport says at once when a
             pattern cannot work, for example when it has no{" "}
             <code>{"{name}"}</code>, or when it uses characters that Windows
-            does not allow in file names. Rollport refuses those characters on
-            every system, so the folder still works if you move it to Windows.
-            An empty pattern goes back to the naming you had before.
+            does not allow in file names. Rollport does not allow those
+            characters on a Mac or Linux either, so the folder still works if
+            you move it to Windows. An empty pattern goes back to the naming you
+            had before.
         </p>
     </HelpSection>
 
@@ -129,8 +145,8 @@ import Help from "../../layouts/Help.astro"
     >
         <p>
             The photos go past as they are copied, and Rollport shows how much
-            is done, how many files and how much data are left, and the time
-            left.
+            is done, how many files are left and how large they are, and the
+            time left.
         </p>
         <p>
             You can click <b>Stop</b> at any time: what is already copied stays
@@ -149,8 +165,8 @@ import Help from "../../layouts/Help.astro"
         </p>
         <p>
             While an import runs, you cannot change the iPhone, the folder, or
-            Options. Only one import at a time can write into a folder, also
-            from another computer, where the drive supports it.
+            Options. Only one import at a time can copy into a folder, even from
+            another computer, if the disk allows it.
         </p>
     </HelpSection>
 
@@ -183,11 +199,12 @@ import Help from "../../layouts/Help.astro"
             <b>Up to date</b> and when the last import was.
         </p>
         <p>
-            The folder keeps a record of what it already has, in a small file
+            The folder keeps a list of what it already has, in a small file
             named <code>rollport-library.db</code>. Keep that file. Without it,
-            Rollport recognizes only the files that are still where it put them,
-            with the default naming, and copies everything else again. Moving or
-            renaming the photos in the folder is fine while the file is there.
+            Rollport finds only the files that are still where it put them and
+            still have their date-and-time names, and copies everything else
+            again. Moving or renaming the photos in the folder is fine while the
+            file is there.
         </p>
         <p>
             Rollport never deletes anything on the iPhone. Once the photos are
@@ -204,7 +221,7 @@ import Help from "../../layouts/Help.astro"
         </p>
         <p>
             You can import into as many folders as you like. Each folder keeps
-            its own record, so each one gets only what it does not have yet.
+            its own list, so each one gets only what it does not have yet.
         </p>
         <p>
             Each iPhone remembers its folder: when you connect it, Rollport
@@ -216,75 +233,66 @@ import Help from "../../layouts/Help.astro"
     </HelpSection>
 
     <HelpSection id="keys">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="text-sm text-muted">
+                    <tr class="border-b border-line">
+                        <th
+                            class="py-2 pr-4 align-bottom font-medium"
+                            scope="col"
+                        >
+                            To
+                        </th>
+                        <th
+                            class="py-2 pr-4 align-bottom font-medium"
+                            scope="col"
+                        >
+                            Mac
+                        </th>
+                        <th class="py-2 align-bottom font-medium" scope="col">
+                            Windows and Linux
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {shortcuts.map(({ to, mac, pc }) => (
+                        <tr class="border-b border-line">
+                            <td class="py-2 pr-4">{to}</td>
+                            <td class="py-2 pr-4">
+                                <Keys keys={mac} />
+                            </td>
+                            <td class="py-2">
+                                <Keys keys={pc} joined />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
         <p>
-            On a Mac, use <Kbd>⌘</Kbd>. On Windows and Linux, use{" "}
-            <Kbd>Ctrl</Kbd>.
-        </p>
-        <ul>
-            <li>
-                <Keys mac={["⌘", "Return"]} pc={["Ctrl", "Enter"]} />: Import,
-                or the main button after an import (Continue, Import, or Check
-                again).
-            </li>
-            <li>
-                <Keys mac={["⌘", "."]} pc={["Ctrl", "."]} />: stop the import.
-            </li>
-            <li>
-                <Kbd>Esc</Kbd>: close Options.
-            </li>
-            <li>
-                <Keys mac={["⌘", "+"]} pc={["Ctrl", "+"]} />: make the window
-                larger. <Keys mac={["⌘", "−"]} pc={["Ctrl", "−"]} />: smaller.{" "}
-                <Keys mac={["⌘", "0"]} pc={["Ctrl", "0"]} />: back to actual
-                size. The window grows with its contents, up to twice the size,
-                as far as the screen allows. Rollport remembers the size.
-            </li>
-            <li>
-                <Keys mac={["⌘", "?"]} /> on a Mac, or <Kbd>F1</Kbd> on Windows
-                and Linux: open this help. The <b>?</b> button at the bottom of
-                the window does the same; point at it to see the version of
-                Rollport.
-            </li>
-        </ul>
-        <p>
-            On a Mac, the View menu has the sizes, and the Help menu has the
-            help.
+            Rollport remembers the window size you choose. The <b>?</b> button
+            at the bottom of the window also opens this help. Point at it to see
+            which version of Rollport you have.
         </p>
     </HelpSection>
 
     <HelpSection id="remembered">
         <p>
-            Rollport itself remembers only three things: the folder you used
-            last, the folder of each iPhone, and the window size. It keeps them
-            in <code>settings.json</code> in its settings folder:
-        </p>
-        <ul>
-            <li>
-                Mac:{" "}
-                <code>
-                    ~/Library/Application Support/com.artificiadrian.rollport
-                </code>
-            </li>
-            <li>
-                Windows: <code>%APPDATA%\com.artificiadrian.rollport</code>
-            </li>
-            <li>
-                Linux: <code>~/.config/com.artificiadrian.rollport</code>
-            </li>
-        </ul>
-        <p>
-            The file names no iPhone: each one is stored as a scrambled code (a
-            hash), not by its name or serial number.
+            Rollport remembers the folder you used last, so it opens there next
+            time. It also remembers which folder each iPhone imports into, and
+            how large you made the window. It does not keep your iPhone's name.
         </p>
         <p>
-            Everything about a folder is kept in the folder: what it already
-            has, its media types, and its naming, in{" "}
-            <code>rollport-library.db</code>. So a folder you move to another
-            disk or computer keeps working. Rollport writes nothing into a
-            folder until its first import. Beside the record you may see{" "}
-            <code>rollport-library.db-wal</code>,{" "}
-            <code>rollport-library.db-shm</code>, and a hidden{" "}
-            <code>.rollport-lock</code>; leave them there.
+            Each folder keeps track of itself: which photos it already has, and
+            how its files are named. So you can move the folder to another disk
+            or another computer, and the next import goes on from where it
+            stopped.
+        </p>
+        <p>
+            To do that, Rollport adds a small file named{" "}
+            <code>rollport-library.db</code> to the folder. Leave it there, and
+            leave any other files whose names start with <code>rollport</code>{" "}
+            or <code>.rollport</code>.
         </p>
     </HelpSection>
 </Help>
