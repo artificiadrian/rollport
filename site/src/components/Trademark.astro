@@ -1,0 +1,13 @@
+---
+// Apple's credit line for its mark, and that Apple has no part in Rollport.
+// Small and faint: the page's last word, not part of what it says.
+interface Props {
+    class?: string
+}
+const { class: className } = Astro.props
+---
+
+<p class:list={["text-xs text-(--sand-8)", className]}>
+    iPhone is a trademark of Apple Inc., registered in the U.S. and other
+    countries and regions. Rollport is not affiliated with or endorsed by Apple.
+</p>

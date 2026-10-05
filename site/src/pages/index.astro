@@ -2,9 +2,10 @@
 import Download from "@lucide/astro/icons/download"
 import Author from "../components/Author.astro"
 import Button from "../components/Button.astro"
+import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
-import { sentence, site, trademark, url } from "../site"
+import { sentence, site, url } from "../site"
 
 // The main download, one per system, each shown only on its own system.
 const mains = [
@@ -128,9 +129,7 @@ const downloads = [
                     . Version {site.version}, free and open source by <Author />
                     .
                 </p>
-                <p class="mt-2 text-xs text-balance text-(--sand-8)">
-                    {trademark}
-                </p>
+                <Trademark class="mt-2 text-balance" />
             </div>
         </main>
     </div>

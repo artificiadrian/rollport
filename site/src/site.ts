@@ -27,7 +27,3 @@ export const sentence =
 
 /** A path on the site ("/help"), with the base it is served under. */
 export const url = (path: string) => `${site.base}${path}`
-
-/** Apple's credit line for its mark, and that Apple has no part in Rollport. */
-export const trademark =
-    "iPhone is a trademark of Apple Inc., registered in the U.S. and other countries and regions. Rollport is not affiliated with or endorsed by Apple."
