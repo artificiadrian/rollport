@@ -717,31 +717,23 @@
                                 Check again
                             </Button>
                         {/if}
-                        <Button
-                            variant="secondary"
-                            onclick={() => tell("reveal_destination")}
-                        >
-                            <FolderOpen size={14} aria-hidden="true" />
-                            {mac
-                                ? "Show in Finder"
-                                : linux
-                                  ? "Show in file manager"
-                                  : "Show in Explorer"}
-                        </Button>
+                        {@render reveal()}
                     </div>
                 {:else}
                     <p class={heading}>Up to date</p>
                     <p class="mt-2 text-sm text-muted">
                         {view.detail}
                     </p>
-                    <Button
-                        variant="secondary"
-                        onclick={() => tell("rescan")}
-                        class="mt-6"
-                    >
-                        <RotateCw size={14} aria-hidden="true" />
-                        Check again
-                    </Button>
+                    <div class="mt-6 flex items-center gap-2">
+                        <Button
+                            variant="secondary"
+                            onclick={() => tell("rescan")}
+                        >
+                            <RotateCw size={14} aria-hidden="true" />
+                            Check again
+                        </Button>
+                        {@render reveal()}
+                    </div>
                 {/if}
             {/if}
         </div>
@@ -767,6 +759,19 @@
         </div>
     </div>
 </div>
+
+<!-- The folder in the system's file browser: on every report and on Up to
+     date. -->
+{#snippet reveal()}
+    <Button variant="secondary" onclick={() => tell("reveal_destination")}>
+        <FolderOpen size={14} aria-hidden="true" />
+        {mac
+            ? "Show in Finder"
+            : linux
+              ? "Show in file manager"
+              : "Show in Explorer"}
+    </Button>
+{/snippet}
 
 <svelte:window onkeydown={shortcut} />
 
