@@ -19,7 +19,7 @@ const title = sectionTitle(id)
 
 {question ? (
     <details
-        class="group scroll-mt-12 border-b border-line first-of-type:mt-8 first-of-type:border-t"
+        class="group/question scroll-mt-12 border-b border-line first-of-type:mt-8 first-of-type:border-t"
         id={id}
         name="questions"
         data-question
@@ -27,7 +27,7 @@ const title = sectionTitle(id)
         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
             <h2 class="text-balance">{title}</h2>
             <span
-                class="text-xl leading-none text-muted transition-transform group-open:rotate-45"
+                class="text-xl leading-none text-muted transition-transform group-open/question:rotate-45"
                 aria-hidden="true"
             >
                 +

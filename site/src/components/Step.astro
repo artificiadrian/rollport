@@ -41,14 +41,14 @@ const row = {
 
 <li
     class:list={[
-        "group relative scroll-mt-12 grid-cols-[var(--spacing-8)_1fr] gap-x-4 pb-16 last:pb-0 xl:grid-cols-[var(--spacing-8)_1fr_var(--container-shot)] xl:grid-rows-[auto_1fr] xl:gap-x-12",
+        "group/step relative scroll-mt-12 grid-cols-[var(--spacing-8)_1fr] gap-x-4 pb-16 last:pb-0 xl:grid-cols-[var(--spacing-8)_1fr_var(--container-shot)] xl:grid-rows-[auto_1fr] xl:gap-x-12",
         own.length === all.length ? "grid" : own.map((os) => row[os]),
     ]}
     id={id}
     data-only={own.length === 1 ? own[0] : undefined}
 >
     <span
-        class="absolute top-8 bottom-0 left-4 my-2 w-px -translate-x-1/2 bg-line group-last:hidden"
+        class="absolute top-8 bottom-0 left-4 my-2 w-px -translate-x-1/2 bg-line group-last/step:hidden"
         aria-hidden="true"
     ></span>
     <span class="grid size-8 place-items-center rounded-full border border-edge bg-canvas text-sm font-medium tabular-nums">
