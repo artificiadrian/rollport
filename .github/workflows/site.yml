@@ -29,8 +29,7 @@ concurrency:
 jobs:
   build:
     name: Build the site
-    # macOS, so the share image made at build time has the Mac's fonts.
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -44,7 +43,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The demo and the share image are made in a headless browser.
-      - run: pnpm --dir site exec playwright install chromium
+      # With the system libraries Chromium needs on Ubuntu.
+      - run: pnpm --dir site exec playwright install --with-deps chromium
 
       - run: pnpm --dir site build
 
