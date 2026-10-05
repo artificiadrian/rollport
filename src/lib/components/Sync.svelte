@@ -765,13 +765,15 @@
 
 <svelte:window onkeydown={shortcut} />
 
+<!-- pl-7 matches the help button and its gap on the right, so a centred
+     sentence centres on the window. -->
 <Footer variant="status">
     {#if view.screen === "importing"}
-        <span class="grow text-center">
+        <span class="grow pl-7 text-center">
             Stop keeps what is copied. The next import goes on from there.
         </span>
     {:else if view.screen === "done"}
-        <span class="grow text-center">{view.after}</span>
+        <span class="grow pl-7 text-center">{view.after}</span>
     {:else}
         <button
             bind:this={opener}
