@@ -41,7 +41,8 @@ No releases yet. To try it, [build it from source](#building).
 
 - Windows: requires [Apple Devices](https://apps.microsoft.com/detail/9np83lwlpz9k)
   (Microsoft Store) or iTunes. The build isn't signed, so SmartScreen will warn
-  you: More info → Run anyway. `Rollport-setup.exe` is an installer.
+  you: More info → Run anyway. `Rollport-setup.exe` installs it; `Rollport.exe`
+  runs without installing.
 - macOS: the app isn't notarized, so macOS blocks it the first time. Allow it in
   System Settings → Privacy & Security.
 - Linux: requires `usbmuxd` (`apt install usbmuxd` / `dnf install usbmuxd`).
