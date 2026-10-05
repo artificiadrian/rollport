@@ -644,9 +644,8 @@ function report(
     const ready = chosen?.state === "ready"
     // A locked phone answers, but not with its files.
     const unreadable = roll?.roll === "reading" && roll.failed !== null
-    // After a run that copied nothing, the button starts it again.
-    const goOn =
-        imported > 0 ? "Continue imports what is left." : "Import starts again."
+    // After a run that copied nothing, the Import button says it all.
+    const goOn = imported > 0 ? "Continue imports what is left." : ""
     // A run that did not do all of it goes on once its phone can be read.
     const unfinished = run.end !== "done" || trouble !== null
     const cost = imported > 0 ? `${size(bytes)} in ${elapsed(seconds)}. ` : ""

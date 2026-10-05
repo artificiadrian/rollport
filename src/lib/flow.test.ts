@@ -116,7 +116,7 @@ describe("the report's button and the line under it", () => {
                 run: finished({ end: "full", imported: 0, bytes: 0 }),
                 roll: read(3),
             }),
-            { next: "continue", after: "Import starts again." },
+            { next: "continue", after: "" },
         ],
         [
             "nothing left: Check again",
