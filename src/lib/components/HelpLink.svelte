@@ -7,7 +7,7 @@
         page,
         children,
     }: {
-        page: "troubleshooting" | "apple-devices"
+        page: "troubleshooting" | "apple-devices" | "linux-usbmuxd"
         children: Snippet
     } = $props()
 </script>

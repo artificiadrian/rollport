@@ -414,6 +414,9 @@ enum Page {
     Troubleshooting,
     #[serde(rename = "apple-devices")]
     AppleDevices,
+    /// Troubleshooting, opened at "Linux does not find the iPhone".
+    #[serde(rename = "linux-usbmuxd")]
+    LinuxUsbmuxd,
 }
 
 /// Open a help page, or the Store page of Apple Devices, in the browser. A help
@@ -426,6 +429,9 @@ fn show_help(app: AppHandle, page: Page) {
         Page::Troubleshooting => format!("{HELP}/troubleshooting?version={version}").into(),
         // The Store page the README and the site link to.
         Page::AppleDevices => "https://apps.microsoft.com/detail/9np83lwlpz9k".into(),
+        Page::LinuxUsbmuxd => {
+            format!("{HELP}/troubleshooting?version={version}#linux-usbmuxd").into()
+        }
     })
 }
 

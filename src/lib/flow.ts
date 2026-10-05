@@ -158,6 +158,8 @@ export type Said = {
     status: string | null
     /// A link to Apple Devices in the Microsoft Store, beside Troubleshooting.
     store?: true
+    /// The Troubleshooting answer to open, instead of the page's top.
+    answer?: "linux-usbmuxd"
 }
 
 /// What the window shows. `setup` is drawn by Setup, before there is a
@@ -406,10 +408,12 @@ const WAITING: Record<Waiting, Omit<Said, "reason">> = {
         detail: mac
             ? "Unplug the cable and plug it in again. If that does not help, restart the Mac."
             : linux
-              ? "The iPhone is plugged in, but usbmuxd does not answer. Restart it with sudo systemctl restart usbmuxd, or install it if it is missing."
+              ? "The iPhone is plugged in, but usbmuxd does not answer. Troubleshooting says how to restart it."
               : "Open Apple Devices, then plug the iPhone in again. If you do not have it, get it from the Microsoft Store.",
         status: "Checking again every few seconds",
         ...(!mac && !linux && { store: true }),
+        // Commands are typed from the help, where they can be copied.
+        ...(linux && { answer: "linux-usbmuxd" as const }),
     },
     missing: {
         art: "phone",

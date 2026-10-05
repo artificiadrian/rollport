@@ -79,7 +79,9 @@
         {#if said.store}
             <HelpLink page="apple-devices">Get Apple Devices</HelpLink>
         {/if}
-        <HelpLink page="troubleshooting">Troubleshooting</HelpLink>
+        <HelpLink page={said.answer ?? "troubleshooting"}
+            >Troubleshooting</HelpLink
+        >
     </div>
 {/if}
 
