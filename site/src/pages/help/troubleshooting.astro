@@ -23,17 +23,16 @@ import { site } from "../../site"
 
     <HelpSection question id="windows-protected">
         <p>
-            Windows does not know who made Rollport yet, so it warns about it.
-            Click <b>More info</b>, then <b>Run anyway</b>.
+            Rollport is not signed yet, so Windows warns about it. Click{" "}
+            <b>More info</b>, then <b>Run anyway</b>.
         </p>
     </HelpSection>
 
     <HelpSection question id="windows-apple-devices">
         <p>
-            Windows needs Apple's software to see the iPhone over the cable.
-            Install Apple Devices from the Microsoft Store, or iTunes. Then
-            connect the iPhone again.{" "}
-            <a href={site.appleDevices}>Get Apple Devices</a>
+            Windows needs Apple's USB driver to see the iPhone. Install Apple
+            Devices from the Microsoft Store, or iTunes. Then connect the iPhone
+            again. <a href={site.appleDevices}>Get Apple Devices</a>
         </p>
     </HelpSection>
 
@@ -103,10 +102,10 @@ import { site } from "../../site"
                 The folder was moved, renamed, or deleted, or the disk it is on
                 is not connected.
             </li>
-            <li>Your user account is not allowed to save files there.</li>
+            <li>You are not allowed to write to the folder.</li>
             <li>
-                The folder stopped answering. This happens with network drives
-                and with disks that went to sleep.
+                The folder stopped responding, which happens with network drives
+                and sleeping disks.
             </li>
             <li>
                 <code>rollport-library.db</code> in the folder is damaged.
@@ -140,30 +139,28 @@ import { site } from "../../site"
             again.
         </p>
         <p>
-            When the import itself fails, for example because Rollport cannot
-            save files in the folder, Rollport says <b>Import failed</b>.
-            Everything imported before that stays in the folder. The red text
-            says what went wrong.
+            When the import itself fails, for example because the folder cannot
+            be written to, Rollport says <b>Import failed</b>. Everything
+            imported before that stays in the folder. The red text says what
+            went wrong.
         </p>
     </HelpSection>
 
     <HelpSection question id="folder-busy">
         <p>
             Only one import at a time can write into a folder, so two imports
-            never mix up its list of what it has. Another copy of Rollport, on
-            this computer or on another one, is importing into this folder now.
-            Wait until it is done, then import again.
+            never mix up its record. Another copy of Rollport, on this computer
+            or on another one, is importing into this folder now. Wait until it
+            is done, then import again.
         </p>
     </HelpSection>
 
     <HelpSection question id="network-drive">
         <p>
-            A network drive is a disk you reach over Wi-Fi or a network cable,
-            not one in or plugged into the computer. Rollport can import into a
-            folder on one, but if the connection drops, the import stops. What
-            is already copied stays there, and you can click <b>Continue</b>{" "}
-            later. A folder on the computer's own disk, or on a disk plugged
-            into it, is more reliable.
+            Rollport can import into a folder on a network drive, but if the
+            connection drops, the import stops. What is already copied stays
+            there, and you can click <b>Continue</b> later. A folder on the
+            computer's own disk, or on an external disk, is more reliable.
         </p>
     </HelpSection>
 
@@ -184,16 +181,16 @@ import { site } from "../../site"
             </li>
         </ul>
         <p>
-            Please also <a href={`${site.repo}/issues`}>tell us on GitHub</a>{" "}
-            which Linux distribution and graphics card you use, so we can fix it
-            for everyone.
+            Please also <a href={`${site.repo}/issues`}>open an issue</a> with
+            your Linux distribution and graphics card, so we can fix it for
+            everyone.
         </p>
     </HelpSection>
 
     <HelpSection question id="windows-heic">
         <p>
             The iPhone saves photos as HEIC and videos as HEVC, and Rollport
-            copies them as they are. Windows needs two add-ons from the
+            copies them as they are. Windows needs two extensions from the
             Microsoft Store to open them:{" "}
             <a href={site.heif}>HEIF Image Extensions</a> (free) and{" "}
             <a href={site.hevc}>HEVC Video Extensions</a> (about $0.99). The
@@ -234,7 +231,7 @@ import { site } from "../../site"
         <p>
             Tell us what happened, which system you use (Mac, Windows, or
             Linux), and your iPhone model.{" "}
-            <a href={`${site.repo}/issues`}>Tell us on GitHub</a>
+            <a href={`${site.repo}/issues`}>Open an issue on GitHub</a>
         </p>
     </HelpSection>
 </Help>

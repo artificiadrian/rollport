@@ -28,7 +28,7 @@
 - Stop at any time and continue later; unplugging during an import loses nothing
 - Remembers each iPhone's folder; drop a folder on the window to switch
 - Keyboard: <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> imports, <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>.</kbd> stops,
-  <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> makes the window larger, smaller, or normal size, <kbd>⌘</kbd><kbd>?</kbd> or <kbd>F1</kbd> opens help
+  <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> zooms, <kbd>⌘</kbd><kbd>?</kbd> or <kbd>F1</kbd> opens help
 - Windows, macOS and Linux (Linux untested)
 - Free and open source, no account, works offline
 

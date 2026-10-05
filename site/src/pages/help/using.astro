@@ -100,8 +100,8 @@ const shortcuts = [
         <p>
             The date in a name is when the photo was taken, in this computer's
             time zone. If two files would get the same name, the second gets{" "}
-            <code>_1</code> before the ending (such as <code>.HEIC</code>), the
-            next <code>_2</code>, and so on.
+            <code>_1</code> before its extension, the next <code>_2</code>, and
+            so on.
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
@@ -110,7 +110,7 @@ const shortcuts = [
         <ul>
             <li>
                 <code>{"{name}"}</code> is the iPhone's name for the file, with
-                its ending, such as <code>IMG_0001.HEIC</code>. Every pattern
+                its extension, such as <code>IMG_0001.HEIC</code>. Every pattern
                 needs it.
             </li>
             <li>
@@ -199,7 +199,7 @@ const shortcuts = [
             <b>Up to date</b> and when the last import was.
         </p>
         <p>
-            The folder keeps a list of what it already has, in a small file
+            The folder keeps a record of what it already has, in a small file
             named <code>rollport-library.db</code>. Keep that file. Without it,
             Rollport finds only the files that are still where it put them and
             still have their date-and-time names, and copies everything else
@@ -221,7 +221,7 @@ const shortcuts = [
         </p>
         <p>
             You can import into as many folders as you like. Each folder keeps
-            its own list, so each one gets only what it does not have yet.
+            its own record, so each one gets only what it does not have yet.
         </p>
         <p>
             Each iPhone remembers its folder: when you connect it, Rollport
