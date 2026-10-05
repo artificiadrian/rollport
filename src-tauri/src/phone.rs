@@ -987,6 +987,32 @@ pub fn claim(target: PathBuf) -> Result<PathBuf, Failed> {
 
 pub const RETRY: Duration = Duration::from_secs(1);
 
+/// Whether the USB bus holds an iPhone, iPad or iPod, read from sysfs.
+#[cfg(target_os = "linux")]
+fn iphone_on_usb() -> bool {
+    let Ok(devices) = fs::read_dir("/sys/bus/usb/devices") else {
+        return false;
+    };
+    devices.flatten().any(|device| {
+        let read = |name| fs::read_to_string(device.path().join(name)).unwrap_or_default();
+        is_iphone(read("idVendor").trim(), read("idProduct").trim())
+    })
+}
+
+/// The products usbmuxd's own udev rule starts it for: 05ac:12[9a]x and
+/// 05ac:190[1-5]. A Mac's built-in keyboard is Apple too, and is not one.
+#[cfg(any(target_os = "linux", test))]
+fn is_iphone(vendor: &str, product: &str) -> bool {
+    let product = product.to_ascii_lowercase();
+    let bytes = product.as_bytes();
+    vendor.eq_ignore_ascii_case("05ac")
+        && bytes.len() == 4
+        && bytes[3].is_ascii_hexdigit()
+        && (product.starts_with("129")
+            || product.starts_with("12a")
+            || (product.starts_with("190") && (b'1'..=b'5').contains(&bytes[3])))
+}
+
 /// How often a phone that waits for trust is asked again. Each question is a
 /// fresh pairing request, keys and all: every second is faster than a person
 /// can reach for a phone, and in a debug build the keys alone cost more.
@@ -1003,6 +1029,12 @@ pub fn watch(app: AppHandle) {
 
         match std::panic::catch_unwind(AssertUnwindSafe(|| runtime.block_on(watch_once(&app)))) {
             Ok(Ok(())) => {}
+            // On Linux, udev starts usbmuxd when an iPhone is plugged in and
+            // stops it after the last one leaves: silence there means no phone.
+            #[cfg(target_os = "linux")]
+            Ok(Err(_)) if !iphone_on_usb() => {
+                heard(&app, Devices::Listed(Vec::new()))
+            }
             Ok(Err(reason)) => heard(&app, Devices::Unavailable { reason }),
             Err(panic) => heard(
                 &app,
@@ -1256,6 +1288,18 @@ pub async fn value(lockdown: &mut LockdownClient, key: &str) -> Result<String, S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_products_usbmuxd_serves_count_as_an_iphone() {
+        assert!(is_iphone("05ac", "12a8")); // iPhone
+        assert!(is_iphone("05AC", "129A")); // older iPad, upper case
+        assert!(is_iphone("05ac", "1905"));
+        assert!(!is_iphone("05ac", "1906"));
+        assert!(!is_iphone("05ac", "0262")); // a MacBook's own keyboard
+        assert!(!is_iphone("05ac", "8600")); // T1 chip: usbmuxd, but no photos
+        assert!(!is_iphone("1234", "12a8"));
+        assert!(!is_iphone("05ac", "12a"));
+    }
 
     #[test]
     fn a_file_holds_its_room_until_it_is_whole_or_gone() {

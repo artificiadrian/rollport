@@ -46,9 +46,10 @@ import { site } from "../../site"
         </p>
         <p>
             usbmuxd starts by itself when an iPhone is plugged in, and stops
-            when the last one is unplugged. If it is installed and Rollport
-            still does not see the iPhone, start it by hand with{" "}
-            <code>sudo systemctl start usbmuxd</code>.
+            when the last one is unplugged, so Rollport asks you to connect the
+            iPhone until then. If Rollport says <b>Cannot see iPhones</b> while
+            the iPhone is plugged in, usbmuxd did not start: start it by hand
+            with <code>sudo systemctl start usbmuxd</code>.
         </p>
     </HelpSection>
 

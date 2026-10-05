@@ -406,7 +406,7 @@ const WAITING: Record<Waiting, Omit<Said, "reason">> = {
         detail: mac
             ? "Unplug the cable and plug it in again. If that does not help, restart the Mac."
             : linux
-              ? "Install usbmuxd, then unplug the cable and plug it in again."
+              ? "The iPhone is plugged in, but usbmuxd is not running. Install usbmuxd, or start it with sudo systemctl start usbmuxd."
               : "Open Apple Devices, then plug the iPhone in again. If you do not have it, get it from the Microsoft Store.",
         status: "Checking again every few seconds",
         ...(!mac && !linux && { store: true }),
