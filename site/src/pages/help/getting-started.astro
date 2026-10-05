@@ -17,7 +17,7 @@ import Step from "../../components/Step.astro"
 import StepBody from "../../components/StepBody.astro"
 import Window from "../../components/Window.astro"
 import Help from "../../layouts/Help.astro"
-import { site, url } from "../../site"
+import { fileUrl, mainFile, site, url } from "../../site"
 
 const systems = [
     { os: "mac", label: "Mac" },
@@ -110,7 +110,10 @@ const systems = [
                 </p>
                 <Fragment slot="after">
                     <div class="mt-6">
-                        <Button href={site.downloads.mac} variant="solid">
+                        <Button
+                            href={fileUrl(mainFile("mac").name)}
+                            variant="solid"
+                        >
                             <Download size={16} aria-hidden="true" />
                             Download for Mac
                         </Button>
@@ -151,7 +154,10 @@ const systems = [
                 <p>Download Rollport and run the installer.</p>
                 <Fragment slot="after">
                     <div class="mt-6">
-                        <Button href={site.downloads.windows} variant="solid">
+                        <Button
+                            href={fileUrl(mainFile("windows").name)}
+                            variant="solid"
+                        >
                             <Download size={16} aria-hidden="true" />
                             Download for Windows
                         </Button>
@@ -176,7 +182,10 @@ const systems = [
                     open it.
                 </p>
                 <div slot="after" class="mt-6">
-                    <Button href={site.downloads.linux} variant="solid">
+                    <Button
+                        href={fileUrl(mainFile("linux").name)}
+                        variant="solid"
+                    >
                         <Download size={16} aria-hidden="true" />
                         Download for Linux
                     </Button>

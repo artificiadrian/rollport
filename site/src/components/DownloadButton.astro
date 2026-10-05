@@ -1,0 +1,39 @@
+---
+// One release file as a button: its format, and under it who it is for. The
+// visitor's main file is solid, every other one outline (windows: and linux:
+// variants; a Mac's is the default).
+import Download from "@lucide/astro/icons/download"
+import { mainFile, type ReleaseFile } from "../site"
+
+interface Props {
+    file: ReleaseFile
+    href: string
+}
+const { file, href } = Astro.props
+const main = mainFile(file.os) === file
+
+// Complete class names, so Tailwind finds them.
+const outline = "border-edge hover:bg-element"
+const solidOn = {
+    mac: "border-ink bg-ink text-canvas hover:bg-ink/85 windows:border-edge windows:bg-transparent windows:text-ink windows:hover:bg-element linux:border-edge linux:bg-transparent linux:text-ink linux:hover:bg-element",
+    windows:
+        "border-edge hover:bg-element windows:border-ink windows:bg-ink windows:text-canvas windows:hover:bg-ink/85",
+    linux: "border-edge hover:bg-element linux:border-ink linux:bg-ink linux:text-canvas linux:hover:bg-ink/85",
+}
+---
+
+<a
+    class:list={[
+        "flex min-h-[3.625rem] items-center gap-3 rounded-xl border px-3 py-2 transition-colors",
+        main ? solidOn[file.os] : outline,
+    ]}
+    href={href}
+>
+    <Download class="shrink-0" size={18} aria-hidden="true" />
+    <span class="grid leading-snug">
+        <span class="font-semibold">{file.format}</span>
+        {"detail" in file && (
+            <span class="text-[0.8125rem] opacity-70">{file.detail}</span>
+        )}
+    </span>
+</a>

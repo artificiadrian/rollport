@@ -5,13 +5,8 @@ export const site = {
     version: "0.1.0",
     repo,
     author: "https://artificiadrian.com",
-    releases: `${repo}/releases/latest`,
-    /** The newest release's files: the release workflow names them without the version. */
-    downloads: {
-        mac: `${repo}/releases/latest/download/Rollport.dmg`,
-        windows: `${repo}/releases/latest/download/Rollport-setup.exe`,
-        linux: `${repo}/releases/latest/download/Rollport.AppImage`,
-    },
+    /** Every release, for the version history. */
+    releases: `${repo}/releases`,
     appleDevices: "https://apps.microsoft.com/detail/9np83lwlpz9k",
     /** What Windows needs to open HEIC photos: HEVC is inside them too. */
     heif: "https://apps.microsoft.com/detail/9pmmsr1cgpwg",
@@ -27,3 +22,48 @@ export const sentence =
 
 /** A path on the site ("/help"), with the base it is served under. */
 export const url = (path: string) => `${site.base}${path}`
+
+export type Os = "mac" | "windows" | "linux"
+
+/**
+ * Every file a release has, in the order each system shows them; the first of
+ * a system is its main one. The release workflow names them without the
+ * version, so latest/download always gives the newest.
+ */
+export const files = [
+    {
+        os: "mac",
+        name: "Rollport.dmg",
+        format: ".dmg",
+        detail: "Apple silicon and Intel",
+    },
+    { os: "windows", name: "Rollport-setup.exe", format: "Installer" },
+    { os: "windows", name: "Rollport.exe", format: "Portable" },
+    {
+        os: "linux",
+        name: "Rollport.AppImage",
+        format: "AppImage",
+        detail: "Any distribution",
+    },
+    {
+        os: "linux",
+        name: "Rollport.deb",
+        format: ".deb",
+        detail: "Debian, Ubuntu",
+    },
+    { os: "linux", name: "Rollport.rpm", format: ".rpm", detail: "Fedora" },
+] as const satisfies readonly {
+    os: Os
+    name: string
+    format: string
+    detail?: string
+}[]
+
+export type ReleaseFile = (typeof files)[number]
+
+/** Where a release file downloads from. */
+export const fileUrl = (name: string) =>
+    `${site.repo}/releases/latest/download/${name}`
+
+/** A system's main file: the one its button gives. */
+export const mainFile = (os: Os) => files.find((file) => file.os === os)!

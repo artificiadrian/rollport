@@ -15,7 +15,6 @@ interface Props {
 }
 const { title, description, stickyHeader } = Astro.props
 const path = Astro.url.pathname
-const started = url("/help/getting-started")
 // Full addresses, as link previews and search engines need them.
 const canonical = new URL(path, site.origin).href
 const ogImage = new URL(url("/og.png"), site.origin).href
@@ -123,26 +122,16 @@ const ogAlt = `The Rollport window with 312 new photos and videos ready to impor
                     Rollport
                 </a>
                 <nav class="flex gap-6 text-muted" aria-label="Site">
-                    <!-- One is marked: Get started on its page, Help on the others. -->
+                    <!-- Get started is the first help page, so Help marks it too. -->
                     {[
-                        {
-                            href: url("/help/getting-started"),
-                            label: "Get started",
-                        },
+                        { href: url("/download"), label: "Download" },
                         { href: url("/help"), label: "Help" },
                     ].map(({ href, label }) => (
                         <a
                             class="transition-colors hover:text-ink aria-[current=page]:text-ink"
                             href={href}
                             aria-current={
-                                (
-                                    label === "Help"
-                                        ? path.startsWith(href) &&
-                                          !path.startsWith(started)
-                                        : path.startsWith(href)
-                                )
-                                    ? "page"
-                                    : undefined
+                                path.startsWith(href) ? "page" : undefined
                             }
                         >
                             {label}

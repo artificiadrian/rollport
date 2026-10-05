@@ -5,7 +5,7 @@ import Button from "../components/Button.astro"
 import Trademark from "../components/Trademark.astro"
 import Window from "../components/Window.astro"
 import Page from "../layouts/Page.astro"
-import { sentence, site, url } from "../site"
+import { fileUrl, mainFile, sentence, site, url } from "../site"
 
 // The main download, one per system, each shown only on its own system.
 const mains = [
@@ -102,7 +102,7 @@ const downloads = [
                 <div class="flex flex-wrap items-center justify-center gap-3 max-sm:grid max-sm:grid-cols-3 max-sm:gap-2">
                     {downloads.map(({ os, name, shown, variant, lead }) => (
                         <Button
-                            href={site.downloads[os]}
+                            href={fileUrl(mainFile(os).name)}
                             variant={variant}
                             shown={shown}
                             class="justify-center max-sm:px-2"
