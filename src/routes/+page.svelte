@@ -213,7 +213,7 @@
          exactly as long as the folder is over the window. -->
     {#if dragging && flow.run?.run !== "copying"}
         <div
-            class="fixed inset-0 z-50 grid place-items-center bg-canvas/95 p-6 plain:bg-canvas"
+            class="fixed inset-0 z-50 grid place-items-center bg-canvas p-6"
             transition:fade={{
                 duration: prefersReducedMotion.current ? 0 : 100,
             }}
