@@ -35,9 +35,7 @@ const downloads = [
     ...mains.map(
         (d) => ({ ...d, variant: "solid", lead: "max-sm:sr-only" }) as const,
     ),
-    ...others.map(
-        (d) => ({ ...d, variant: "soft", lead: "sr-only" }) as const,
-    ),
+    ...others.map((d) => ({ ...d, variant: "soft", lead: "sr-only" }) as const),
 ]
 ---
 
@@ -128,7 +126,10 @@ const downloads = [
                     </span>
                     . Version {site.version}, free and open source by <Author />
                     .{" "}
-                    <a class="link whitespace-nowrap" href={url("/download")}>
+                    <a
+                        class="link whitespace-nowrap hover:text-ink"
+                        href={url("/download")}
+                    >
                         All downloads
                     </a>
                 </p>

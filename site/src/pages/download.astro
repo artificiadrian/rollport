@@ -51,7 +51,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
         </h1>
         <p class="mt-3 flex flex-wrap justify-center gap-x-4 text-muted">
             <span>Version {site.version}</span>
-            <a class="link" href={site.releases}>
+            <a class="link hover:text-ink" href={site.releases}>
                 All releases
             </a>
         </p>
@@ -69,7 +69,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
                     <p class="mt-2 text-sm text-muted">
                         Needs{" "}
                         <a
-                            class="link"
+                            class="link hover:text-ink"
                             href={url(
                                 `/help/getting-started#${needs[os].step}`,
                             )}
@@ -96,7 +96,7 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
                             <p class="mt-2 text-sm text-muted">
                                 Needs{" "}
                                 <a
-                                    class="link"
+                                    class="link hover:text-ink"
                                     href={url(
                                         `/help/getting-started#${needs[os].step}`,
                                     )}
