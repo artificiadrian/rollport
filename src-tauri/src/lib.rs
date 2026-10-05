@@ -656,19 +656,21 @@ pub fn run() {
         unsafe { std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1") };
     }
 
-    // Set by hand when the GPU path fails (see the help). WebKitGTK then
-    // aborts the page on a view transition, so the page skips them.
-    let without_gpu = cfg!(target_os = "linux")
-        && [
-            "WEBKIT_DISABLE_DMABUF_RENDERER",
-            "WEBKIT_DISABLE_COMPOSITING_MODE",
-        ]
-        .iter()
-        .any(|name| std::env::var(name).is_ok_and(|value| value != "0"));
+    // WebKitGTK aborts on a view transition when it draws without the GPU
+    // (set by hand, see the help) and in the AppImage's older copy, so the
+    // page skips them there. An AppImage sets APPIMAGE.
+    let no_transitions = cfg!(target_os = "linux")
+        && (std::env::var_os("APPIMAGE").is_some()
+            || [
+                "WEBKIT_DISABLE_DMABUF_RENDERER",
+                "WEBKIT_DISABLE_COMPOSITING_MODE",
+            ]
+            .iter()
+            .any(|name| std::env::var(name).is_ok_and(|value| value != "0")));
 
     tauri::Builder::default()
         .append_invoke_initialization_script(format!(
-            "window.__ROLLPORT_WITHOUT_GPU__ = {without_gpu};"
+            "window.__ROLLPORT_NO_TRANSITIONS__ = {no_transitions};"
         ))
         .manage(Current(Mutex::new(State::new())))
         .register_asynchronous_uri_scheme_protocol("thumb", |context, request, responder| {

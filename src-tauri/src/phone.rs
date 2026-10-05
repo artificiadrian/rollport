@@ -16,7 +16,7 @@ use idevice::{
     lockdown::LockdownClient,
     pairing_file::PairingFile,
     provider::IdeviceProvider,
-    usbmuxd::{Connection, UsbmuxdAddr, UsbmuxdConnection, UsbmuxdDevice, UsbmuxdListenEvent},
+    usbmuxd::{Connection, UsbmuxdAddr, UsbmuxdDevice, UsbmuxdListenEvent},
 };
 use tauri::AppHandle;
 use tokio::{
@@ -63,7 +63,7 @@ async fn within<T, E: std::fmt::Display>(
 pub async fn files_of(udid: &str) -> Result<AfcClient, String> {
     let addr = UsbmuxdAddr::from_env_var().doing("bad usbmuxd address")?;
 
-    let mut muxer = within("usbmuxd is unreachable", UsbmuxdConnection::default()).await?;
+    let mut muxer = within("usbmuxd is unreachable", addr.connect(0)).await?;
 
     // A phone that is also paired over Wi-Fi is attached twice under one udid,
     // and `get_device` answers with whichever of the two usbmuxd lists first.
@@ -1050,7 +1050,10 @@ pub fn watch(app: AppHandle) {
 }
 
 async fn watch_once(app: &AppHandle) -> Result<(), String> {
-    let mut muxer = tokio::time::timeout(PATIENCE, UsbmuxdConnection::default())
+    // USBMUXD_SOCKET_ADDRESS moves every connection, as it does for
+    // libimobiledevice's tools.
+    let addr = UsbmuxdAddr::from_env_var().doing("bad usbmuxd address")?;
+    let mut muxer = tokio::time::timeout(PATIENCE, addr.connect(0))
         .await
         .map_err(|_| "usbmuxd did not answer".to_string())?
         .doing("usbmuxd is unreachable")?;
@@ -1238,9 +1241,8 @@ pub async fn describe(device: &UsbmuxdDevice) -> Result<(String, String), Need> 
 /// every other tool on this computer sees.
 async fn trust(device: &UsbmuxdDevice) -> Result<PairingFile, Need> {
     let addr = UsbmuxdAddr::from_env_var().doing("bad usbmuxd address")?;
+    let mut muxer = within("usbmuxd is unreachable", addr.connect(0)).await?;
     let provider = device.to_provider(addr, "rollport");
-
-    let mut muxer = within("usbmuxd is unreachable", UsbmuxdConnection::default()).await?;
 
     // usbmuxd's own name for this computer. Using it as the host identity makes
     // the pairing the same on every run without the app having to remember

@@ -12,11 +12,11 @@
 
     let flow = $state<Flow>(QUIET)
 
-    /// WebKitGTK told to draw without the GPU aborts the page on a view
-    /// transition; Rust says so before the page runs (lib.rs).
-    const withoutGpu =
-        (window as { __ROLLPORT_WITHOUT_GPU__?: boolean })
-            .__ROLLPORT_WITHOUT_GPU__ === true
+    /// Where WebKitGTK aborts on a view transition; Rust says so before the
+    /// page runs (lib.rs).
+    const noTransitions =
+        (window as { __ROLLPORT_NO_TRANSITIONS__?: boolean })
+            .__ROLLPORT_NO_TRANSITIONS__ === true
 
     /// A folder is being dragged over the window. The whole window is the
     /// target: nobody drags a folder and then aims at a small rectangle.
@@ -40,7 +40,7 @@
             !other ||
             prefersReducedMotion.current ||
             !document.startViewTransition ||
-            withoutGpu
+            noTransitions
         ) {
             flow = next
             return

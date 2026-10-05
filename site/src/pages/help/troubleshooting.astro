@@ -51,6 +51,12 @@ import { site } from "../../site"
             is plugged in, usbmuxd did not start or stopped answering. Restart
             it with <code>sudo systemctl restart usbmuxd</code>.
         </p>
+        <p>
+            If your usbmuxd listens somewhere else than{" "}
+            <code>/var/run/usbmuxd</code>, set{" "}
+            <code>USBMUXD_SOCKET_ADDRESS</code> to its socket path or{" "}
+            <code>host:port</code>.
+        </p>
     </HelpSection>
 
     <HelpSection question id="nothing-happens">
@@ -170,7 +176,9 @@ import { site } from "../../site"
             Rollport's window. With the NVIDIA driver, Rollport sets{" "}
             <code>__NV_DISABLE_EXPLICIT_SYNC=1</code> itself, which stops the
             crash on Wayland ("Error 71") and keeps the GPU drawing. A value you
-            set yourself wins.
+            set yourself wins, so <code>__NV_DISABLE_EXPLICIT_SYNC=0</code>{" "}
+            turns this off. The AppImage changes screens without animation,
+            because its older WebKitGTK crashes on it.
         </p>
         <p>
             If the window still opens empty, or closes again at once, start
