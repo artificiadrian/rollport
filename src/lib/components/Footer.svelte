@@ -32,14 +32,19 @@
     {#if props.variant === "status"}
         {@render props.children()}
     {/if}
-    <!-- The help pages, opened in the browser. -->
+    <!-- The help pages, opened in the browser. A 28 px target around the
+         20 px circle; -mr-1 keeps the circle where it was. -->
     <button
         type="button"
         onclick={() => tell("show_help", { page: "help" })}
         aria-label="Help"
         title={version ? `Help (Rollport ${version})` : "Help"}
-        class="grid size-5 shrink-0 place-items-center rounded-full bg-element font-semibold text-muted transition-colors hover:bg-fill hover:text-ink active:bg-edge"
+        class="group -mr-1 grid size-7 shrink-0 place-items-center rounded-full"
     >
-        ?
+        <span
+            class="grid size-5 place-items-center rounded-full bg-element font-semibold text-muted transition-colors group-hover:bg-fill group-hover:text-ink group-active:bg-edge"
+        >
+            ?
+        </span>
     </button>
 </footer>
