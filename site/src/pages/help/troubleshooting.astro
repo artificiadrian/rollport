@@ -6,7 +6,7 @@ import { site } from "../../site"
 
 <Help
     title="Troubleshooting: Rollport"
-    description="What to do when Rollport does not open or does not find the iPhone."
+    description="What to do when Rollport does not open, does not find the iPhone, or cannot finish an import."
 >
     <div class="max-w-(--container-text)">
         <h1 class="text-3xl font-semibold">Troubleshooting</h1>
@@ -44,6 +44,12 @@ import { site } from "../../site"
             <code>sudo dnf install usbmuxd</code> on Fedora. Then connect the
             iPhone again.
         </p>
+        <p>
+            usbmuxd starts by itself when an iPhone is plugged in, and stops
+            when the last one is unplugged. If it is installed and Rollport
+            still does not see the iPhone, start it by hand with{" "}
+            <code>sudo systemctl start usbmuxd</code>.
+        </p>
     </HelpSection>
 
     <HelpSection question id="nothing-happens">
@@ -51,6 +57,129 @@ import { site } from "../../site"
             Unlock the iPhone. The first time, tap <b>Trust</b>, then enter your
             passcode. If Rollport still does not see it, try another cable or
             another USB port.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="trust-refused">
+        <p>
+            <b>Don't Trust</b> was tapped on the iPhone, so it does not ask
+            again for now. Unplug the iPhone and plug it in again. When it asks
+            whether to trust this computer, tap <b>Trust</b>, then enter your
+            passcode.
+        </p>
+        <p>
+            To be asked again later, open <b>Settings</b> › <b>General</b> ›{" "}
+            <b>Transfer or Reset iPhone</b> › <b>Reset</b> ›{" "}
+            <b>Reset Location &amp; Privacy</b> on the iPhone.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="cannot-connect">
+        <p>
+            The iPhone is plugged in, but it did not answer as expected. The
+            red text under the message says what went wrong. Unplug the iPhone,
+            unlock it, and plug it in again. Rollport keeps trying every few
+            seconds. If that does not help, restart the computer and the
+            iPhone.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="camera-roll">
+        <p>
+            The iPhone trusts this computer, but it is locked, so it does not
+            show its photos. Unlock it. Rollport keeps trying every few seconds
+            and goes on by itself.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="folder-unusable">
+        <p>
+            Rollport cannot open or write to the folder. The red text says why.
+            Common reasons:
+        </p>
+        <ul>
+            <li>
+                The folder was moved, renamed, or deleted, or the disk it is on
+                is not connected.
+            </li>
+            <li>You are not allowed to write to the folder.</li>
+            <li>
+                The folder stopped responding, which happens with network drives
+                and sleeping disks.
+            </li>
+            <li>
+                <code>rollport-library.db</code> in the folder is damaged.
+            </li>
+        </ul>
+        <p>
+            Connect the disk or fix the folder, then choose it again, or choose
+            another folder.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="not-enough-space">
+        <p>
+            Rollport always leaves 2 GB free on the disk, so the computer keeps
+            working. Before an import, it tells you when everything will not
+            fit and how much to free up. You can also choose fewer dates in{" "}
+            <b>Options</b>.
+        </p>
+        <p>
+            If the disk fills up during an import, Rollport copies what fits
+            and says how much space the rest needs. Free up space, then click{" "}
+            <b>Continue</b>.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="not-copied">
+        <p>
+            Rollport tries each file three times. When a file still cannot be
+            copied, Rollport goes on with the others, then names the file that
+            failed. The file stays on the iPhone, and the next import tries it
+            again.
+        </p>
+        <p>
+            When the import itself fails, for example because the folder cannot
+            be written to, Rollport says <b>Import failed</b>. Everything
+            imported before that stays in the folder. The red text says what
+            went wrong.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="folder-busy">
+        <p>
+            Only one import at a time can write into a folder, so two imports
+            never mix up its record. Another copy of Rollport, on this computer
+            or on another one, is importing into this folder now. Wait until it
+            is done, then import again.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="network-drive">
+        <p>
+            Rollport can import into a folder on a network drive, but if the
+            connection drops, the import stops. What is already copied stays
+            there, and you can click <b>Continue</b> later. A folder on a disk
+            in the computer, or connected by cable, is more reliable.
+        </p>
+    </HelpSection>
+
+    <HelpSection question id="linux-blank">
+        <p>
+            Some graphics drivers do not work with the part of Linux that draws
+            Rollport's window (WebKitGTK). Rollport already works around this
+            on NVIDIA. If the window still opens empty, or closes again at
+            once, start Rollport from a terminal with one of these, and use the
+            first one that helps:
+        </p>
+        <ul>
+            <li><code>WEBKIT_DISABLE_DMABUF_RENDERER=1 rollport</code></li>
+            <li><code>WEBKIT_DISABLE_COMPOSITING_MODE=1 rollport</code></li>
+        </ul>
+        <p>
+            Please also <a href={`${site.repo}/issues`}>open an issue</a> with
+            your Linux distribution and graphics card, so we can fix it for
+            everyone.
         </p>
     </HelpSection>
 

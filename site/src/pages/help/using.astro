@@ -5,7 +5,7 @@ import Help from "../../layouts/Help.astro"
 
 <Help
     title="Using Rollport"
-    description="Choose what to import and how files are named, stop and continue an import, and import again later."
+    description="Choose what to import and how files are named, stop and continue an import, import again later, change the folder, and use the keyboard."
 >
     <div class="max-w-(--container-text)">
         <h1 class="text-3xl font-semibold">Using Rollport</h1>
@@ -20,23 +20,38 @@ import Help from "../../layouts/Help.astro"
         alt="Rollport with Options open: date taken, media types, and file names"
     >
         <p>
-            Open <b>Options</b> at the bottom of the window:
+            Open <b>Options</b> at the bottom of the window. Each choice applies
+            at once, and the count of what will be imported changes with it.
+            Press <b>Esc</b> or click outside to close Options.
         </p>
         <ul>
             <li>
-                <b>Date taken</b>: any date, the last 7 or 30 days, the last 12
-                months, or between two dates you choose.
+                <b>Date taken</b>: <b>Any date</b>, <b>Last 7 days</b>,{" "}
+                <b>Last 30 days</b>, <b>Last 12 months</b>, or{" "}
+                <b>Between two dates</b>. "Last 7 days" is today and the six
+                days before it, and both dates of "Between two dates" are
+                included. The date range is not saved: Rollport starts at Any
+                date each time you open it, so a range you forgot about never
+                leaves photos behind.
             </li>
             <li>
-                <b>Media types</b>: all media, no Live Photo videos (the short
-                clip that goes with each Live Photo), photos only, or videos
-                only.
+                <b>Media types</b>: <b>All media</b>,{" "}
+                <b>No Live Photo videos</b> (the short clip that goes with each
+                Live Photo), <b>Photos only</b>, or <b>Videos only</b>. Photos
+                only leaves out every video, Live Photo clips too. Videos only
+                leaves out the Live Photo clips. This choice is saved with the
+                folder, and you can change it at any time.
             </li>
             <li>
-                <b>File names</b>: can be set until the folder's first import.
-                See <a href="#file-names">How files are named</a>.
+                <b>File names</b>: saved with the folder, and set for good at
+                its first import. See{" "}
+                <a href="#file-names">How files are named</a>.
             </li>
         </ul>
+        <p>
+            A new folder starts with <b>Any date</b>, <b>All media</b>, and{" "}
+            <b>Date and time in the name</b>.
+        </p>
     </HelpSection>
 
     <HelpSection id="file-names">
@@ -46,19 +61,62 @@ import Help from "../../layouts/Help.astro"
         </p>
         <ul>
             <li>
-                Date and time in the name:{" "}
+                <b>Date and time in the name</b>:{" "}
                 <code>2026-09-02_15-04-11_IMG_0001.HEIC</code>
             </li>
             <li>
-                Year and month folders: <code>2026/09/IMG_0001.HEIC</code>
+                <b>Year and month folders</b>:{" "}
+                <code>2026/09/IMG_0001.HEIC</code>
             </li>
             <li>
-                The phone's own name: <code>IMG_0001.HEIC</code>
+                <b>The phone's own name</b>: <code>IMG_0001.HEIC</code>
+            </li>
+            <li>
+                <b>A pattern of your own</b>: see below.
             </li>
         </ul>
         <p>
             After the first import, the folder keeps that naming, so all its
-            files are named the same way.
+            files are named the same way. Options then shows the naming with a
+            lock.
+        </p>
+        <p>
+            The date in a name is when the photo was taken, in this computer's
+            time zone. If two files would get the same name, the second gets{" "}
+            <code>_1</code> before its extension, the next <code>_2</code>, and
+            so on.
+        </p>
+        <p>
+            To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
+            and type it, then press <b>Enter</b>:
+        </p>
+        <ul>
+            <li>
+                <code>{"{name}"}</code> is the iPhone's name for the file, with
+                its extension, such as <code>IMG_0001.HEIC</code>. Every pattern
+                needs it.
+            </li>
+            <li>
+                <code>{"{mtime:%Y-%m-%d}"}</code> is the date the photo was
+                taken. Between the colon and the brace, <code>%Y</code> is the
+                year, <code>%m</code> the month, <code>%d</code> the day,{" "}
+                <code>%H</code> the hour, <code>%M</code> the minute, and{" "}
+                <code>%S</code> the second.
+            </li>
+            <li>
+                <code>/</code> makes a folder. Rollport makes the folders it
+                needs.
+            </li>
+            <li>Any other text is used as it is.</li>
+        </ul>
+        <p>
+            For example, <code>{"{mtime:%Y}/{mtime:%m-%d}_{name}"}</code> gives{" "}
+            <code>2026/09-02_IMG_0001.HEIC</code>. Rollport says at once when a
+            pattern cannot work, for example when it has no{" "}
+            <code>{"{name}"}</code>, or when it uses characters that Windows
+            does not allow in file names. Rollport refuses those characters on
+            every system, so the folder still works if you move it to Windows.
+            An empty pattern goes back to the naming you had before.
         </p>
     </HelpSection>
 
@@ -68,9 +126,29 @@ import Help from "../../layouts/Help.astro"
         alt="Rollport is 63 percent done, with about a minute left"
     >
         <p>
-            The photos go past as they are copied, and Rollport shows the time
-            left. You can click <b>Stop</b> at any time: what is already copied
-            stays in the folder, and the next import goes on from there.
+            The photos go past as they are copied, and Rollport shows how much
+            is done, how many files and how much data are left, and the time
+            left.
+        </p>
+        <p>
+            You can click <b>Stop</b> at any time: what is already copied stays
+            in the folder, and the next import goes on from there. A file that
+            was being copied when you stopped is removed, and copied again next
+            time.
+        </p>
+        <p>
+            If you unplug the iPhone during an import, the import stops in the
+            same way. Plug it in again and click <b>Continue</b>.
+        </p>
+        <p>
+            Rollport tries each file three times. A file that still cannot be
+            copied does not stop the import: Rollport names it at the end, and
+            it stays on the iPhone for the next import.
+        </p>
+        <p>
+            While an import runs, you cannot change the iPhone, the folder, or
+            Options. Only one import at a time can write into a folder, also
+            from another computer, where the drive supports it.
         </p>
     </HelpSection>
 
@@ -80,13 +158,35 @@ import Help from "../../layouts/Help.astro"
         alt="Rollport says Imported 312, and that nothing was deleted from the iPhone"
     >
         <p>
-            When the import is done, you can unplug the iPhone. Next time,
-            connect it and click <b>Import</b>: only what is new is copied.
+            When the import is done, Rollport says what it copied, and you can
+            unplug the iPhone. Below that, it shows the next step:
+        </p>
+        <ul>
+            <li>
+                <b>Continue</b> imports what is left after you stopped, or after
+                the iPhone was unplugged.
+            </li>
+            <li>
+                <b>Check again</b> looks for new photos, for example ones you
+                took since.
+            </li>
+            <li>
+                <b>Show in Finder</b> (Mac), <b>Show in Explorer</b> (Windows),
+                or <b>Show in file manager</b> (Linux) opens the folder.
+            </li>
+        </ul>
+        <p>
+            Next time, connect the iPhone and click <b>Import</b>: only what is
+            new is copied. When there is nothing new, Rollport says{" "}
+            <b>Up to date</b> and when the last import was.
         </p>
         <p>
             The folder keeps a record of what it already has, in a small file
-            named <code>rollport-library.db</code>. Keep that file, or the next
-            import copies everything again.
+            named <code>rollport-library.db</code>. Keep that file. Without it,
+            Rollport recognizes only the files that are still where it put
+            them, with the default naming, and copies everything else again.
+            Moving or renaming the photos in the folder is fine while the file
+            is there.
         </p>
         <p>
             Rollport never deletes anything on the iPhone. Once the photos are
@@ -97,8 +197,85 @@ import Help from "../../layouts/Help.astro"
 
     <HelpSection id="folders">
         <p>
+            To use another folder, click the folder name at the top of the
+            window, or drop a folder anywhere on the window. Rollport uses it at
+            once.
+        </p>
+        <p>
             You can import into as many folders as you like. Each folder keeps
             its own record, so each one gets only what it does not have yet.
+        </p>
+        <p>
+            Each iPhone remembers its folder: when you connect it, Rollport opens
+            the folder it last imported into. An iPhone that never imported is
+            offered the folder in use. With more than one iPhone connected,
+            click the iPhone's name at the top of the window to choose one.
+        </p>
+    </HelpSection>
+
+    <HelpSection id="keys">
+        <p>On a Mac, use ⌘. On Windows and Linux, use Ctrl.</p>
+        <ul>
+            <li>
+                <b>⌘ Return</b> or <b>Ctrl+Enter</b>: Import, or the main button
+                after an import (Continue, Import, or Check again).
+            </li>
+            <li>
+                <b>⌘ .</b> or <b>Ctrl+.</b>: stop the import.
+            </li>
+            <li><b>Esc</b>: close Options.</li>
+            <li>
+                <b>⌘ +</b> or <b>Ctrl++</b>: make the window larger.{" "}
+                <b>⌘ −</b> or <b>Ctrl+−</b>: smaller. <b>⌘ 0</b> or{" "}
+                <b>Ctrl+0</b>: back to actual size. The window grows with its
+                contents, up to twice the size, as far as the screen allows.
+                Rollport remembers the size.
+            </li>
+            <li>
+                <b>⌘ ?</b> on a Mac, or <b>F1</b> on Windows and Linux: open
+                this help. The <b>?</b> button at the bottom of the window does
+                the same; point at it to see the version of Rollport.
+            </li>
+        </ul>
+        <p>
+            On a Mac, the View menu has the sizes, and the Help menu has the
+            help.
+        </p>
+    </HelpSection>
+
+    <HelpSection id="remembered">
+        <p>
+            Rollport itself remembers only three things: the folder you used
+            last, the folder of each iPhone, and the window size. It keeps them
+            in <code>settings.json</code> in its settings folder:
+        </p>
+        <ul>
+            <li>
+                Mac:{" "}
+                <code>
+                    ~/Library/Application Support/com.artificiadrian.rollport
+                </code>
+            </li>
+            <li>
+                Windows: <code>%APPDATA%\com.artificiadrian.rollport</code>
+            </li>
+            <li>
+                Linux: <code>~/.config/com.artificiadrian.rollport</code>
+            </li>
+        </ul>
+        <p>
+            The file names no iPhone: each one is stored as a scrambled code
+            (a hash), not by its name or serial number.
+        </p>
+        <p>
+            Everything about a folder is kept in the folder: what it already
+            has, its media types, and its naming, in{" "}
+            <code>rollport-library.db</code>. So a folder you move to another
+            disk or computer keeps working. Rollport writes nothing into a
+            folder until its first import. Beside the record you may see{" "}
+            <code>rollport-library.db-wal</code>,{" "}
+            <code>rollport-library.db-shm</code>, and a hidden{" "}
+            <code>.rollport-lock</code>; leave them there.
         </p>
     </HelpSection>
 </Help>

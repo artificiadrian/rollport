@@ -28,8 +28,10 @@ export const help = [
             { id: "options", title: "Choose what to import" },
             { id: "file-names", title: "How files are named" },
             { id: "copying", title: "During an import" },
-            { id: "again", title: "The next import" },
-            { id: "folders", title: "More than one folder" },
+            { id: "again", title: "After an import, and the next one" },
+            { id: "folders", title: "Folders and iPhones" },
+            { id: "keys", title: "Keyboard shortcuts and window size" },
+            { id: "remembered", title: "What Rollport remembers" },
         ],
     },
     {
@@ -53,6 +55,27 @@ export const help = [
                 id: "nothing-happens",
                 title: "Nothing happens when I connect the iPhone",
             },
+            { id: "trust-refused", title: "Trust was refused" },
+            {
+                id: "cannot-connect",
+                title: "Cannot connect to the iPhone",
+            },
+            {
+                id: "camera-roll",
+                title: "Cannot read the camera roll",
+            },
+            { id: "folder-unusable", title: "Cannot use this folder" },
+            { id: "not-enough-space", title: "Not enough space" },
+            {
+                id: "not-copied",
+                title: "Some files could not be copied",
+            },
+            {
+                id: "folder-busy",
+                title: "Another import is writing into this folder",
+            },
+            { id: "network-drive", title: "The folder is on a network drive" },
+            { id: "linux-blank", title: "The window is empty on Linux" },
             {
                 id: "windows-heic",
                 title: "Windows cannot open the photos or videos",

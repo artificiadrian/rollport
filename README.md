@@ -23,10 +23,16 @@
 
 - Copies only new photos and videos, even after you delete or move old ones
 - Original files: HEIC, ProRAW, Live Photos and video, never converted
-- Sorted by date: dated file names, or year and month folders
-- Choose a date range, or only photos or only videos
+- Sorted by date: dated file names, year and month folders, or a pattern of your own
+- Choose a date range, and leave out videos, photos or Live Photo videos
+- Stop at any time and continue later; unplugging mid-import loses nothing
+- Remembers each iPhone's folder; drop a folder on the window to switch
+- Keyboard: ⌘/Ctrl+Enter imports, ⌘/Ctrl+. stops, ⌘/Ctrl +/−/0 zooms, ⌘? or F1 opens help
 - Windows, macOS and Linux (Linux untested)
 - Free and open source, no account, works offline
+
+See the [help](https://artificiadrian.github.io/rollport/help) for everything
+Rollport does.
 
 ## Download
 
