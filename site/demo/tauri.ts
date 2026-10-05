@@ -140,8 +140,9 @@ function demo() {
             lastImport: Date.parse("2026-03-04T18:00:00Z") / 1000,
             free: 500 * GB,
             network: false,
-            layout: "{mtime:%Y}/{mtime:%m}/{name}",
-            naming: "2026/09/IMG_0001.HEIC",
+            // The default naming, as the help says a new folder starts with.
+            layout: "{mtime:%Y-%m-%d_%H-%M-%S}_{name}",
+            naming: "2026-09-02_15-04-11_IMG_0001.HEIC",
             takes: "everything",
         },
         roll: {
