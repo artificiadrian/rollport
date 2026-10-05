@@ -26,7 +26,9 @@ const here = Astro.url.pathname.replace(/\/$/, "")
 ---
 
 <Page title={title} description={description} stickyHeader>
-    <div class="wrap pt-12 xl:grid xl:max-w-none xl:grid-cols-[1fr_var(--container-text)_1fr] xl:px-0">
+    <!-- Fills the page's height, so on a short page the footer still sits
+         at the bottom. -->
+    <div class="wrap flex flex-1 flex-col pt-12 xl:grid xl:max-w-none xl:grid-cols-[1fr_var(--container-text)_1fr] xl:px-0">
         <!-- Below xl one row that scrolls sideways, to the screen edges. From
              xl a column that scrolls on its own when it is taller than the
              screen. It sticks where it starts, under the header room, the
@@ -80,15 +82,18 @@ const here = Astro.url.pathname.replace(/\/$/, "")
         </nav>
         <main
             class:list={[
-                "pb-16 xl:col-start-2 xl:row-start-1",
+                "flex flex-1 flex-col xl:col-start-2 xl:row-start-1",
                 wide && "xl:col-span-2 xl:max-w-wide",
             ]}
         >
             <slot />
-            <p class="mt-16 text-sm text-muted">
-                Made by <Author />
-            </p>
-            <p class="mt-2 text-xs text-(--sand-8)">{trademark}</p>
+            <!-- As far from the page's end as the header is from its top. -->
+            <footer class="mt-auto pt-16 pb-6">
+                <p class="text-sm text-muted">
+                    Made by <Author />
+                </p>
+                <p class="mt-2 text-xs text-(--sand-8)">{trademark}</p>
+            </footer>
         </main>
     </div>
 </Page>
