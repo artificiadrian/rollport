@@ -13,6 +13,14 @@
 </p>
 
 <p align="center">
+  <a href="https://artificiadrian.github.io/rollport/">Website</a>
+  &nbsp;&nbsp;
+  <a href="https://artificiadrian.github.io/rollport/download">Download</a>
+  &nbsp;&nbsp;
+  <a href="https://artificiadrian.github.io/rollport/help">Help</a>
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/rollport-dark.webp">
     <img src="docs/rollport.webp" width="544" alt="The Rollport window: 312 new photos and videos, an import that deals them onto a fan of prints, and the report when it is done">
@@ -29,7 +37,7 @@
 - Remembers each iPhone's folder; drop a folder on the window to switch
 - Keyboard: <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> imports, <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>.</kbd> stops,
   <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> zooms, <kbd>⌘</kbd><kbd>?</kbd> or <kbd>F1</kbd> opens help
-- Windows, macOS and Linux (Linux untested)
+- Windows, macOS and Linux
 - Free and open source, no account, works offline
 
 See the [help](https://artificiadrian.github.io/rollport/help) for everything
@@ -37,19 +45,30 @@ Rollport does.
 
 ## Download
 
-No releases yet. To try it, [build it from source](#building).
+Get the newest version from the
+[download page](https://artificiadrian.github.io/rollport/download), or pick a
+file here:
 
-- Windows: requires [Apple Devices](https://apps.microsoft.com/detail/9np83lwlpz9k)
-  (Microsoft Store) or iTunes. The build isn't signed, so SmartScreen will warn
-  you: More info → Run anyway. `Rollport-setup.exe` installs it; `Rollport.exe`
-  runs without installing.
+| System                          | File                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS (Apple silicon and Intel) | [Rollport.dmg](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.dmg)                                                                                                                                                                                                                                                                     |
+| Windows                         | [Rollport-setup.exe](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport-setup.exe) installs it; [Rollport.exe](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.exe) runs without installing                                                                                                                   |
+| Linux                           | [Rollport.AppImage](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.AppImage) for any distribution, [Rollport.deb](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.deb) for Debian and Ubuntu, [Rollport.rpm](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.rpm) for Fedora |
+
+Older versions are on the
+[releases page](https://github.com/artificiadrian/rollport/releases).
+
 - macOS: the app isn't notarized, so macOS blocks it the first time. Allow it in
   System Settings → Privacy & Security.
+- Windows: requires [Apple Devices](https://apps.microsoft.com/detail/9np83lwlpz9k)
+  (Microsoft Store) or iTunes. The app isn't signed, so SmartScreen warns
+  you: More info → Run anyway.
 - Linux: requires `usbmuxd` (`apt install usbmuxd` / `dnf install usbmuxd`).
-  Untested.
+  Make the AppImage runnable first: `chmod +x Rollport.AppImage`.
 
 The iPhone has to be unlocked. The first time you connect it, tap Trust on the
-phone.
+phone. [Get started](https://artificiadrian.github.io/rollport/help/getting-started)
+has every step for each system.
 
 ## Environment variables
 
@@ -84,6 +103,8 @@ pnpm tauri dev
 ## Licence
 
 MIT
+
+---
 
 iPhone is a trademark of Apple Inc., registered in the U.S. and other
 countries and regions. Rollport is not affiliated with or endorsed by Apple.
