@@ -84,7 +84,11 @@ wins.
 
 ## Why I made this
 
-<!-- Coming soon. -->
+The Windows Photos app kept crashing when I imported from my iPhone, and I
+never liked using it anyway. I looked for something else and found nothing
+that worked the same on Windows, macOS and Linux. So I wrote
+[dcimport](https://github.com/artificiadrian/dcimport), a command-line tool,
+and then Rollport: the same idea, as an app anyone can use.
 
 ## Building
 
