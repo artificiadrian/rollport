@@ -67,7 +67,7 @@ Older versions are on the
   Make the AppImage runnable first: `chmod +x Rollport.AppImage`.
 
 The iPhone has to be unlocked. The first time you connect it, tap Trust on the
-phone. [Get started](https://artificiadrian.github.io/rollport/help/getting-started)
+phone. Trust only your own computer, or one you know. [Get started](https://artificiadrian.github.io/rollport/help/getting-started)
 has every step for each system.
 
 ## Environment variables
