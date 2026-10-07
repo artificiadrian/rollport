@@ -13,3 +13,10 @@ vite.config.ts.timestamp-*
 # Notes to the machine, not to the reader
 CLAUDE.md
 .claude
+
+# Notes, audits and research live in docs/ on this machine only, never in git.
+# docs/ holds nothing else in git than the README's pictures.
+/docs/*
+!/docs/*.svg
+!/docs/*.webp
+!/docs/*.png

@@ -17,8 +17,8 @@
     /* The site's own typeface; the app keeps the system font. */
     --font-sans: "Hanken Grotesk Variable", system-ui, sans-serif;
 
-    /* The only sizes, spaces, and radii the site uses (docs/site-notes/
-       style-audit.md). A class outside the set makes no CSS. */
+    /* The only sizes, spaces, and radii the site uses. A class outside the
+       set makes no CSS. */
     --text-*: initial;
     --text-xs: 0.75rem; /* the trademark line */
     --text-xs--line-height: calc(1 / 0.75);
