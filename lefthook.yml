@@ -1,4 +1,4 @@
-# Git hooks, the same checks as .github/workflows/check.yml, earlier.
+# Git hooks, the same checks as .github/workflows/ci.yml, earlier.
 # A commit formats what it stages, so formatting never blocks it; a push runs
 # the slower checks. pnpm install puts the hooks in place.
 

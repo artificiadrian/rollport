@@ -1,13 +1,15 @@
-# The checks every change must pass: formatting, types, tests and lints, for
-# the app's window, the site and the Rust side. Runs on every push to a branch
-# and every pull request; Release and Site call it first and stop if it fails.
-name: Check
+# Every push, tag and pull request: the checks run once, then fan out. On
+# main the site is published (site.yml); on a version tag Rollport is built
+# for every system (release.yml). Neither starts if a check fails.
+name: CI
 
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
   pull_request:
-  workflow_call:
+  # Publishes the site again by hand, after the checks, when run on main.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -75,3 +77,21 @@ jobs:
 
       - run: cargo test
         working-directory: src-tauri
+
+  site:
+    name: Site
+    needs: [web, rust]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/site.yml
+
+  release:
+    name: Release
+    needs: [web, rust]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml

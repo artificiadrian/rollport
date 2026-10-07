@@ -1,24 +1,18 @@
-# Builds Rollport for every system when a version tag is pushed
-# (git tag v0.2.0 && git push origin v0.2.0), and puts the files on a draft
-# release of that tag. Publish the draft by hand once the files are checked.
+# Builds Rollport for every system. CI calls it after the checks pass, when a
+# version tag is pushed (git tag v0.2.0 && git push origin v0.2.0), and it puts
+# the files on a draft release of that tag. Publish the draft by hand once the
+# files are checked.
 # The files are named without the version (Rollport.dmg, Rollport-setup.exe),
 # so https://github.com/artificiadrian/rollport/releases/latest/download/<file>
 # always gives the newest release's file, and the site links to that.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
 
 jobs:
-  # Nothing is built from a commit that fails the checks.
-  check:
-    name: Check
-    uses: ./.github/workflows/check.yml
-
   build:
     name: Build for ${{ matrix.system }}
-    needs: check
     permissions:
       contents: write
     strategy:

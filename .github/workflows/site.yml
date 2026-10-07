@@ -1,20 +1,10 @@
-# Builds the site and publishes it on GitHub Pages. The site shows the real
-# app in its demo, so a change to the app rebuilds it too.
+# Builds the site and publishes it on GitHub Pages. CI calls it after the
+# checks pass, on every push to main: the site shows the real app in its demo,
+# so a change to the app rebuilds it too.
 name: Site
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "site/**"
-      - "src/**"
-      - "static/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "svelte.config.ts"
-      - "vite.config.ts"
-      - ".github/workflows/site.yml"
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -27,14 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # The site is not published from a commit that fails the checks.
-  check:
-    name: Check
-    uses: ./.github/workflows/check.yml
-
   build:
     name: Build the site
-    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
