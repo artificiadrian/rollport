@@ -1,5 +1,5 @@
-# Builds the installers for every system when a version tag is pushed
-# (git tag v0.2.0 && git push origin v0.2.0), and puts them on a draft
+# Builds Rollport for every system when a version tag is pushed
+# (git tag v0.2.0 && git push origin v0.2.0), and puts the files on a draft
 # release of that tag. Publish the draft by hand once the files are checked.
 # The files are named without the version (Rollport.dmg, Rollport-setup.exe),
 # so https://github.com/artificiadrian/rollport/releases/latest/download/<file>
@@ -11,13 +11,13 @@ on:
     tags: ["v*"]
 
 jobs:
-  # No installer is built from a commit that fails the checks.
+  # Nothing is built from a commit that fails the checks.
   check:
     name: Check
     uses: ./.github/workflows/check.yml
 
-  installers:
-    name: Installers for ${{ matrix.system }}
+  build:
+    name: Build for ${{ matrix.system }}
     needs: check
     permissions:
       contents: write
@@ -31,17 +31,13 @@ jobs:
             args: --target universal-apple-darwin
             names: "[name][setup][ext]"
           # The setup .exe only: the MSI did not install in the first test.
+          # The same build also gives Rollport.exe, which runs without being
+          # installed ([setup] is empty for it). It carries the installer's
+          # bundle type, which only Tauri's updater reads; Rollport has none.
           - system: Windows
             platform: windows-latest
             args: --bundles nsis
             names: "[name][setup][ext]"
-          # Rollport.exe, which runs without being installed. Tauri marks the
-          # program inside an installer with the installer's type, so this one
-          # is built on its own, without installers.
-          - system: Windows, no installer
-            platform: windows-latest
-            args: --no-bundle
-            names: "Rollport[ext]"
             plain: true
           # The oldest supported Ubuntu, so the Linux build runs on older glibc too.
           - system: Linux
