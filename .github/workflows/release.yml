@@ -11,8 +11,14 @@ on:
     tags: ["v*"]
 
 jobs:
+  # No installer is built from a commit that fails the checks.
+  check:
+    name: Check
+    uses: ./.github/workflows/check.yml
+
   installers:
     name: Installers for ${{ matrix.system }}
+    needs: check
     permissions:
       contents: write
     strategy:

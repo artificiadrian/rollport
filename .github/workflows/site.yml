@@ -27,8 +27,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The site is not published from a commit that fails the checks.
+  check:
+    name: Check
+    uses: ./.github/workflows/check.yml
+
   build:
     name: Build the site
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
