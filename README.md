@@ -49,16 +49,24 @@ Get the newest version from the
 [download page](https://artificiadrian.github.io/rollport/download), or pick a
 file here:
 
-| System                          | File                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS (Apple silicon and Intel) | [Rollport.dmg](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.dmg)                                                                                                                                                                                                                                                                     |
-| Windows                         | [Rollport-setup.exe](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport-setup.exe) installs it; [Rollport.exe](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.exe) runs without installing                                                                                                                   |
-| Linux                           | [Rollport.AppImage](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.AppImage) for any distribution, [Rollport.deb](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.deb) for Debian and Ubuntu, [Rollport.rpm](https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.rpm) for Fedora |
+| Windows                  | macOS      | Linux                |
+| ------------------------ | ---------- | -------------------- |
+| [Installer][setup.exe]   | [DMG][dmg] | [AppImage][appimage] |
+| [Portable][portable.exe] |            | [DEB][deb]           |
+|                          |            | [RPM][rpm]           |
+
+[setup.exe]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport-setup.exe
+[portable.exe]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.exe
+[dmg]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.dmg
+[appimage]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.AppImage
+[deb]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.deb
+[rpm]: https://github.com/artificiadrian/rollport/releases/latest/download/Rollport.rpm
 
 Older versions are on the
 [releases page](https://github.com/artificiadrian/rollport/releases).
 
-- macOS: the app isn't notarized, so macOS blocks it the first time. Allow it in
+- macOS: one DMG for Apple silicon and Intel. The app isn't notarized, so
+  macOS blocks it the first time. Allow it in
   System Settings → Privacy & Security.
 - Windows: requires [Apple Devices](https://apps.microsoft.com/detail/9np83lwlpz9k)
   (Microsoft Store) or iTunes. The app isn't signed, so SmartScreen warns
