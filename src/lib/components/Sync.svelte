@@ -782,9 +782,7 @@
      sentence centres on the window. -->
 <Footer variant="status">
     {#if view.screen === "importing"}
-        <span class="grow pl-7 text-center">
-            Stop keeps what is copied.
-        </span>
+        <span class="grow pl-7 text-center"> Stop keeps what is copied. </span>
     {:else if view.screen === "done"}
         <span
             class="flex grow items-center justify-center gap-2 pl-7 text-center"

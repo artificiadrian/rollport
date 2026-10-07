@@ -1,8 +1,8 @@
 packages:
-    - site
+  - site
 
 allowBuilds:
-    esbuild: true
+  esbuild: true
 
 minimumReleaseAgeExclude:
-    - bits-ui@2.19.4
+  - bits-ui@2.19.4
