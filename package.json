@@ -32,6 +32,7 @@
         "@tauri-apps/cli": "^2.12.1",
         "@types/node": "^26.6.3",
         "@typescript/native": "npm:typescript@^7.0.2",
+        "lefthook": "^2.1.17",
         "playwright": "1.63.0",
         "prettier": "^3.9.9",
         "prettier-plugin-astro": "1.1.0",

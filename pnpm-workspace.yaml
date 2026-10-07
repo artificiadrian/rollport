@@ -3,6 +3,8 @@ packages:
 
 allowBuilds:
   esbuild: true
+  # Its install script puts the git hooks from lefthook.yml in place.
+  lefthook: true
 
 minimumReleaseAgeExclude:
   - bits-ui@2.19.4

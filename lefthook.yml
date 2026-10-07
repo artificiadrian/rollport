@@ -1,0 +1,36 @@
+# Git hooks, the same checks as .github/workflows/check.yml, earlier.
+# A commit formats what it stages, so formatting never blocks it; a push runs
+# the slower checks. pnpm install puts the hooks in place.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: prettier
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+    - name: cargo fmt
+      glob: "*.rs"
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: format
+      run: pnpm format:check
+
+    - name: types
+      run: pnpm check
+
+    - name: tests
+      run: pnpm test
+
+    - name: site
+      run: pnpm --dir site check
+
+    - name: clippy
+      run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+    - name: cargo test
+      run: cargo test --manifest-path src-tauri/Cargo.toml
