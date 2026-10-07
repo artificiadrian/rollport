@@ -28,10 +28,11 @@ jobs:
           # The same build also gives Rollport.exe, which runs without being
           # installed ([setup] is empty for it). It carries the installer's
           # bundle type, which only Tauri's updater reads; Rollport has none.
+          # The name is written out: [name] is "binary" for the plain program.
           - system: Windows
             platform: windows-latest
             args: --bundles nsis
-            names: "[name][setup][ext]"
+            names: "Rollport[setup][ext]"
             plain: true
           # The oldest supported Ubuntu, so the Linux build runs on older glibc too.
           - system: Linux
