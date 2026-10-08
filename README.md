@@ -78,6 +78,10 @@ The iPhone has to be unlocked. The first time you connect it, tap Trust on the
 phone. Trust only your own computer, or one you know. [Get started](https://artificiadrian.github.io/rollport/help/getting-started)
 has every step for each system.
 
+Rollport imports what is on the iPhone. With Optimize iPhone Storage on, many
+originals are only in iCloud;
+[download them to the iPhone first](https://artificiadrian.github.io/rollport/help/troubleshooting#icloud).
+
 ## Environment variables
 
 Rollport reads these, and sets only the first. A value you set yourself always
