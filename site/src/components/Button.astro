@@ -139,7 +139,7 @@ const twoLines = Astro.slots.has("detail")
     }
     /* Solid, or solid on the visitor's own system. */
     .solid,
-    :global(html:not([data-os="windows"], [data-os="linux"]))
+    :global(html:not([data-os="windows"], [data-os="linux"], [data-os="other"]))
         [data-solid-on="mac"],
     :global(html[data-os="windows"]) [data-solid-on="windows"],
     :global(html[data-os="linux"]) [data-solid-on="linux"] {

@@ -7,6 +7,9 @@
    window wears that system's title bar. Mac is the default. */
 @custom-variant windows (&:where([data-os="windows"], [data-os="windows"] *));
 @custom-variant linux (&:where([data-os="linux"], [data-os="linux"] *));
+/* A system Rollport does not run on (a phone, a tablet, Chrome OS): no
+   download is the visitor's own. */
+@custom-variant other (&:where([data-os="other"], [data-os="other"] *));
 /* A short screen: the home page tightens its gaps to fit one screen. */
 @custom-variant short (@media (max-height: 40rem));
 /* Shorter still (200 % zoom and more): the home page leaves out the window, so

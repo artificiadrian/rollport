@@ -69,15 +69,21 @@ const ogAlt = `The Rollport window with 312 new photos and videos ready to impor
         <script is:inline>
             // The visitor's system, before paint: the app window wears its title
             // bar and its download is the main button (windows: and linux:
-            // variants in global.css). Anything else counts as a Mac.
+            // variants in global.css). A phone, a tablet or Chrome OS is "other":
+            // no download is its own. An iPad says it is a Mac, with touch.
             const platform =
                 navigator.userAgentData?.platform ?? navigator.platform
-            document.documentElement.dataset.os = /win/i.test(platform)
-                ? "windows"
-                : /linux|x11/i.test(platform) &&
-                    !/android/i.test(navigator.userAgent)
-                  ? "linux"
-                  : "mac"
+            const agent = navigator.userAgent
+            document.documentElement.dataset.os =
+                /android|cros|iphone|ipad/i.test(agent)
+                    ? "other"
+                    : /win/i.test(platform)
+                      ? "windows"
+                      : /linux|x11/i.test(platform)
+                        ? "linux"
+                        : /mac/i.test(platform) && navigator.maxTouchPoints < 2
+                          ? "mac"
+                          : "other"
         </script>
         <script is:inline>
             // Radix switches to its dark scale with a class, so set it from the system before paint.

@@ -2,7 +2,8 @@
 // Every file of the newest release. Your system's files come first, under the
 // app icon; the other two systems follow below a line. The page holds all
 // three in both places and shows the right ones by CSS (windows: and linux:
-// variants; a Mac's is the default), as the rest of the site does.
+// variants; a Mac's is the default), as the rest of the site does. A
+// visitor on another system (other: variant) gets the three systems alike.
 import appIcon from "../../../src-tauri/app-icon.svg?url"
 import DownloadButton from "../components/DownloadButton.astro"
 import Footer from "../components/Footer.astro"
@@ -21,12 +22,12 @@ const needs: Partial<Record<Os, { name: string; step: string }>> = {
 }
 // Complete class names, so Tailwind finds them. A Mac's is the default.
 const yours = {
-    mac: "windows:hidden linux:hidden",
+    mac: "windows:hidden linux:hidden other:hidden",
     windows: "hidden windows:block",
     linux: "hidden linux:block",
 }
 const yoursInline = {
-    mac: "windows:hidden linux:hidden",
+    mac: "windows:hidden linux:hidden other:hidden",
     windows: "hidden windows:inline",
     linux: "hidden linux:inline",
 }
@@ -37,7 +38,7 @@ const columns = {
     linux: "sm:grid-cols-2",
 }
 const others = {
-    mac: "hidden windows:block linux:block",
+    mac: "hidden windows:block linux:block other:block",
     windows: "windows:hidden",
     linux: "linux:hidden",
 }
@@ -62,6 +63,9 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
             <a class="link hover:text-ink" href={site.releases}>
                 All releases
             </a>
+        </p>
+        <p class="mt-6 hidden text-muted other:block">
+            Rollport runs on a Mac, Windows or Linux computer.
         </p>
 
         <!-- Your system's files on the same two columns as the other systems
@@ -89,8 +93,10 @@ const ofSystem = (os: Os) => files.filter((file) => file.os === os)
             </div>
         ))}
 
-        <section class="mt-16 w-full text-left">
-            <h2 class="text-sm font-medium text-muted">Other systems</h2>
+        <section class="mt-16 w-full text-left other:mt-8">
+            <h2 class="text-sm font-medium text-muted other:hidden">
+                Other systems
+            </h2>
             <div class="mt-4 grid gap-8 sm:grid-cols-2 sm:gap-x-4">
                 {systems.map(({ os, label }) => (
                     <div class={others[os]}>
