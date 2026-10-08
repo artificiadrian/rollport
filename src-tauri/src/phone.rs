@@ -148,7 +148,7 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>
                 path,
                 size: info.size as u64,
                 mtime: info.modified,
-                live_video: false,
+                still: None,
             };
 
             if !file.is_video() {
@@ -175,22 +175,25 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>
     Ok(media)
 }
 
-/// A .mov beside an image of the same name is the video half of a Live Photo.
+/// A .mov beside an image of the same name is the video half of a Live Photo,
+/// and carries the image's time.
 pub fn mark_live_videos(media: &mut [Media]) {
-    let images: std::collections::HashSet<String> = media
+    let images: std::collections::HashMap<String, chrono::NaiveDateTime> = media
         .iter()
         .filter(|file| {
             matches!(
                 extension(&file.path).as_deref(),
-                Some("heic" | "jpg" | "jpeg" | "dng")
+                Some("heic" | "heif" | "jpg" | "jpeg" | "dng")
             )
         })
-        .map(|file| stem(&file.path))
+        .map(|file| (stem(&file.path), file.mtime))
         .collect();
 
     for file in media.iter_mut() {
-        file.live_video =
-            extension(&file.path).as_deref() == Some("mov") && images.contains(&stem(&file.path));
+        file.still = match extension(&file.path).as_deref() {
+            Some("mov") => images.get(&stem(&file.path)).copied(),
+            _ => None,
+        };
     }
 }
 
@@ -439,7 +442,7 @@ pub async fn copy_all(
                 copied_bytes += file.size;
 
                 // A Live Photo's clip has no thumbnail; its still stands for it.
-                if !file.live_video {
+                if !file.is_live_video() {
                     latest = Some(file.path.clone());
                 }
 
@@ -741,7 +744,7 @@ pub async fn copy(
     held: &Mutex<u64>,
 ) -> Result<Copied, Failed> {
     let name = name_of(&file.path);
-    let rendered = render(layout, name, local(file.mtime));
+    let rendered = render(layout, name, local(file.taken()));
 
     // A layout is checked before a folder is allowed to keep it, but one may
     // have been written into rollport-library.db by hand or by an older run. Leaving the
@@ -1557,7 +1560,7 @@ mod tests {
             path: path.into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
-            live_video: false,
+            still: None,
         };
 
         let mut media = vec![
@@ -1572,9 +1575,48 @@ mod tests {
 
         mark_live_videos(&mut media);
 
-        let marked: Vec<bool> = media.iter().map(|file| file.live_video).collect();
+        let marked: Vec<bool> = media.iter().map(|file| file.is_live_video()).collect();
         // Only the .mov sharing a name with an image in its own folder.
         assert_eq!(marked, vec![false, true, false, false, false, true]);
+    }
+
+    /// The clip is written a second or more after its still. Named with its
+    /// own time, the pair would get two names, and other apps would show a
+    /// photo and a separate video.
+    #[test]
+    fn a_live_photo_clip_is_named_and_dated_with_its_still() {
+        let file = |path: &str, at: &str| Media {
+            path: path.into(),
+            size: 1,
+            mtime: when(at),
+            still: None,
+        };
+
+        let mut media = vec![
+            file("/DCIM/100APPLE/IMG_0001.HEIC", "2026-09-02 23:59:59"),
+            file("/DCIM/100APPLE/IMG_0001.MOV", "2026-09-03 00:00:02"),
+            file("/DCIM/100APPLE/IMG_0002.MOV", "2026-09-03 00:00:02"),
+        ];
+
+        mark_live_videos(&mut media);
+
+        let layout = "{mtime:%Y-%m-%d_%H-%M-%S}_{name}";
+        let names: Vec<String> = media
+            .iter()
+            .map(|file| render(layout, name_of(&file.path), file.taken()))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "2026-09-02_23-59-59_IMG_0001.HEIC",
+                "2026-09-02_23-59-59_IMG_0001.MOV",
+                // A film keeps its own time.
+                "2026-09-03_00-00-02_IMG_0002.MOV",
+            ]
+        );
+
+        // Its own time is still what says whether the file is on disk.
+        assert_eq!(media[1].mtime, when("2026-09-03 00:00:02"));
     }
 
     /// A killed run's leftovers go. A copy another window is still writing

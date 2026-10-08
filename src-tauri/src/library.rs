@@ -120,7 +120,7 @@ pub fn new<'a>(
         // The dates picked are days in this timezone, and the file is named
         // with its local day too, so the filter compares the same thing. AFC
         // reports UTC.
-        .filter(move |file| range.takes(local(file.mtime).date()))
+        .filter(move |file| range.takes(local(file.taken()).date()))
         .filter(|file| !keys.contains(&key(file)))
 }
 
@@ -345,7 +345,7 @@ mod tests {
             mtime: chrono::DateTime::from_timestamp(1_700_000_000, 300_000_000)
                 .unwrap()
                 .naive_utc(),
-            live_video: false,
+            still: None,
         }
     }
 

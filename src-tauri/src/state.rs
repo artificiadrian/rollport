@@ -97,10 +97,10 @@ impl Batch {
         for file in media {
             batch.files += 1;
             batch.bytes += file.size;
-            batch.videos += usize::from(file.is_video() && !file.live_video);
-            batch.clips += usize::from(file.live_video);
+            batch.videos += usize::from(file.is_video() && !file.is_live_video());
+            batch.clips += usize::from(file.is_live_video());
 
-            if !file.live_video {
+            if !file.is_live_video() {
                 newest.push(file);
                 newest.sort_by_key(|file| std::cmp::Reverse(file.mtime));
                 newest.truncate(PRINTS);
@@ -118,10 +118,22 @@ pub struct Media {
     pub path: String,
     pub size: u64,
     pub mtime: chrono::NaiveDateTime,
-    pub live_video: bool,
+    /// A Live Photo's clip: when its still was taken. The two halves rarely
+    /// share a second, and a pair is only a pair to other apps while the
+    /// names match, so the clip is named and dated with its still.
+    pub still: Option<chrono::NaiveDateTime>,
 }
 
 impl Media {
+    pub fn is_live_video(&self) -> bool {
+        self.still.is_some()
+    }
+
+    /// The time the file is named and dated with.
+    pub fn taken(&self) -> chrono::NaiveDateTime {
+        self.still.unwrap_or(self.mtime)
+    }
+
     /// A film, or a Live Photo's clip.
     pub fn is_video(&self) -> bool {
         matches!(extension(&self.path).as_deref(), Some("mov" | "mp4"))
@@ -309,9 +321,9 @@ impl Takes {
     pub fn takes(&self, file: &Media) -> bool {
         match self {
             Takes::Everything => true,
-            Takes::NoLiveVideos => !file.live_video,
+            Takes::NoLiveVideos => !file.is_live_video(),
             Takes::Photos => !file.is_video(),
-            Takes::Videos => file.is_video() && !file.live_video,
+            Takes::Videos => file.is_video() && !file.is_live_video(),
         }
     }
 
@@ -1302,13 +1314,13 @@ mod tests {
 
     #[test]
     fn a_batch_tells_kinds_apart_and_names_the_newest_prints() {
-        let file = |path: &str, live_video, second| Media {
+        let file = |path: &str, live_video: bool, second| Media {
             path: path.into(),
             size: 10,
             mtime: chrono::DateTime::from_timestamp(second, 0)
                 .unwrap()
                 .naive_utc(),
-            live_video,
+            still: live_video.then(chrono::NaiveDateTime::default),
         };
         let media = [
             file("/DCIM/100APPLE/IMG_0001.HEIC", false, 1),
@@ -1477,7 +1489,7 @@ mod tests {
             path: path.into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
-            live_video,
+            still: live_video.then(|| when("2026-09-02 15:04:11")),
         };
 
         // A Live Photo (its still and its clip), a film, and a photo.
@@ -2347,7 +2359,7 @@ mod tests {
             path: path.into(),
             size,
             mtime: when("2026-09-02 15:04:11"),
-            live_video: false,
+            still: None,
         }
     }
 
