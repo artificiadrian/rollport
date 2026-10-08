@@ -151,6 +151,21 @@
         tell("zoom", { step })
     }
 
+    // A button press counts once. The next screen's button can sit where the
+    // last one was — Import where "Use this folder" was, Stop inside Import —
+    // so the second click of a double-click, or a held Enter, would press it.
+    // Every button here is pressed once; a field keeps its double-click.
+    function once(event: MouseEvent | KeyboardEvent) {
+        const again =
+            event instanceof MouseEvent
+                ? event.detail > 1
+                : event.repeat && event.key === "Enter"
+        if (again && (event.target as Element).closest?.("button")) {
+            event.preventDefault()
+            event.stopPropagation()
+        }
+    }
+
     // What the window listens to, for as long as it is here. Both subscriptions
     // are asked for asynchronously and can arrive after the window has gone, so
     // one keeps them and one lets them go.
@@ -197,7 +212,7 @@
     })
 </script>
 
-<svelte:window onkeydown={keys} />
+<svelte:window onkeydown={keys} onclickcapture={once} onkeydowncapture={once} />
 
 <main class="flex h-full cursor-default flex-col text-sm select-none">
     {#if view.screen === "setup"}
