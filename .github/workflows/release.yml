@@ -79,3 +79,11 @@ jobs:
           args: ${{ matrix.args }}
           releaseAssetNamePattern: ${{ matrix.names }}
           uploadPlainBinary: ${{ matrix.plain || false }}
+
+      # tauri-action always uploads the Mac app as Rollport.app.tar.gz too, for
+      # an updater Rollport does not have, and has no input to stop it.
+      - name: Remove the .app archive
+        if: matrix.system == 'macOS'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete-asset "${{ github.ref_name }}" Rollport.app.tar.gz --yes --repo "${{ github.repository }}"
