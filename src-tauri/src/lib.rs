@@ -394,6 +394,51 @@ fn dropped(app: &AppHandle, event: &tauri::WindowEvent) {
     }
 }
 
+/// The close button, ⌘W and Alt+F4 during an import ask first.
+fn closing(window: &tauri::Window, event: &tauri::WindowEvent) {
+    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        // Copied out first: the guard would otherwise live through quit(),
+        // which locks again.
+        let copying = lock(window.app_handle()).copying();
+        if !copying {
+            return;
+        }
+        api.prevent_close();
+        quit(window.app_handle().clone())
+    }
+}
+
+/// Quit, or ask first when photos are being copied: a run that ends without
+/// a word looks like a crash. Only "Quit" quits. Where the question cannot be
+/// shown (Linux without zenity) the window stays, and Stop comes first.
+fn quit(app: AppHandle) {
+    const QUIT: &str = "Quit";
+    const KEEP: &str = "Keep importing";
+
+    if !lock(&app).copying() {
+        return app.exit(0);
+    }
+
+    tauri::async_runtime::spawn(async move {
+        let mut question = rfd::AsyncMessageDialog::new()
+            .set_level(rfd::MessageLevel::Warning)
+            .set_title("Quit Rollport?")
+            .set_description("The import stops. The photos copied so far stay in the folder.")
+            .set_buttons(rfd::MessageButtons::OkCancelCustom(
+                QUIT.into(),
+                KEEP.into(),
+            ));
+        if let Some(window) = app.get_webview_window("main") {
+            question = question.set_parent(&window);
+        }
+
+        if question.show().await == rfd::MessageDialogResult::Custom(QUIT.into()) {
+            lock(&app).stop();
+            app.exit(0)
+        }
+    });
+}
+
 /// Show the destination in the file manager.
 #[tauri::command]
 async fn reveal_destination(app: AppHandle) {
@@ -611,6 +656,22 @@ fn menu(app: &AppHandle) -> tauri::Result<()> {
 
     let menu = Menu::default(app)?;
 
+    // The system's Quit ends the app without telling it, so a running import
+    // could not ask first. Ours goes through quit().
+    if let Some(first) = menu.items()?.first()
+        && let Some(rollport) = first.as_submenu()
+        && let Some(last) = rollport.items()?.len().checked_sub(1)
+    {
+        rollport.remove_at(last)?;
+        rollport.append(&MenuItem::with_id(
+            app,
+            "quit",
+            "Quit Rollport",
+            true,
+            Some("CmdOrCtrl+Q"),
+        )?)?;
+    }
+
     let view = menu
         .items()?
         .into_iter()
@@ -645,6 +706,7 @@ fn menu(app: &AppHandle) -> tauri::Result<()> {
             "in" => Step::In,
             "out" => Step::Out,
             "help" => return show_help(app.clone(), Page::Help),
+            "quit" => return quit(app.clone()),
             _ => return,
         };
         zoom_by(app, step)
@@ -682,7 +744,10 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("thumb", |context, request, responder| {
             serve_thumbnail(context.app_handle(), request, responder)
         })
-        .on_window_event(|window, event| dropped(window.app_handle(), event))
+        .on_window_event(|window, event| {
+            dropped(window.app_handle(), event);
+            closing(window, event)
+        })
         .setup(|app| {
             let handle = app.handle().clone();
 
