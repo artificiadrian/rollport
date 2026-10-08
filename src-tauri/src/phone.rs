@@ -37,8 +37,14 @@ use crate::{
     with,
 };
 
-/// The CLI's list, and ProRAW's .dng, which the CLI skipped without a word.
-pub const MEDIA: [&str; 7] = ["jpg", "jpeg", "png", "mov", "mp4", "heic", "dng"];
+/// What the camera roll holds: the camera's own files, and what was saved
+/// or brought in from elsewhere (GIFs, screenshots, a camera's RAW files from
+/// an SD card reader). The CLI took fewer and skipped the rest without a
+/// word. Not .aae: an edit's recipe, which only Photos can read.
+pub const MEDIA: [&str; 20] = [
+    "heic", "heif", "jpg", "jpeg", "png", "dng", "mov", "mp4", "m4v", "gif", "tif", "tiff", "webp",
+    "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2",
+];
 
 /// How long one exchange with the phone may take before we call it dead, and
 /// how long a person gets to answer the trust prompt. Both are the CLI's

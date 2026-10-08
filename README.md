@@ -30,7 +30,7 @@
 ## Features
 
 - Copies only new photos and videos, even after you delete or move old ones
-- Original files: HEIC, ProRAW, Live Photos and video, never converted
+- Original files: HEIC, ProRAW, Live Photos, video, GIFs and camera RAW, never converted
 - Sorted by date: dated file names, year and month folders, or a pattern of your own
 - Choose a date range, and leave out videos, photos or Live Photo videos
 - Stop at any time and continue later; unplugging during an import loses nothing

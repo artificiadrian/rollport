@@ -136,7 +136,10 @@ impl Media {
 
     /// A film, or a Live Photo's clip.
     pub fn is_video(&self) -> bool {
-        matches!(extension(&self.path).as_deref(), Some("mov" | "mp4"))
+        matches!(
+            extension(&self.path).as_deref(),
+            Some("mov" | "mp4" | "m4v")
+        )
     }
 }
 
