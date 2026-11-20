@@ -227,6 +227,8 @@ async fn photos(
     let scratch =
         std::env::temp_dir().join(format!("rollport-photos-{}-{ticket}", std::process::id()));
 
+    sweep_photos();
+
     let read = async {
         fs::create_dir_all(&scratch).doing("cannot make a scratch folder")?;
         let mut afc = files_of(udid).await?;
@@ -268,6 +270,37 @@ async fn photos(
         eprintln!("dating files by when they were written: {reason}");
         HashMap::new()
     })
+}
+
+/// A copy of Photos.sqlite left behind by a run that was killed: hundreds of
+/// megabytes in a folder nobody looks in. One another window is making
+/// changes every second; one this old belongs to nobody.
+fn sweep_photos() {
+    let Ok(entries) = fs::read_dir(std::env::temp_dir()) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        if !entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("rollport-photos-")
+        {
+            continue;
+        }
+
+        let abandoned = fs::read_dir(entry.path()).is_ok_and(|files| {
+            files.flatten().all(|file| {
+                file.metadata()
+                    .and_then(|meta| meta.modified())
+                    .is_ok_and(|when| when.elapsed().is_ok_and(|age| age > ABANDONED))
+            })
+        });
+
+        if abandoned {
+            let _ = fs::remove_dir_all(entry.path());
+        }
+    }
 }
 
 const PHOTOS_DB: &str = "/PhotoData/Photos.sqlite";
@@ -2113,6 +2146,26 @@ mod tests {
         assert!(!dated(file.taken + chrono::Duration::seconds(1)));
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_abandoned_copy_of_photos_goes_and_one_being_made_stays() {
+        let dir = |age| {
+            let dir = std::env::temp_dir()
+                .join(format!("rollport-photos-test-{age}-{}", std::process::id()));
+            fs::create_dir_all(&dir).unwrap();
+            let file = fs::File::create(dir.join("Photos.sqlite")).unwrap();
+            file.set_modified(SystemTime::now() - Duration::from_secs(age))
+                .unwrap();
+            dir
+        };
+        let (old, fresh) = (dir(3600), dir(5));
+
+        sweep_photos();
+
+        assert!(!old.exists());
+        assert!(fresh.exists());
+        let _ = fs::remove_dir_all(fresh);
     }
 
     /// A killed run's leftovers go. A copy another window is still writing
