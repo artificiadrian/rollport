@@ -1074,18 +1074,32 @@ pub async fn copy(
     // The photo is from when it was taken, not from when it was copied. Set on
     // the real name: a scratch file with an old date looks abandoned to the
     // sweep of another window. A file left with today's date is not one the
-    // next run can recognise as already here, so it does not stay.
-    let stamped = fs::File::options()
-        .write(true)
-        .open(&target)
-        .and_then(|done| done.set_modified(SystemTime::from(file.taken)));
-
-    if let Err(reason) = stamped.on_disk("cannot set the date of the file") {
+    // next run can recognise as already here, so it does not stay; the next
+    // try fetches it again.
+    if let Err(e) = stamp(&target, file.taken) {
         let _ = fs::remove_file(&target);
-        return Err(reason);
+        return Err(Failed::File(format!(
+            "cannot set the date of the file: {e}"
+        )));
     }
 
     Ok(Copied::Fetched)
+}
+
+/// Sets when a file was last changed. Windows asks only for the right to
+/// change its attributes: asking to write it is refused while OneDrive, the
+/// indexer or a virus scanner has the new file open.
+fn stamp(path: &Path, when: chrono::DateTime<chrono::FixedOffset>) -> std::io::Result<()> {
+    let mut options = fs::File::options();
+    options.write(true);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.access_mode(windows_sys::Win32::Storage::FileSystem::FILE_WRITE_ATTRIBUTES);
+    }
+
+    options.open(path)?.set_modified(SystemTime::from(when))
 }
 
 /// One file's share of the room on the disk, from before its first byte
