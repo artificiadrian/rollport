@@ -412,14 +412,30 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
 
 /// Each file gets the time Photos shows for it, and what is in Recently
 /// Deleted goes, with its Live Photo clip, which has no row of its own.
+///
+/// So does a photo the phone has not finished. Seconds after a shot, /DCIM
+/// can hold IMG_2917D.HEIC beside IMG_2917.MOV while Photos' row already
+/// names IMG_2917.HEIC, the photo it will become; the clip only pairs with
+/// that. Both stay on the phone until the photo is finished, and the next
+/// import takes the pair.
 pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
-    let deleted: HashSet<String> = known
+    let mut held: HashSet<String> = known
         .iter()
         .filter(|(_, known)| **known == Known::Deleted)
         .map(|(path, _)| stem(path))
         .collect();
 
-    media.retain(|file| !deleted.contains(&stem(&file.path)));
+    let named: HashSet<String> = known.keys().map(|path| stem(path)).collect();
+    for file in media.iter().filter(|file| !known.contains_key(&file.path)) {
+        if let Some(finished) = stem(&file.path).strip_suffix('d')
+            && named.contains(finished)
+        {
+            held.insert(finished.to_string());
+            held.insert(stem(&file.path));
+        }
+    }
+
+    media.retain(|file| !held.contains(&stem(&file.path)));
 
     for file in media.iter_mut() {
         if let Some(Known::Taken(taken)) = known.get(&file.path) {
@@ -1997,7 +2013,12 @@ mod tests {
             file("/DCIM/100APPLE/IMG_0001.MOV"),
             file("/DCIM/100APPLE/IMG_0004.HEIC"),
             file("/DCIM/100APPLE/IMG_0004.MOV"),
+            // Not finished yet: Photos names the photo it will become.
+            file("/DCIM/100APPLE/IMG_0005D.HEIC"),
+            file("/DCIM/100APPLE/IMG_0005.MOV"),
             file("/DCIM/100APPLE/IMG_0009.JPG"),
+            // A D of its own, with no finished photo to wait for.
+            file("/DCIM/100APPLE/IMG_0010D.JPG"),
         ];
         let taken = chrono::DateTime::parse_from_rfc3339("2024-05-01T08:00:00+02:00").unwrap();
         let known = HashMap::from([
@@ -2006,6 +2027,10 @@ mod tests {
                 Known::Taken(taken),
             ),
             ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Deleted),
+            (
+                "/DCIM/100APPLE/IMG_0005.HEIC".to_string(),
+                Known::Taken(taken),
+            ),
         ]);
 
         settle(&mut media, &known);
@@ -2024,6 +2049,10 @@ mod tests {
                 // Photos has no row for it: when it was written.
                 (
                     "/DCIM/100APPLE/IMG_0009.JPG",
+                    here(when("2026-11-02 10:00:00")).to_rfc3339()
+                ),
+                (
+                    "/DCIM/100APPLE/IMG_0010D.JPG",
                     here(when("2026-11-02 10:00:00")).to_rfc3339()
                 ),
             ]

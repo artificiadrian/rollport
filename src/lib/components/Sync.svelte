@@ -54,14 +54,15 @@
         folder: Extract<Folder, { folder: "known" }>
     } = $props()
 
-    /// What the last run did, as text to paste into a report of a problem.
-    /// Asked for when a report with trouble shows, because WebKit lets a page
-    /// write the clipboard only within the click itself.
+    /// What the last run did, as text to paste into a report of a problem;
+    /// on every report, as a run that went well can still be wrong. Asked
+    /// for when the report shows, because WebKit lets a page write the
+    /// clipboard only within the click itself.
     let details: string | null = $state(null)
     let copied = $state(false)
 
     $effect(() => {
-        if (view.screen !== "done" || view.badge !== "trouble") return
+        if (view.screen !== "done") return
         void flow.run
         invoke<string | null>("run_details")
             .then((text) => (details = text))
@@ -768,20 +769,20 @@
                         {#if view.reason}
                             <Reason reason={view.reason} />
                         {/if}
-                        {#if view.badge === "trouble"}
-                            <div class="flex gap-2">
+                        <div class="flex gap-2">
+                            {#if view.badge === "trouble"}
                                 <HelpLink page="troubleshooting"
                                     >Troubleshooting</HelpLink
                                 >
-                                <button
-                                    type="button"
-                                    onclick={copyDetails}
-                                    class="mt-2 rounded px-1 text-xs text-muted underline decoration-faint underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
-                                >
-                                    {copied ? "Copied" : "Copy details"}
-                                </button>
-                            </div>
-                        {/if}
+                            {/if}
+                            <button
+                                type="button"
+                                onclick={copyDetails}
+                                class="mt-2 rounded px-1 text-xs text-muted underline decoration-faint underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
+                            >
+                                {copied ? "Copied" : "Copy details"}
+                            </button>
+                        </div>
                         <div class="mt-6 flex items-center gap-2">
                             {#if view.next === "continue" || view.next === "later"}
                                 <Button
