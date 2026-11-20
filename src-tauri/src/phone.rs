@@ -719,6 +719,15 @@ pub async fn copy_all(
                 lost.add(name_of(&file.path), reason, cancel.load(Ordering::Relaxed));
                 Ok(())
             }
+            Err(Failed::TooLarge) => {
+                let reason = "too large for this drive: FAT32 drives hold files up to 4 GB";
+                lost.add(
+                    name_of(&file.path),
+                    reason.into(),
+                    cancel.load(Ordering::Relaxed),
+                );
+                Ok(())
+            }
         };
 
         if let Err(reason) = recorded {
@@ -968,6 +977,9 @@ pub enum Failed {
     /// The file would leave the disk too full. The run stops here, and the
     /// rest waits for space.
     Full,
+    /// Larger than one file on this disk may be: FAT32 stops at 4 GB. No
+    /// other try will fit it, and the rest of the camera roll still does.
+    TooLarge,
 }
 
 /// Anything the folder end of a copy says is the end of the run.
@@ -981,6 +993,7 @@ impl<T> Local<T> for Result<T, std::io::Error> {
             // The disk filled while the file was written, by something else or
             // past what the room check saw: the same as not fitting at all.
             std::io::ErrorKind::StorageFull => Failed::Full,
+            std::io::ErrorKind::FileTooLarge => Failed::TooLarge,
             _ => Failed::Folder(format!("{what}: {e}")),
         })
     }
@@ -2173,6 +2186,30 @@ mod tests {
         assert!(!old.exists());
         assert!(fresh.exists());
         let _ = fs::remove_dir_all(fresh);
+    }
+
+    /// Past 4 GB on a FAT32 drive the write fails, and that is this file's
+    /// failure, not the folder's. Needs a FAT32 volume mounted at
+    /// ROLLPORT_FAT32, such as a disk image:
+    /// `hdiutil create -size 5g -fs "MS-DOS FAT32" -volname FAT -type SPARSE fat`
+    #[tokio::test(flavor = "current_thread")]
+    #[ignore = "needs a FAT32 volume"]
+    async fn a_file_too_large_for_fat32_is_that_files_failure() {
+        let path = Path::new(&std::env::var("ROLLPORT_FAT32").unwrap()).join("big.tmp");
+        let mut sink = tokio::fs::File::create(&path).await.unwrap();
+        let chunk = vec![0u8; CHUNK];
+
+        let written = async {
+            for _ in 0..=4096 {
+                sink.write_all(&chunk).await?;
+            }
+            sink.flush().await
+        }
+        .await
+        .on_disk("cannot write the file");
+
+        let _ = fs::remove_file(&path);
+        assert!(matches!(written, Err(Failed::TooLarge)), "{written:?}");
     }
 
     /// A killed run's leftovers go. A copy another window is still writing
