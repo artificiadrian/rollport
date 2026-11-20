@@ -175,7 +175,7 @@
 
 {#snippet ownDetail()}
     You write it, for example <span class="font-mono"
-        >{"{mtime:%Y}/{name}"}</span
+        >{"{taken:%Y}/{name}"}</span
     >
 {/snippet}
 
@@ -325,7 +325,7 @@
                             >
                             is the iPhone’s name for the file,
                             <span class="font-mono whitespace-nowrap"
-                                >{"{mtime:%Y-%m-%d}"}</span
+                                >{"{taken:%Y-%m-%d}"}</span
                             >
                             is the date it was taken, and
                             <span class="font-mono">/</span> makes a folder.

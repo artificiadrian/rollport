@@ -254,12 +254,12 @@ export function when(range: Range) {
 /// What a file can be called. A folder keeps whichever it was created with.
 export const LAYOUTS = [
     {
-        layout: "{mtime:%Y-%m-%d_%H-%M-%S}_{name}",
+        layout: "{taken:%Y-%m-%d_%H-%M-%S}_{name}",
         name: "Date and time in the name",
         example: "2026-09-02_15-04-11_IMG_0001.HEIC",
     },
     {
-        layout: "{mtime:%Y}/{mtime:%m}/{name}",
+        layout: "{taken:%Y}/{taken:%m}/{name}",
         name: "Year and month folders",
         example: "2026/09/IMG_0001.HEIC",
     },

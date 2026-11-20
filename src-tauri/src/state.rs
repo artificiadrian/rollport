@@ -200,7 +200,18 @@ static TICKETS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new
 
 /// What a folder names files with until someone says otherwise.
 pub fn default_layout() -> String {
-    "{mtime:%Y-%m-%d_%H-%M-%S}_{name}".to_string()
+    "{taken:%Y-%m-%d_%H-%M-%S}_{name}".to_string()
+}
+
+/// `{mtime:…}` is what 0.1.0 and the CLI call `{taken:…}`. The window shows
+/// the new name, and the folder keeps the old one, so that 0.1.0 can still
+/// open a folder this version made.
+pub fn shown(layout: &str) -> String {
+    layout.replace("{mtime:", "{taken:")
+}
+
+pub fn stored(layout: &str) -> String {
+    layout.replace("{taken:", "{mtime:")
 }
 
 /// A UTC instant in this machine's zone: the best guess at where a photo was
@@ -248,7 +259,7 @@ pub fn render(layout: &str, name: &str, mtime: chrono::NaiveDateTime) -> String 
         };
 
         match rest[open + 1..open + close].split_once(':') {
-            Some(("mtime", format)) => out.push_str(&stamp(mtime, format)),
+            Some(("taken" | "mtime", format)) => out.push_str(&stamp(mtime, format)),
             None if &rest[open + 1..open + close] == "name" => out.push_str(name),
             _ => {}
         }
@@ -435,22 +446,23 @@ pub fn check_layout(layout: &str) -> Result<(), &'static str> {
             break;
         };
         let token = &rest[open + 1..open + close];
-        if token != "name" && !token.starts_with("mtime:") {
-            return Err("Only {name} and {mtime:…} work between braces.");
+        if token != "name" && !token.starts_with("taken:") && !token.starts_with("mtime:") {
+            return Err("Only {name} and {taken:…} work between braces.");
         }
         rest = &rest[open + close + 1..];
     }
 
-    let dates_print = layout.match_indices("{mtime:").all(|(at, opener)| {
+    let respelled = shown(layout);
+    let dates_print = respelled.match_indices("{taken:").all(|(at, opener)| {
         let format = at + opener.len();
 
-        layout[format..]
+        respelled[format..]
             .find('}')
-            .is_some_and(|close| !stamp(specimen(), &layout[format..format + close]).is_empty())
+            .is_some_and(|close| !stamp(specimen(), &respelled[format..format + close]).is_empty())
     });
 
     if !dates_print {
-        return Err("A {mtime:…} in this pattern gives no date. Use codes like %Y, %m and %d.");
+        return Err("A {taken:…} in this pattern gives no date. Use codes like %Y, %m and %d.");
     }
 
     check_name(&printed)
@@ -1382,6 +1394,11 @@ mod tests {
         let mtime = when("2026-09-02 15:04:11");
 
         assert_eq!(
+            render("{taken:%Y-%m-%d_%H-%M-%S}_{name}", "IMG_0001.HEIC", mtime),
+            "2026-09-02_15-04-11_IMG_0001.HEIC"
+        );
+        // What 0.1.0 wrote into its folders.
+        assert_eq!(
             render("{mtime:%Y-%m-%d_%H-%M-%S}_{name}", "IMG_0001.HEIC", mtime),
             "2026-09-02_15-04-11_IMG_0001.HEIC"
         );
@@ -1416,7 +1433,7 @@ mod tests {
             assert_eq!(render(&format!("{{mtime:{bad}}}"), "IMG_1.HEIC", mtime), "");
             assert_eq!(
                 check_layout(&format!("{{mtime:{bad}}}_{{name}}")),
-                Err("A {mtime:…} in this pattern gives no date. Use codes like %Y, %m and %d.")
+                Err("A {taken:…} in this pattern gives no date. Use codes like %Y, %m and %d.")
             );
         }
 
@@ -1444,7 +1461,7 @@ mod tests {
         for unknown in ["{mtime}_{name}", "{nonsense}_{name}", "{name:upper}_{name}"] {
             assert_eq!(
                 check_layout(unknown),
-                Err("Only {name} and {mtime:…} work between braces."),
+                Err("Only {name} and {taken:…} work between braces."),
                 "{unknown}"
             );
         }

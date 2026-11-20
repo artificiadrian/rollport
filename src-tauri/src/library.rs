@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::Path};
 
 use crate::{
     Context,
-    state::{FolderFacts, Media, Range, Settings, Takes, default_layout},
+    state::{FolderFacts, Media, Range, Settings, Takes, default_layout, shown, stored},
 };
 
 /// Identity is where it lived on the phone, its size, and the whole second it
@@ -59,7 +59,9 @@ pub fn read_folder(path: &Path) -> Result<FolderFacts, String> {
         keys,
         last,
         settings: Settings {
-            layout: library.setting("layout")?.unwrap_or_else(default_layout),
+            layout: library
+                .setting("layout")?
+                .map_or_else(default_layout, |layout| shown(&layout)),
             takes: Takes::read(&library.setting("takes")?.unwrap_or_default()),
         },
         ..plain
@@ -319,7 +321,7 @@ impl Library {
         self.set("takes", settings.takes.stored())?;
 
         if self.imported()? == 0 {
-            self.set("layout", &settings.layout)?;
+            self.set("layout", &stored(&settings.layout))?;
         }
 
         Ok(())
@@ -493,7 +495,7 @@ mod tests {
         let dir = folder("frozen");
         let library = Library::create(&dir).unwrap();
         let first = Settings {
-            layout: "{mtime:%Y}/{name}".into(),
+            layout: "{taken:%Y}/{name}".into(),
             takes: Takes::Photos,
         };
 
@@ -510,6 +512,11 @@ mod tests {
 
         let settings = read_folder(&dir).unwrap().settings;
         assert_eq!(settings.layout, first.layout);
+        // Stored as 0.1.0 can read it.
+        assert_eq!(
+            library.setting("layout").unwrap().as_deref(),
+            Some("{mtime:%Y}/{name}")
+        );
         assert!(matches!(settings.takes, Takes::Videos));
 
         let _ = std::fs::remove_dir_all(&dir);

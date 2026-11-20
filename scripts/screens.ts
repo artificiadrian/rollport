@@ -47,7 +47,7 @@ const known: Folder = {
     lastImport: null,
     free: 500e9,
     network: false,
-    layout: "{mtime:%Y}/{mtime:%m}/{name}",
+    layout: "{taken:%Y}/{taken:%m}/{name}",
     naming: "2026/09/IMG_4821.HEIC",
     takes: "everything",
 }
@@ -677,7 +677,7 @@ const STATES: State[] = [
             }),
         },
         {
-            // What check_layout says of {mtime:%Y}.
+            // What check_layout says of {taken:%Y}.
             refuse: "Add {name}. Without it, every file gets the same name.",
             act: async (page) => {
                 await options(page)
@@ -686,7 +686,7 @@ const STATES: State[] = [
                     "File names, saved with this folder",
                     "A pattern of your own",
                 )
-                await page.getByLabel("Naming pattern").fill("{mtime:%Y}")
+                await page.getByLabel("Naming pattern").fill("{taken:%Y}")
                 await page.getByLabel("Naming pattern").press("Enter")
             },
         },

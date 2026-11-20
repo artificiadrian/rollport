@@ -99,10 +99,10 @@ const shortcuts = [
         </p>
         <p>
             The date in a name is the date the Photos app shows for the photo,
-            in the time zone where it was taken. Photos in Recently Deleted are
-            not imported. If two files would get the same name, the second gets{" "}
-            <code>_1</code> before its extension, the next <code>_2</code>, and
-            so on.
+            in the time zone where it was taken. The file's modified date is set
+            to it too. Photos in Recently Deleted are not imported. If two files
+            would get the same name, the second gets <code>_1</code> before its
+            extension, the next <code>_2</code>, and so on.
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
@@ -115,7 +115,7 @@ const shortcuts = [
                 needs it.
             </li>
             <li>
-                <code>{"{mtime:%Y-%m-%d}"}</code> is the date the photo was
+                <code>{"{taken:%Y-%m-%d}"}</code> is the date the photo was
                 taken. Between the colon and the brace, <code>%Y</code> is the
                 year, <code>%m</code> the month, <code>%d</code> the day,{" "}
                 <code>%H</code> the hour, <code>%M</code> the minute, and{" "}
@@ -128,7 +128,7 @@ const shortcuts = [
             <li>Any other text is used as it is.</li>
         </ul>
         <p>
-            For example, <code>{"{mtime:%Y}/{mtime:%m-%d}_{name}"}</code> gives{" "}
+            For example, <code>{"{taken:%Y}/{taken:%m-%d}_{name}"}</code> gives{" "}
             <code>2026/09-02_IMG_0001.HEIC</code>. Rollport says at once when a
             pattern cannot work, for example when it has no{" "}
             <code>{"{name}"}</code>, or when it uses characters that Windows
