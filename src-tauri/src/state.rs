@@ -125,15 +125,39 @@ pub struct Media {
     /// When it was taken, in the zone it was taken in, as the Photos app
     /// shows it. What the file is named and dated with.
     pub taken: chrono::DateTime<chrono::FixedOffset>,
+    pub kind: Kind,
+}
+
+/// What a file is, as Photos files it. Without Photos' record a file is a
+/// photo or a video by its extension, and a Live Photo's clip by its name.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Kind {
+    Photo,
+    /// The still of a Live Photo.
+    LivePhoto,
     /// A Live Photo's clip. The two halves rarely share a second, and a pair
     /// is only a pair to other apps while the names match, so the clip is
     /// named and dated with its still: its `taken` is the still's.
-    pub live_video: bool,
+    LiveVideo,
+    Video,
+    Screenshot,
+    ScreenRecording,
+}
+
+impl Kind {
+    /// What a file is when only its name says.
+    pub fn of(path: &str) -> Kind {
+        if matches!(extension(path).as_deref(), Some("mov" | "mp4" | "m4v")) {
+            Kind::Video
+        } else {
+            Kind::Photo
+        }
+    }
 }
 
 impl Media {
     pub fn is_live_video(&self) -> bool {
-        self.live_video
+        self.kind == Kind::LiveVideo
     }
 
     /// A film, or a Live Photo's clip.
@@ -1446,7 +1470,11 @@ mod tests {
             taken: chrono::DateTime::from_timestamp(second, 0)
                 .unwrap()
                 .fixed_offset(),
-            live_video,
+            kind: if live_video {
+                Kind::LiveVideo
+            } else {
+                Kind::Photo
+            },
         };
         let media = [
             file("/DCIM/100APPLE/IMG_0001.HEIC", false, 1),
@@ -1621,7 +1649,11 @@ mod tests {
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),
-            live_video,
+            kind: if live_video {
+                Kind::LiveVideo
+            } else {
+                Kind::Photo
+            },
         };
 
         // A Live Photo (its still and its clip), a film, and a photo.
@@ -2491,7 +2523,7 @@ mod tests {
             size,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),
-            live_video: false,
+            kind: Kind::Photo,
         }
     }
 

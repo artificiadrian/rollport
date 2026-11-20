@@ -32,8 +32,8 @@ use crate::{
     library::{Library, room},
     said,
     state::{
-        Batch, Device, Devices, End, Media, Need, Progress, Report, Settings, Trouble, check_name,
-        here, render,
+        Batch, Device, Devices, End, Kind, Media, Need, Progress, Report, Settings, Trouble,
+        check_name, here, render,
     },
     with,
 };
@@ -194,11 +194,11 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
             let info = within("cannot read the camera roll", afc.get_file_info(&path)).await?;
 
             let file = Media {
+                kind: Kind::of(&path),
                 path,
                 size: info.size as u64,
                 mtime: info.modified,
                 taken: here(info.modified),
-                live_video: false,
             };
 
             if !file.is_video() {
@@ -226,7 +226,9 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
 /// What the Photos app knows about one file in /DCIM.
 #[derive(Debug, PartialEq)]
 pub enum Known {
-    Taken(chrono::DateTime<chrono::FixedOffset>),
+    /// When it was taken, and what it is when Photos says more than the
+    /// file's name does.
+    Taken(chrono::DateTime<chrono::FixedOffset>, Option<Kind>),
     /// Photos does not show it: it is in Recently Deleted, where it stays in
     /// /DCIM for 30 days, or it is a frame of a burst that was not picked.
     Hidden,
@@ -374,12 +376,54 @@ async fn pull(
 pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
     let db = rusqlite::Connection::open(path)?;
 
-    let mut rows = db.prepare(
-        "SELECT a.ZDIRECTORY, a.ZFILENAME, a.ZDATECREATED, a.ZTRASHEDSTATE, x.ZTIMEZONEOFFSET,
-                a.ZAVALANCHEUUID IS NOT NULL AND a.ZVISIBILITYSTATE != 0
-         FROM ZASSET a LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK
+    // Columns come and go between versions of iOS, and the asset table was
+    // ZGENERICASSET before iOS 14. A column this iOS lacks reads as empty, so
+    // an older phone still gets what its database has.
+    let columns = |table: &str| -> rusqlite::Result<HashSet<String>> {
+        db.prepare(&format!("PRAGMA table_info({table})"))?
+            .query_map([], |row| row.get(1))?
+            .collect()
+    };
+    let mut table = "ZASSET";
+    let mut asset = columns(table)?;
+    if asset.is_empty() {
+        table = "ZGENERICASSET";
+        asset = columns(table)?;
+    }
+    let extra = columns("ZADDITIONALASSETATTRIBUTES")?;
+    let joined = extra.contains("ZASSET");
+
+    let a = |name: &str| {
+        if asset.contains(name) {
+            format!("a.{name}")
+        } else {
+            "NULL".to_string()
+        }
+    };
+    let x = |name: &str| {
+        if joined && extra.contains(name) {
+            format!("x.{name}")
+        } else {
+            "NULL".to_string()
+        }
+    };
+    let join = if joined {
+        "LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK"
+    } else {
+        ""
+    };
+
+    let mut rows = db.prepare(&format!(
+        "SELECT a.ZDIRECTORY, a.ZFILENAME, {}, {}, {}, {} IS NOT NULL AND {} != 0, {}
+         FROM {table} a {join}
          WHERE a.ZDIRECTORY LIKE 'DCIM/%' AND a.ZFILENAME IS NOT NULL",
-    )?;
+        a("ZDATECREATED"),
+        a("ZTRASHEDSTATE"),
+        x("ZTIMEZONEOFFSET"),
+        a("ZAVALANCHEUUID"),
+        a("ZVISIBILITYSTATE"),
+        a("ZKINDSUBTYPE"),
+    ))?;
 
     rows.query_map([], |row| {
         let path = format!("/{}/{}", row.get::<_, String>(0)?, row.get::<_, String>(1)?);
@@ -389,6 +433,12 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
         // A burst keeps every frame in /DCIM, and Photos shows the picked
         // ones: 0 is shown, 2 is not (as osxphotos reads it).
         let unpicked: Option<bool> = row.get(5)?;
+        let kind = match row.get::<_, Option<i64>>(6)? {
+            Some(2) => Some(Kind::LivePhoto),
+            Some(10) => Some(Kind::Screenshot),
+            Some(103) => Some(Kind::ScreenRecording),
+            _ => None,
+        };
 
         if trashed.unwrap_or(0) != 0 || unpicked.unwrap_or(false) {
             return Ok(Some((path, Known::Hidden)));
@@ -409,7 +459,7 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
             .and_then(chrono::FixedOffset::east_opt)
             .map_or_else(|| here(utc), |zone| utc.and_utc().with_timezone(&zone));
 
-        Ok(Some((path, Known::Taken(taken))))
+        Ok(Some((path, Known::Taken(taken, kind))))
     })?
     .filter_map(Result::transpose)
     .collect()
@@ -443,8 +493,9 @@ pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
     media.retain(|file| !held.contains(&stem(&file.path)));
 
     for file in media.iter_mut() {
-        if let Some(Known::Taken(taken)) = known.get(&file.path) {
+        if let Some(Known::Taken(taken, kind)) = known.get(&file.path) {
             file.taken = *taken;
+            file.kind = kind.unwrap_or(file.kind);
         }
     }
 }
@@ -469,9 +520,8 @@ pub fn mark_live_videos(media: &mut [Media]) {
             _ => None,
         };
 
-        file.live_video = still.is_some();
-
         if let Some(still) = still {
+            file.kind = Kind::LiveVideo;
             file.taken = *still;
         }
     }
@@ -1890,7 +1940,7 @@ mod tests {
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),
-            live_video: false,
+            kind: Kind::Photo,
         };
 
         let mut media = vec![
@@ -1920,7 +1970,7 @@ mod tests {
             size: 1,
             mtime: when(at),
             taken: when(at).and_utc().fixed_offset(),
-            live_video: false,
+            kind: Kind::Photo,
         };
 
         let mut media = vec![
@@ -1986,7 +2036,8 @@ mod tests {
         let known = read_photos(&photos_sqlite(&dir)).unwrap();
         let _ = fs::remove_dir_all(&dir);
 
-        let at = |text: &str| Known::Taken(chrono::DateTime::parse_from_rfc3339(text).unwrap());
+        let at =
+            |text: &str| Known::Taken(chrono::DateTime::parse_from_rfc3339(text).unwrap(), None);
 
         // 810000000 seconds after 2001-01-01 is 2026-09-02 00:00:00 UTC.
         assert_eq!(
@@ -2001,16 +2052,44 @@ mod tests {
         // A burst: the picked frame, and one that was not.
         assert!(matches!(
             known["/DCIM/100APPLE/IMG_0006.HEIC"],
-            Known::Taken(_)
+            Known::Taken(..)
         ));
         assert_eq!(known["/DCIM/100APPLE/IMG_0007.HEIC"], Known::Hidden);
         // No zone: the same instant, in this machine's zone.
-        let Known::Taken(no_zone) = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
+        let Known::Taken(no_zone, _) = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
             panic!("a photo with no zone is still dated")
         };
         assert_eq!(no_zone.timestamp(), 810_000_000 + APPLE_EPOCH);
         // Only what is in /DCIM.
         assert_eq!(known.len(), 6);
+    }
+
+    /// Before iOS 14 the table was ZGENERICASSET, and an old database lacks
+    /// columns a new one has. What it has is still read.
+    #[test]
+    fn an_older_iphones_photos_still_dates_its_files() {
+        let dir = std::env::temp_dir().join(format!("rollport-old-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("Photos.sqlite");
+        rusqlite::Connection::open(&path)
+            .unwrap()
+            .execute_batch(
+                "CREATE TABLE ZGENERICASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
+                     ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZKINDSUBTYPE INTEGER);
+                 INSERT INTO ZGENERICASSET VALUES
+                     (1, 'DCIM/100APPLE', 'IMG_0001.PNG', 810000000, 10);",
+            )
+            .unwrap();
+
+        let known = read_photos(&path).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        let Known::Taken(taken, kind) = known["/DCIM/100APPLE/IMG_0001.PNG"] else {
+            panic!("an old database still dates its photos")
+        };
+        assert_eq!(taken.timestamp(), 810_000_000 + APPLE_EPOCH);
+        assert_eq!(kind, Some(Kind::Screenshot));
     }
 
     #[test]
@@ -2020,7 +2099,7 @@ mod tests {
             size: 1,
             mtime: when("2026-11-02 10:00:00"),
             taken: here(when("2026-11-02 10:00:00")),
-            live_video: false,
+            kind: Kind::Photo,
         };
         let mut media = vec![
             file("/DCIM/100APPLE/IMG_0001.HEIC"),
@@ -2038,12 +2117,12 @@ mod tests {
         let known = HashMap::from([
             (
                 "/DCIM/100APPLE/IMG_0001.HEIC".to_string(),
-                Known::Taken(taken),
+                Known::Taken(taken, None),
             ),
             ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Hidden),
             (
                 "/DCIM/100APPLE/IMG_0005.HEIC".to_string(),
-                Known::Taken(taken),
+                Known::Taken(taken, None),
             ),
         ]);
 
@@ -2102,6 +2181,13 @@ mod tests {
             started.elapsed().as_secs_f64()
         );
         assert!(known.len() > hidden);
+        let mut kinds = HashMap::new();
+        for known in known.values() {
+            if let Known::Taken(_, Some(kind)) = known {
+                *kinds.entry(format!("{kind:?}")).or_insert(0) += 1;
+            }
+        }
+        eprintln!("kinds Photos names: {kinds:?}");
 
         let mut afc = files_of(&udid).await.unwrap();
 
@@ -2114,7 +2200,9 @@ mod tests {
 
         let mut late = None;
         for (path, known) in &known {
-            let Known::Taken(taken) = known else { continue };
+            let Known::Taken(taken, _) = known else {
+                continue;
+            };
             let info = afc.get_file_info(path).await.unwrap();
             if (info.modified - taken.naive_utc()).num_days() > 30 {
                 late = Some(Media {
@@ -2122,7 +2210,7 @@ mod tests {
                     size: info.size as u64,
                     mtime: info.modified,
                     taken: *taken,
-                    live_video: false,
+                    kind: Kind::Photo,
                 });
                 break;
             }
@@ -2209,7 +2297,7 @@ mod tests {
             mtime: when("2026-11-02 10:00:00"),
             // Before 1970: a date somebody set in Photos.
             taken: chrono::DateTime::parse_from_rfc3339("1965-05-01T08:00:00+01:00").unwrap(),
-            live_video: false,
+            kind: Kind::Photo,
         };
         let dated = |at: chrono::DateTime<chrono::FixedOffset>| {
             stamp(&path, at).unwrap();

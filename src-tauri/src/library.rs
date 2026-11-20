@@ -353,7 +353,7 @@ mod tests {
             taken: chrono::DateTime::from_timestamp(1_700_000_000, 0)
                 .unwrap()
                 .fixed_offset(),
-            live_video: false,
+            kind: crate::state::Kind::Photo,
         }
     }
 
