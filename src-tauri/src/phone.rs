@@ -903,7 +903,7 @@ fn bytes(n: u64) -> String {
 /// of the app may be fetching the same photo into the same folder.
 fn scratch_name(path: &str) -> String {
     format!(
-        ".{}.{}.part",
+        ".{}.{}.tmp",
         path.trim_start_matches('/').replace('/', "_"),
         std::process::id()
     )
@@ -930,7 +930,8 @@ fn sweep(destination: &Path) {
 
         // Ours, and not a download of somebody else's. Asked first: with a
         // flat layout every photo in the library is in this listing.
-        if !(name.starts_with(".DCIM_") && name.ends_with(".part")) {
+        // .part from 0.1.0, which OneDrive uploaded; it skips .tmp.
+        if !(name.starts_with(".DCIM_") && (name.ends_with(".tmp") || name.ends_with(".part"))) {
             continue;
         }
 
@@ -2191,11 +2192,14 @@ mod tests {
         let live = scratch_name("/DCIM/100APPLE/IMG_0002.HEIC");
         make(&dead, Duration::from_secs(3600));
         make(&live, Duration::from_secs(5));
+        let from_0_1_0 = ".DCIM_100APPLE_IMG_0003.HEIC.4242.part";
+        make(from_0_1_0, Duration::from_secs(3600));
         make(".film.mp4.part", Duration::from_secs(3600));
 
         sweep(&dir);
 
         assert!(!dir.join(&dead).exists());
+        assert!(!dir.join(from_0_1_0).exists());
         assert!(dir.join(&live).exists());
         assert!(dir.join(".film.mp4.part").exists());
 
