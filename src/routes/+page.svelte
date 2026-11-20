@@ -47,11 +47,17 @@
         }
 
         pending = next
-        document.startViewTransition(async () => {
-            flow = pending ?? next
-            pending = null
-            await tick()
-        })
+        // The view transition moves the screen to its new place; the screen's
+        // own glide (Sync.svelte) would move it a second time underneath.
+        const root = document.documentElement
+        root.classList.add("switching")
+        document
+            .startViewTransition(async () => {
+                flow = pending ?? next
+                pending = null
+                await tick()
+            })
+            .finished.finally(() => root.classList.remove("switching"))
     }
 
     /// The newest flow while a view transition waits to draw it.

@@ -392,6 +392,28 @@
         reported = { found: view.found, at }
     })
 
+    // The screen is laid out from the top of the stage and moved down by half
+    // of the room under it. Measured as soon as a new screen is drawn, so the
+    // view transition's picture of it is taken where it will stay; and again
+    // when the stage or the screen change size on their own (fonts, zoom).
+    // Placed before it may glide, so the window does not open with a slide.
+    let stageEl: HTMLElement
+    let screenEl: HTMLElement
+    let stage = $state(0)
+    let block = $state(0)
+    let lift = $state(0)
+    let placed = $state(false)
+    $effect(() => {
+        void view
+        void stage
+        void block
+        lift = Math.max(
+            0,
+            (stageEl.clientHeight - 28 - screenEl.offsetHeight) / 2,
+        )
+        if (!placed) requestAnimationFrame(() => (placed = true))
+    })
+
     /// The last run copied nothing, so its button starts it again rather than
     /// going on.
     const again = $derived(
@@ -517,299 +539,317 @@
         </button>
     </div>
 
-    <!-- The art starts 72 px from the window's top on every screen, as on
-         Setup, so a new screen does not move it; only a screen too tall for
-         that takes room from above (28 px here: the pills take 44). 72 px
-         leaves room for the warning, which sits in the lower spacer, so
-         it does not move the rest. The prints slide between screens in a view
-         transition. -->
+    <!-- Each screen sits in the middle of the room below the pills. It is laid
+         out from the top, 28 px under the pills, and moved down by half of
+         the room left, so a new screen or a warning glides there rather than
+         jumps; with reduced motion it is placed at once. A screen too tall
+         for that takes room from the 28 px. The prints also slide between
+         screens in a view transition. -->
     <div
         data-stage
         tabindex="-1"
+        bind:this={stageEl}
+        bind:clientHeight={stage}
         class="relative flex grow flex-col items-center px-8 text-center outline-none"
     >
         <div class="min-h-6 shrink-1 grow-0 basis-[28px]"></div>
-        <div class="flex w-full shrink-0 flex-col items-center">
-            {#if view.screen === "prompt"}
-                <Prompt said={view.said} />
-            {:else}
-                <!-- A few prints, fanned like a hand of cards: this is a photo
+        <div
+            bind:this={screenEl}
+            bind:clientHeight={block}
+            data-screen
+            style:transform="translateY({lift}px)"
+            class={[
+                "flex w-full shrink-0 flex-col items-center [view-transition-name:screen]",
+                placed &&
+                    "motion-safe:transition-transform motion-safe:duration-250 motion-safe:ease-out",
+            ]}
+        >
+            <div class="flex w-full shrink-0 flex-col items-center">
+                {#if view.screen === "prompt"}
+                    <Prompt said={view.said} />
+                {:else}
+                    <!-- A few prints, fanned like a hand of cards: this is a photo
                  tool before it is a number. Without a photo, a print is drawn
                  as paper, not as a grey box that passes for one. Keyed by
                  picture, so a print that stays slides to its new place, a new
                  one is dealt in from above, and one leaving fades. -->
-                <div
-                    class="relative h-[164px] w-[340px] [view-transition-name:prints]"
-                    aria-hidden="true"
-                    data-art
-                >
-                    <!-- Back to front, each keyed by its picture so it keeps its element
+                    <div
+                        class="relative h-[164px] w-[340px] [view-transition-name:prints]"
+                        aria-hidden="true"
+                        data-art
+                    >
+                        <!-- Back to front, each keyed by its picture so it keeps its element
      when it moves to another place in the fan. -->
-                    {#each FAN as card (pictures[card.index] ?? `paper-${card.index}`)}
-                        {@const url = pictures[card.index]}
-                        {@const size = fit(url, card.box)}
-                        <div
-                            in:fly={{ y: -28, duration: still ? 0 : 350 }}
-                            out:fade={{ duration: still ? 0 : 250 }}
-                            class="absolute bottom-3 left-1/2 rounded-lg border border-edge bg-canvas p-[5px]
+                        {#each FAN as card (pictures[card.index] ?? `paper-${card.index}`)}
+                            {@const url = pictures[card.index]}
+                            {@const size = fit(url, card.box)}
+                            <div
+                                in:fly={{ y: -28, duration: still ? 0 : 350 }}
+                                out:fade={{ duration: still ? 0 : 250 }}
+                                class="absolute bottom-3 left-1/2 rounded-lg border border-edge bg-canvas p-[5px]
                             transition-[width,height,transform] duration-300 ease-out motion-reduce:transition-none
                             {card.index === 0
-                                ? 'shadow-[0_14px_30px_-6px_rgb(0_0_0/0.28)] dark:shadow-[0_16px_34px_-6px_rgb(0_0_0/0.6)]'
-                                : 'shadow-[0_6px_16px_-4px_rgb(0_0_0/0.2)] dark:shadow-[0_8px_20px_-4px_rgb(0_0_0/0.5)]'}"
-                            style="width: {size.width +
-                                12}px; height: {size.height +
-                                12}px; transform-origin: 50% 160%; transform: translateX(-50%) translateX({shift(
-                                card,
-                                size.width,
-                            )}px) rotate({card.turn}deg)"
-                        >
-                            <!-- Paper first, the photo over it once it has loaded. Paper
+                                    ? 'shadow-[0_14px_30px_-6px_rgb(0_0_0/0.28)] dark:shadow-[0_16px_34px_-6px_rgb(0_0_0/0.6)]'
+                                    : 'shadow-[0_6px_16px_-4px_rgb(0_0_0/0.2)] dark:shadow-[0_8px_20px_-4px_rgb(0_0_0/0.5)]'}"
+                                style="width: {size.width +
+                                    12}px; height: {size.height +
+                                    12}px; transform-origin: 50% 160%; transform: translateX(-50%) translateX({shift(
+                                    card,
+                                    size.width,
+                                )}px) rotate({card.turn}deg)"
+                            >
+                                <!-- Paper first, the photo over it once it has loaded. Paper
                              shimmers while a photo is on its way, and names the file
                              when the phone has no thumbnail for it. -->
-                            <div
-                                class="grid h-full place-items-center overflow-hidden rounded border border-line
+                                <div
+                                    class="grid h-full place-items-center overflow-hidden rounded border border-line
                                 {waiting(url)
-                                    ? 'animate-shimmer bg-[linear-gradient(100deg,transparent_30%,var(--element)_50%,transparent_70%)] bg-[length:250%_100%] motion-reduce:animate-none'
-                                    : ''}"
-                            >
-                                {#if url && seen[url] === "broken"}
-                                    {@const name = url.split("/").pop() ?? ""}
-                                    {@const dot = name.lastIndexOf(".")}
-                                    <!-- Two lines at most, broken before the extension. -->
-                                    <span
-                                        class="line-clamp-2 max-w-full px-2 text-center font-mono text-[10px] text-muted"
-                                    >
-                                        {dot > 0
-                                            ? name.slice(0, dot)
-                                            : name}<wbr />{dot > 0
-                                            ? name.slice(dot)
-                                            : ""}
-                                    </span>
-                                {:else if card.index === 0 && !waiting(url)}
-                                    <ImageIcon
-                                        size={28}
-                                        strokeWidth={1.25}
-                                        class="text-faint"
-                                    />
-                                {/if}
-                            </div>
-                            {#if url && seen[url] !== "broken"}
-                                <img
-                                    src={thumb(url)}
-                                    alt=""
-                                    onload={(event) =>
-                                        shapeOf(
-                                            url,
-                                            event.currentTarget as HTMLImageElement,
-                                        )}
-                                    onerror={() => (seen[url] = "broken")}
-                                    class="absolute inset-[5px] h-[calc(100%-10px)] w-[calc(100%-10px)] rounded-sm object-cover transition-opacity duration-200
-                                    {seen[url] === undefined
-                                        ? 'opacity-0'
-                                        : 'opacity-100'}"
-                                />
-                            {/if}
-
-                            <!-- What happened, pinned to the front print's corner. -->
-                            {#if card.index === 0 && (view.screen === "current" || view.screen === "done")}
-                                <span
-                                    class="absolute -right-4 -bottom-4 grid size-10 place-items-center rounded-full border-3 border-canvas
-                                    {view.screen !== 'done'
-                                        ? 'bg-ink text-canvas'
-                                        : view.badge === 'trouble'
-                                          ? 'bg-tomato-9 text-white'
-                                          : view.badge === 'full'
-                                            ? 'bg-orange-9 text-white'
-                                            : 'bg-ink text-canvas'}"
+                                        ? 'animate-shimmer bg-[linear-gradient(100deg,transparent_30%,var(--element)_50%,transparent_70%)] bg-[length:250%_100%] motion-reduce:animate-none'
+                                        : ''}"
                                 >
-                                    {#if view.screen === "current" || view.badge === "done"}
-                                        <Check size={18} strokeWidth={3} />
-                                    {:else if view.badge === "stopped"}
-                                        <Pause
-                                            size={14}
-                                            strokeWidth={0}
-                                            fill="currentColor"
-                                        />
-                                    {:else if view.badge === "unplugged"}
-                                        <Unplug size={17} strokeWidth={2.5} />
-                                    {:else if view.badge === "full"}
-                                        <!-- A full disk, not a failure: its own shape, not only
-                                             another colour. -->
-                                        <HardDrive
-                                            size={17}
-                                            strokeWidth={2.5}
-                                        />
-                                    {:else}
-                                        <TriangleAlert
-                                            size={17}
-                                            strokeWidth={2.5}
+                                    {#if url && seen[url] === "broken"}
+                                        {@const name =
+                                            url.split("/").pop() ?? ""}
+                                        {@const dot = name.lastIndexOf(".")}
+                                        <!-- Two lines at most, broken before the extension. -->
+                                        <span
+                                            class="line-clamp-2 max-w-full px-2 text-center font-mono text-[10px] text-muted"
+                                        >
+                                            {dot > 0
+                                                ? name.slice(0, dot)
+                                                : name}<wbr />{dot > 0
+                                                ? name.slice(dot)
+                                                : ""}
+                                        </span>
+                                    {:else if card.index === 0 && !waiting(url)}
+                                        <ImageIcon
+                                            size={28}
+                                            strokeWidth={1.25}
+                                            class="text-faint"
                                         />
                                     {/if}
-                                </span>
-                            {/if}
-                        </div>
-                    {/each}
-                </div>
-                {#if view.screen === "ready"}
-                    <p class={hero}>{count(Math.round(files.current))}</p>
-                    <p class="mt-2 text-lg font-medium">
-                        {size(bytes.current)} to import
-                    </p>
-                    {#key view.details}
-                        <p
-                            class="mt-2 text-muted"
-                            in:fade={{ duration: still ? 0 : 200 }}
-                        >
-                            {view.details}
+                                </div>
+                                {#if url && seen[url] !== "broken"}
+                                    <img
+                                        src={thumb(url)}
+                                        alt=""
+                                        onload={(event) =>
+                                            shapeOf(
+                                                url,
+                                                event.currentTarget as HTMLImageElement,
+                                            )}
+                                        onerror={() => (seen[url] = "broken")}
+                                        class="absolute inset-[5px] h-[calc(100%-10px)] w-[calc(100%-10px)] rounded-sm object-cover transition-opacity duration-200
+                                    {seen[url] === undefined
+                                            ? 'opacity-0'
+                                            : 'opacity-100'}"
+                                    />
+                                {/if}
+
+                                <!-- What happened, pinned to the front print's corner. -->
+                                {#if card.index === 0 && (view.screen === "current" || view.screen === "done")}
+                                    <span
+                                        class="absolute -right-4 -bottom-4 grid size-10 place-items-center rounded-full border-3 border-canvas
+                                    {view.screen !== 'done'
+                                            ? 'bg-ink text-canvas'
+                                            : view.badge === 'trouble'
+                                              ? 'bg-tomato-9 text-white'
+                                              : view.badge === 'full'
+                                                ? 'bg-orange-9 text-white'
+                                                : 'bg-ink text-canvas'}"
+                                    >
+                                        {#if view.screen === "current" || view.badge === "done"}
+                                            <Check size={18} strokeWidth={3} />
+                                        {:else if view.badge === "stopped"}
+                                            <Pause
+                                                size={14}
+                                                strokeWidth={0}
+                                                fill="currentColor"
+                                            />
+                                        {:else if view.badge === "unplugged"}
+                                            <Unplug
+                                                size={17}
+                                                strokeWidth={2.5}
+                                            />
+                                        {:else if view.badge === "full"}
+                                            <!-- A full disk, not a failure: its own shape, not only
+                                             another colour. -->
+                                            <HardDrive
+                                                size={17}
+                                                strokeWidth={2.5}
+                                            />
+                                        {:else}
+                                            <TriangleAlert
+                                                size={17}
+                                                strokeWidth={2.5}
+                                            />
+                                        {/if}
+                                    </span>
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+                    {#if view.screen === "ready"}
+                        <p class={hero}>{count(Math.round(files.current))}</p>
+                        <p class="mt-2 text-lg font-medium">
+                            {size(bytes.current)} to import
                         </p>
-                    {/key}
+                        {#key view.details}
+                            <p
+                                class="mt-2 text-muted"
+                                in:fade={{ duration: still ? 0 : 200 }}
+                            >
+                                {view.details}
+                            </p>
+                        {/key}
 
-                    <Button
-                        variant="main"
-                        size="large"
-                        onclick={start}
-                        title={`Import (${shownEnter})`}
-                        aria-keyshortcuts={enter}
-                        class="mt-6"
-                    >
-                        <ArrowDownToLine
-                            size={16}
-                            strokeWidth={2}
-                            aria-hidden="true"
-                        />
-                        Import {count(view.files)}
-                    </Button>
-                {:else if view.screen === "counting"}
-                    <p class="{hero} text-muted">
-                        {count(Math.round(found.current))}
-                    </p>
-                    <p class="mt-2 text-lg font-medium">
-                        photos and videos found
-                    </p>
-                    <!-- Where the button will be, so nothing jumps when it arrives. -->
-                    <div class="mt-6 h-11"></div>
-                {:else if view.screen === "importing"}
-                    <p class={hero}>{view.percent}%</p>
-                    <p class="mt-2 text-lg font-medium">{view.caption}</p>
+                        <Button
+                            variant="main"
+                            size="large"
+                            onclick={start}
+                            title={`Import (${shownEnter})`}
+                            aria-keyshortcuts={enter}
+                            class="mt-6"
+                        >
+                            <ArrowDownToLine
+                                size={16}
+                                strokeWidth={2}
+                                aria-hidden="true"
+                            />
+                            Import {count(view.files)}
+                        </Button>
+                    {:else if view.screen === "counting"}
+                        <p class="{hero} text-muted">
+                            {count(Math.round(found.current))}
+                        </p>
+                        <p class="mt-2 text-lg font-medium">
+                            photos and videos found
+                        </p>
+                        <!-- Where the button will be, so nothing jumps when it arrives. -->
+                        <div class="mt-6 h-11"></div>
+                    {:else if view.screen === "importing"}
+                        <p class={hero}>{view.percent}%</p>
+                        <p class="mt-2 text-lg font-medium">{view.caption}</p>
 
-                    <div
-                        role="progressbar"
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={view.percent}
-                        aria-valuetext="{view.percent}%, {view.caption}"
-                        class="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink/12 forced-colors:border forced-colors:border-[CanvasText]"
-                    >
                         <div
-                            class="h-full rounded-full bg-ink transition-[width] duration-300 motion-reduce:transition-none forced-colors:bg-[CanvasText]"
-                            style="width: {view.percent}%"
-                        ></div>
-                    </div>
-                    <div
-                        class="mt-2 flex w-full justify-between text-xs text-muted tabular-nums"
-                    >
-                        <span>{view.progress}</span>
-                        <span>{view.left}</span>
-                    </div>
-
-                    <Button
-                        variant="secondary"
-                        onclick={() => tell("cancel_import")}
-                        title={`Stop (${shownPeriod})`}
-                        aria-keyshortcuts={period}
-                        class="mt-6"
-                    >
-                        Stop
-                    </Button>
-                {:else if view.screen === "done"}
-                    <p class={heading}>{view.title}</p>
-                    <p class="mt-2 text-sm text-balance text-muted">
-                        {view.detail}
-                    </p>
-                    {#if view.reason}
-                        <Reason reason={view.reason} />
-                    {/if}
-                    {#if view.badge === "trouble"}
-                        <div class="flex gap-2">
-                            <HelpLink page="troubleshooting"
-                                >Troubleshooting</HelpLink
-                            >
-                            <button
-                                type="button"
-                                onclick={copyDetails}
-                                class="mt-2 rounded px-1 text-xs text-muted underline decoration-faint underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
-                            >
-                                {copied ? "Copied" : "Copy details"}
-                            </button>
+                            role="progressbar"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={view.percent}
+                            aria-valuetext="{view.percent}%, {view.caption}"
+                            class="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink/12 forced-colors:border forced-colors:border-[CanvasText]"
+                        >
+                            <div
+                                class="h-full rounded-full bg-ink transition-[width] duration-300 motion-reduce:transition-none forced-colors:bg-[CanvasText]"
+                                style="width: {view.percent}%"
+                            ></div>
                         </div>
-                    {/if}
-                    <div class="mt-6 flex items-center gap-2">
-                        {#if view.next === "continue" || view.next === "later"}
+                        <div
+                            class="mt-2 flex w-full justify-between text-xs text-muted tabular-nums"
+                        >
+                            <span>{view.progress}</span>
+                            <span>{view.left}</span>
+                        </div>
+
+                        <Button
+                            variant="secondary"
+                            onclick={() => tell("cancel_import")}
+                            title={`Stop (${shownPeriod})`}
+                            aria-keyshortcuts={period}
+                            class="mt-6"
+                        >
+                            Stop
+                        </Button>
+                    {:else if view.screen === "done"}
+                        <p class={heading}>{view.title}</p>
+                        <p class="mt-2 text-sm text-balance text-muted">
+                            {view.detail}
+                        </p>
+                        {#if view.reason}
+                            <Reason reason={view.reason} />
+                        {/if}
+                        {#if view.badge === "trouble"}
+                            <div class="flex gap-2">
+                                <HelpLink page="troubleshooting"
+                                    >Troubleshooting</HelpLink
+                                >
+                                <button
+                                    type="button"
+                                    onclick={copyDetails}
+                                    class="mt-2 rounded px-1 text-xs text-muted underline decoration-faint underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
+                                >
+                                    {copied ? "Copied" : "Copy details"}
+                                </button>
+                            </div>
+                        {/if}
+                        <div class="mt-6 flex items-center gap-2">
+                            {#if view.next === "continue" || view.next === "later"}
+                                <Button
+                                    variant="main"
+                                    onclick={start}
+                                    disabled={view.next === "later"}
+                                    class="disabled:opacity-50"
+                                    title={`${again ? "Import again" : "Import what is left"} (${shownEnter})`}
+                                    aria-keyshortcuts={enter}
+                                >
+                                    <ArrowDownToLine
+                                        size={14}
+                                        strokeWidth={2}
+                                        aria-hidden="true"
+                                    />
+                                    {again ? "Import" : "Continue"}
+                                </Button>
+                            {:else if view.next === "rescan"}
+                                <Button
+                                    variant="main"
+                                    onclick={() => tell("rescan")}
+                                    title={`Check the camera roll again (${shownEnter})`}
+                                    aria-keyshortcuts={enter}
+                                >
+                                    <RotateCw size={14} aria-hidden="true" />
+                                    Check again
+                                </Button>
+                            {/if}
+                            {@render reveal()}
+                        </div>
+                    {:else}
+                        <p class={heading}>Up to date</p>
+                        <p class="mt-2 text-sm text-muted">
+                            {view.detail}
+                        </p>
+                        <div class="mt-6 flex items-center gap-2">
                             <Button
-                                variant="main"
-                                onclick={start}
-                                disabled={view.next === "later"}
-                                class="disabled:opacity-50"
-                                title={`${again ? "Import again" : "Import what is left"} (${shownEnter})`}
-                                aria-keyshortcuts={enter}
-                            >
-                                <ArrowDownToLine
-                                    size={14}
-                                    strokeWidth={2}
-                                    aria-hidden="true"
-                                />
-                                {again ? "Import" : "Continue"}
-                            </Button>
-                        {:else if view.next === "rescan"}
-                            <Button
-                                variant="main"
+                                variant="secondary"
                                 onclick={() => tell("rescan")}
-                                title={`Check the camera roll again (${shownEnter})`}
-                                aria-keyshortcuts={enter}
                             >
                                 <RotateCw size={14} aria-hidden="true" />
                                 Check again
                             </Button>
-                        {/if}
-                        {@render reveal()}
-                    </div>
-                {:else}
-                    <p class={heading}>Up to date</p>
-                    <p class="mt-2 text-sm text-muted">
-                        {view.detail}
-                    </p>
-                    <div class="mt-6 flex items-center gap-2">
-                        <Button
-                            variant="secondary"
-                            onclick={() => tell("rescan")}
-                        >
-                            <RotateCw size={14} aria-hidden="true" />
-                            Check again
-                        </Button>
-                        {@render reveal()}
-                    </div>
+                            {@render reveal()}
+                        </div>
+                    {/if}
                 {/if}
-            {/if}
-        </div>
-        <div class="flex w-full flex-1 flex-col items-center">
-            {#if view.screen === "ready" && view.warning}
-                <!-- Said, not refused: it is their disk and their decision. -->
-                <!-- The icon sits in the text, so balanced lines centre with it. -->
-                <p
-                    class="my-4 text-sm text-balance {view.warning.tone ===
-                    'short'
-                        ? 'font-medium text-orange-11'
-                        : 'text-muted'}"
-                >
-                    {#if view.warning.tone === "short"}
-                        <HardDrive
-                            size={16}
-                            class="mr-1 inline align-[-3px]"
-                            aria-hidden="true"
-                        />
-                    {/if}{view.warning.text}
-                </p>
-            {/if}
+            </div>
+            <div class="flex w-full flex-col items-center">
+                {#if view.screen === "ready" && view.warning}
+                    <!-- Said, not refused: it is their disk and their decision. -->
+                    <!-- The icon sits in the text, so balanced lines centre with it. -->
+                    <p
+                        class="my-4 text-sm text-balance {view.warning.tone ===
+                        'short'
+                            ? 'font-medium text-orange-11'
+                            : 'text-muted'}"
+                    >
+                        {#if view.warning.tone === "short"}
+                            <HardDrive
+                                size={16}
+                                class="mr-1 inline align-[-3px]"
+                                aria-hidden="true"
+                            />
+                        {/if}{view.warning.text}
+                    </p>
+                {/if}
+            </div>
         </div>
     </div>
 </div>

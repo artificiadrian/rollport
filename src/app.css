@@ -87,3 +87,8 @@ body {
     animation-duration: 200ms;
     animation-timing-function: ease-out;
 }
+
+/* A screen change is moved by the view transition alone. */
+.switching [data-screen] {
+    transition: none;
+}
