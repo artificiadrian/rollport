@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     fs,
     future::Future,
     panic::AssertUnwindSafe,
@@ -32,7 +33,7 @@ use crate::{
     said,
     state::{
         Batch, Device, Devices, End, Media, Need, Progress, Report, Settings, Trouble, check_name,
-        local, render,
+        here, render,
     },
     with,
 };
@@ -106,7 +107,19 @@ pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Every photo and video in /DCIM, with what it weighs and when it was taken.
+/// Photos' own record is read over a second connection while the walk runs:
+/// the walk waits on round trips, the copy of the database on bandwidth.
 pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
+    let (walked, known) = tokio::join!(walk_dcim(app, udid, ticket), photos(udid, ticket));
+    let mut media = walked?;
+
+    settle(&mut media, &known);
+    mark_live_videos(&mut media);
+
+    Ok(media)
+}
+
+async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
     let mut afc = files_of(udid).await?;
 
     let mut pending = vec!["/DCIM".to_string()];
@@ -154,7 +167,8 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>
                 path,
                 size: info.size as u64,
                 mtime: info.modified,
-                still: None,
+                taken: here(info.modified),
+                live_video: false,
             };
 
             if !file.is_video() {
@@ -176,15 +190,150 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>
         }
     }
 
-    mark_live_videos(&mut media);
-
     Ok(media)
+}
+
+/// What the Photos app knows about one file in /DCIM.
+#[derive(Debug, PartialEq)]
+pub enum Known {
+    Taken(chrono::DateTime<chrono::FixedOffset>),
+    /// In Recently Deleted. The file stays in /DCIM for 30 days.
+    Deleted,
+}
+
+/// Core Data counts seconds from 2001-01-01 UTC.
+const APPLE_EPOCH: i64 = 978_307_200;
+
+/// What Photos knows about each file in /DCIM, by its path on the phone. An
+/// empty answer when the database cannot be had or read: then every file is
+/// dated by when it was written, as before.
+async fn photos(udid: &str, ticket: u64) -> HashMap<String, Known> {
+    let scratch =
+        std::env::temp_dir().join(format!("rollport-photos-{}-{ticket}", std::process::id()));
+
+    let read = async {
+        fs::create_dir_all(&scratch).doing("cannot make a scratch folder")?;
+        let mut afc = files_of(udid).await?;
+
+        // Recent changes sit in the -wal file until Photos folds them in, and
+        // SQLite replays it on open. Not the -shm: it is an index of the -wal
+        // in shared memory, and SQLite rebuilds it.
+        pull(
+            &mut afc,
+            "/PhotoData/Photos.sqlite",
+            &scratch.join("Photos.sqlite"),
+        )
+        .await
+        .doing("Photos.sqlite")?;
+        let _ = pull(
+            &mut afc,
+            "/PhotoData/Photos.sqlite-wal",
+            &scratch.join("Photos.sqlite-wal"),
+        )
+        .await;
+
+        read_photos(&scratch.join("Photos.sqlite")).doing("cannot read Photos.sqlite")
+    }
+    .await;
+
+    let _ = fs::remove_dir_all(&scratch);
+
+    read.unwrap_or_else(|reason| {
+        eprintln!("dating files by when they were written: {reason}");
+        HashMap::new()
+    })
+}
+
+/// One file from the phone to the disk, whole.
+async fn pull(afc: &mut AfcClient, from: &str, to: &Path) -> Result<(), String> {
+    let mut file = within("cannot open it", afc.open(from, AfcFopenMode::RdOnly)).await?;
+
+    let read = async {
+        let mut sink = tokio::fs::File::create(to).await.doing("cannot write it")?;
+        loop {
+            let bytes = within("cannot read it", file.read_n(CHUNK)).await?;
+            if bytes.is_empty() {
+                break;
+            }
+            sink.write_all(&bytes).await.doing("cannot write it")?;
+        }
+        sink.flush().await.doing("cannot write it")
+    }
+    .await;
+
+    // idevice asserts when an open file is dropped without being closed.
+    within("cannot close it", file.close()).await?;
+
+    read
+}
+
+/// Photos.sqlite holds a row per photo or film, under the folder and name it
+/// has in /DCIM; a Live Photo's clip has none of its own. ZDATECREATED is
+/// the time Photos shows, and moves when somebody adjusts it there. On an
+/// iPhone with iOS 27 and 8,729 files, each file matched one row by this path,
+/// and each .MOV with no row sat beside its Live Photo's still.
+pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
+    let db = rusqlite::Connection::open(path)?;
+
+    let mut rows = db.prepare(
+        "SELECT a.ZDIRECTORY, a.ZFILENAME, a.ZDATECREATED, a.ZTRASHEDSTATE, x.ZTIMEZONEOFFSET
+         FROM ZASSET a LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK
+         WHERE a.ZDIRECTORY LIKE 'DCIM/%' AND a.ZFILENAME IS NOT NULL",
+    )?;
+
+    rows.query_map([], |row| {
+        let path = format!("/{}/{}", row.get::<_, String>(0)?, row.get::<_, String>(1)?);
+        let created: Option<f64> = row.get(2)?;
+        let trashed: Option<i64> = row.get(3)?;
+        let offset: Option<i64> = row.get(4)?;
+
+        if trashed.unwrap_or(0) != 0 {
+            return Ok(Some((path, Known::Deleted)));
+        }
+
+        let utc = created
+            .and_then(|seconds| {
+                chrono::DateTime::from_timestamp(seconds.floor() as i64 + APPLE_EPOCH, 0)
+            })
+            .map(|utc| utc.naive_utc());
+
+        let Some(utc) = utc else {
+            return Ok(None);
+        };
+
+        let taken = offset
+            .and_then(|seconds| i32::try_from(seconds).ok())
+            .and_then(chrono::FixedOffset::east_opt)
+            .map_or_else(|| here(utc), |zone| utc.and_utc().with_timezone(&zone));
+
+        Ok(Some((path, Known::Taken(taken))))
+    })?
+    .filter_map(Result::transpose)
+    .collect()
+}
+
+/// Each file gets the time Photos shows for it, and what is in Recently
+/// Deleted goes, with its Live Photo clip, which has no row of its own.
+pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
+    let deleted: HashSet<String> = known
+        .iter()
+        .filter(|(_, known)| **known == Known::Deleted)
+        .map(|(path, _)| stem(path))
+        .collect();
+
+    media.retain(|file| !deleted.contains(&stem(&file.path)));
+
+    for file in media.iter_mut() {
+        if let Some(Known::Taken(taken)) = known.get(&file.path) {
+            file.taken = *taken;
+        }
+    }
 }
 
 /// A .mov beside an image of the same name is the video half of a Live Photo,
 /// and carries the image's time.
 pub fn mark_live_videos(media: &mut [Media]) {
-    let images: std::collections::HashMap<String, chrono::NaiveDateTime> = media
+    let images: HashMap<String, chrono::DateTime<chrono::FixedOffset>> = media
         .iter()
         .filter(|file| {
             matches!(
@@ -192,14 +341,20 @@ pub fn mark_live_videos(media: &mut [Media]) {
                 Some("heic" | "heif" | "jpg" | "jpeg" | "dng")
             )
         })
-        .map(|file| (stem(&file.path), file.mtime))
+        .map(|file| (stem(&file.path), file.taken))
         .collect();
 
     for file in media.iter_mut() {
-        file.still = match extension(&file.path).as_deref() {
-            Some("mov") => images.get(&stem(&file.path)).copied(),
+        let still = match extension(&file.path).as_deref() {
+            Some("mov") => images.get(&stem(&file.path)),
             _ => None,
         };
+
+        file.live_video = still.is_some();
+
+        if let Some(still) = still {
+            file.taken = *still;
+        }
     }
 }
 
@@ -702,6 +857,7 @@ fn sweep(destination: &Path) {
 }
 
 /// What became of one file.
+#[derive(Debug)]
 pub enum Copied {
     /// Fetched from the phone.
     Fetched,
@@ -750,7 +906,7 @@ pub async fn copy(
     held: &Mutex<u64>,
 ) -> Result<Copied, Failed> {
     let name = name_of(&file.path);
-    let rendered = render(layout, name, local(file.taken()));
+    let rendered = render(layout, name, file.taken.naive_local());
 
     // A layout is checked before a folder is allowed to keep it, but one may
     // have been written into rollport-library.db by hand or by an older run. Leaving the
@@ -771,7 +927,9 @@ pub async fn copy(
     // The name is derived from the file, so a file we copied before lands on
     // the name it already has. Size alone is not enough to say it is the same
     // file — two shots can share a name and a size under the {name} layout —
-    // so the capture time has to match too, and we set that on every copy.
+    // so the time has to match too, and we set that on every copy. Either
+    // time: the CLI and our own first release dated files by when they were
+    // written on the phone.
     // The legacy CLI never made this claim at all; it suffixed and downloaded
     // again. This is that, minus re-downloading what is demonstrably here.
     if let Ok(existing) = fs::metadata(&target)
@@ -780,7 +938,10 @@ pub async fn copy(
             .modified()
             .ok()
             .and_then(|when| when.duration_since(UNIX_EPOCH).ok())
-            .is_some_and(|since| since.as_secs() as i64 == file.mtime.and_utc().timestamp())
+            .is_some_and(|since| {
+                let since = since.as_secs() as i64;
+                since == file.taken.timestamp() || since == file.mtime.and_utc().timestamp()
+            })
     {
         return Ok(Copied::Already);
     }
@@ -912,11 +1073,17 @@ pub async fn copy(
 
     // The photo is from when it was taken, not from when it was copied. Set on
     // the real name: a scratch file with an old date looks abandoned to the
-    // sweep of another window.
-    let _ = fs::File::options()
+    // sweep of another window. A file left with today's date is not one the
+    // next run can recognise as already here, so it does not stay.
+    let stamped = fs::File::options()
         .write(true)
         .open(&target)
-        .and_then(|done| done.set_modified(SystemTime::from(file.mtime.and_utc())));
+        .and_then(|done| done.set_modified(SystemTime::from(file.taken)));
+
+    if let Err(reason) = stamped.on_disk("cannot set the date of the file") {
+        let _ = fs::remove_file(&target);
+        return Err(reason);
+    }
 
     Ok(Copied::Fetched)
 }
@@ -1566,7 +1733,8 @@ mod tests {
             path: path.into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
-            still: None,
+            taken: here(when("2026-09-02 15:04:11")),
+            live_video: false,
         };
 
         let mut media = vec![
@@ -1595,7 +1763,8 @@ mod tests {
             path: path.into(),
             size: 1,
             mtime: when(at),
-            still: None,
+            taken: when(at).and_utc().fixed_offset(),
+            live_video: false,
         };
 
         let mut media = vec![
@@ -1609,7 +1778,7 @@ mod tests {
         let layout = "{mtime:%Y-%m-%d_%H-%M-%S}_{name}";
         let names: Vec<String> = media
             .iter()
-            .map(|file| render(layout, name_of(&file.path), file.taken()))
+            .map(|file| render(layout, name_of(&file.path), file.taken.naive_local()))
             .collect();
         assert_eq!(
             names,
@@ -1623,6 +1792,197 @@ mod tests {
 
         // Its own time is still what says whether the file is on disk.
         assert_eq!(media[1].mtime, when("2026-09-03 00:00:02"));
+    }
+
+    /// The tables and columns as iOS 27 has them, with the rows a camera roll
+    /// gives: a shot from a trip, a photo saved from a chat years after it was
+    /// taken, one with no zone, and one in Recently Deleted.
+    fn photos_sqlite(dir: &Path) -> PathBuf {
+        let path = dir.join("Photos.sqlite");
+        let db = rusqlite::Connection::open(&path).unwrap();
+        db.execute_batch(
+            "CREATE TABLE ZASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
+                 ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZTRASHEDSTATE INTEGER);
+             CREATE TABLE ZADDITIONALASSETATTRIBUTES (Z_PK INTEGER PRIMARY KEY,
+                 ZASSET INTEGER, ZTIMEZONEOFFSET INTEGER);
+             INSERT INTO ZASSET VALUES
+                 (1, 'DCIM/100APPLE', 'IMG_0001.HEIC', 810000000.25, 0),
+                 (2, 'DCIM/100APPLE', 'IMG_0002.JPG', 560000000, 0),
+                 (3, 'DCIM/100APPLE', 'IMG_0003.PNG', 810000000, NULL),
+                 (4, 'DCIM/100APPLE', 'IMG_0004.HEIC', 810000000, 1),
+                 (5, 'PhotoData/CPLAssets', 'IMG_0005.HEIC', 810000000, 0);
+             INSERT INTO ZADDITIONALASSETATTRIBUTES VALUES
+                 (1, 1, 32400), (2, 2, 3600), (3, 3, NULL), (4, 4, 3600);",
+        )
+        .unwrap();
+        path
+    }
+
+    #[test]
+    fn photos_dates_each_file_where_it_was_taken() {
+        let dir = std::env::temp_dir().join(format!("rollport-photos-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let known = read_photos(&photos_sqlite(&dir)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        let at = |text: &str| Known::Taken(chrono::DateTime::parse_from_rfc3339(text).unwrap());
+
+        // 810000000 seconds after 2001-01-01 is 2026-09-02 00:00:00 UTC.
+        assert_eq!(
+            known["/DCIM/100APPLE/IMG_0001.HEIC"],
+            at("2026-09-02T09:00:00+09:00")
+        );
+        assert_eq!(
+            known["/DCIM/100APPLE/IMG_0002.JPG"],
+            at("2018-09-30T12:33:20+01:00")
+        );
+        assert_eq!(known["/DCIM/100APPLE/IMG_0004.HEIC"], Known::Deleted);
+        // No zone: the same instant, in this machine's zone.
+        let Known::Taken(no_zone) = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
+            panic!("a photo with no zone is still dated")
+        };
+        assert_eq!(no_zone.timestamp(), 810_000_000 + APPLE_EPOCH);
+        // Only what is in /DCIM.
+        assert_eq!(known.len(), 4);
+    }
+
+    #[test]
+    fn settling_dates_by_photos_and_leaves_out_recently_deleted() {
+        let file = |path: &str| Media {
+            path: path.into(),
+            size: 1,
+            mtime: when("2026-11-02 10:00:00"),
+            taken: here(when("2026-11-02 10:00:00")),
+            live_video: false,
+        };
+        let mut media = vec![
+            file("/DCIM/100APPLE/IMG_0001.HEIC"),
+            file("/DCIM/100APPLE/IMG_0001.MOV"),
+            file("/DCIM/100APPLE/IMG_0004.HEIC"),
+            file("/DCIM/100APPLE/IMG_0004.MOV"),
+            file("/DCIM/100APPLE/IMG_0009.JPG"),
+        ];
+        let taken = chrono::DateTime::parse_from_rfc3339("2024-05-01T08:00:00+02:00").unwrap();
+        let known = HashMap::from([
+            (
+                "/DCIM/100APPLE/IMG_0001.HEIC".to_string(),
+                Known::Taken(taken),
+            ),
+            ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Deleted),
+        ]);
+
+        settle(&mut media, &known);
+        mark_live_videos(&mut media);
+
+        let dated: Vec<(&str, String)> = media
+            .iter()
+            .map(|file| (file.path.as_str(), file.taken.to_rfc3339()))
+            .collect();
+        assert_eq!(
+            dated,
+            [
+                ("/DCIM/100APPLE/IMG_0001.HEIC", taken.to_rfc3339()),
+                // The clip of a Live Photo takes its still's time.
+                ("/DCIM/100APPLE/IMG_0001.MOV", taken.to_rfc3339()),
+                // Photos has no row for it: when it was written.
+                (
+                    "/DCIM/100APPLE/IMG_0009.JPG",
+                    here(when("2026-11-02 10:00:00")).to_rfc3339()
+                ),
+            ]
+        );
+    }
+
+    /// Against the phone on the cable: Photos' record is read, and a file
+    /// written on the phone long after it was taken lands in the year and
+    /// month it was taken, with that date on disk.
+    /// `cargo test --lib real_phone -- --ignored --nocapture`
+    #[tokio::test(flavor = "current_thread")]
+    #[ignore = "needs a trusted iPhone on the cable"]
+    async fn real_phone() {
+        let addr = UsbmuxdAddr::from_env_var().unwrap();
+        let udid = addr
+            .connect(0)
+            .await
+            .unwrap()
+            .get_devices()
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|device| device.connection_type == Connection::Usb)
+            .expect("an iPhone on the cable")
+            .udid;
+
+        let started = Instant::now();
+        let known = photos(&udid, 0).await;
+        let deleted = known.values().filter(|k| **k == Known::Deleted).count();
+        eprintln!(
+            "Photos.sqlite: {} files, {deleted} in Recently Deleted, {:.1}s",
+            known.len(),
+            started.elapsed().as_secs_f64()
+        );
+        assert!(known.len() > deleted);
+
+        let mut afc = files_of(&udid).await.unwrap();
+        let mut late = None;
+        for (path, known) in &known {
+            let Known::Taken(taken) = known else { continue };
+            let info = afc.get_file_info(path).await.unwrap();
+            if (info.modified - taken.naive_utc()).num_days() > 30 {
+                late = Some(Media {
+                    path: path.clone(),
+                    size: info.size as u64,
+                    mtime: info.modified,
+                    taken: *taken,
+                    live_video: false,
+                });
+                break;
+            }
+        }
+        let file = late.expect("a file written more than 30 days after it was taken");
+        eprintln!("{} written {} taken {}", file.path, file.mtime, file.taken);
+
+        let dir = std::env::temp_dir().join(format!("rollport-real-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let layout = "{mtime:%Y}/{mtime:%m}/{name}";
+        let copied = copy(
+            &mut afc,
+            &file,
+            &dir,
+            layout,
+            &AtomicBool::new(false),
+            &AtomicU64::new(0),
+            &Mutex::new(0),
+        )
+        .await;
+        assert!(matches!(copied, Ok(Copied::Fetched)), "{copied:?}");
+
+        let target = dir.join(render(
+            layout,
+            name_of(&file.path),
+            file.taken.naive_local(),
+        ));
+        let on_disk = fs::metadata(&target).unwrap().modified().unwrap();
+        eprintln!("landed at {}", target.display());
+        assert_eq!(on_disk, SystemTime::from(file.taken));
+
+        // Copied again, it is recognised as already there.
+        let again = copy(
+            &mut afc,
+            &file,
+            &dir,
+            layout,
+            &AtomicBool::new(false),
+            &AtomicU64::new(0),
+            &Mutex::new(0),
+        )
+        .await;
+        assert!(matches!(again, Ok(Copied::Already)));
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A killed run's leftovers go. A copy another window is still writing

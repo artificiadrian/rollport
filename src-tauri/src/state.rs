@@ -102,7 +102,7 @@ impl Batch {
 
             if !file.is_live_video() {
                 newest.push(file);
-                newest.sort_by_key(|file| std::cmp::Reverse(file.mtime));
+                newest.sort_by_key(|file| std::cmp::Reverse(file.taken));
                 newest.truncate(PRINTS);
             }
         }
@@ -117,21 +117,23 @@ impl Batch {
 pub struct Media {
     pub path: String,
     pub size: u64,
+    /// When the file was last written on the phone, as AFC says. Part of what
+    /// the folder knows the file by, and nothing else: a photo saved from a
+    /// chat, or a whole camera roll moved to a new phone, was written long
+    /// after it was taken.
     pub mtime: chrono::NaiveDateTime,
-    /// A Live Photo's clip: when its still was taken. The two halves rarely
-    /// share a second, and a pair is only a pair to other apps while the
-    /// names match, so the clip is named and dated with its still.
-    pub still: Option<chrono::NaiveDateTime>,
+    /// When it was taken, in the zone it was taken in, as the Photos app
+    /// shows it. What the file is named and dated with.
+    pub taken: chrono::DateTime<chrono::FixedOffset>,
+    /// A Live Photo's clip. The two halves rarely share a second, and a pair
+    /// is only a pair to other apps while the names match, so the clip is
+    /// named and dated with its still: its `taken` is the still's.
+    pub live_video: bool,
 }
 
 impl Media {
     pub fn is_live_video(&self) -> bool {
-        self.still.is_some()
-    }
-
-    /// The time the file is named and dated with.
-    pub fn taken(&self) -> chrono::NaiveDateTime {
-        self.still.unwrap_or(self.mtime)
+        self.live_video
     }
 
     /// A film, or a Live Photo's clip.
@@ -201,12 +203,12 @@ pub fn default_layout() -> String {
     "{mtime:%Y-%m-%d_%H-%M-%S}_{name}".to_string()
 }
 
-/// AFC reports a UTC instant. A file taken at 20:57 in Berlin should be called
-/// 20-57, not 19-57, so names are printed in this machine's timezone.
-pub fn local(mtime: chrono::NaiveDateTime) -> chrono::NaiveDateTime {
+/// A UTC instant in this machine's zone: the best guess at where a photo was
+/// taken when Photos does not say.
+pub fn here(utc: chrono::NaiveDateTime) -> chrono::DateTime<chrono::FixedOffset> {
     use chrono::TimeZone;
 
-    chrono::Local.from_utc_datetime(&mtime).naive_local()
+    chrono::Local.from_utc_datetime(&utc).fixed_offset()
 }
 
 /// A date, printed by a format string we did not write. chrono panics rather
@@ -1320,10 +1322,11 @@ mod tests {
         let file = |path: &str, live_video: bool, second| Media {
             path: path.into(),
             size: 10,
-            mtime: chrono::DateTime::from_timestamp(second, 0)
+            mtime: chrono::NaiveDateTime::default(),
+            taken: chrono::DateTime::from_timestamp(second, 0)
                 .unwrap()
-                .naive_utc(),
-            still: live_video.then(chrono::NaiveDateTime::default),
+                .fixed_offset(),
+            live_video,
         };
         let media = [
             file("/DCIM/100APPLE/IMG_0001.HEIC", false, 1),
@@ -1492,7 +1495,8 @@ mod tests {
             path: path.into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
-            still: live_video.then(|| when("2026-09-02 15:04:11")),
+            taken: here(when("2026-09-02 15:04:11")),
+            live_video,
         };
 
         // A Live Photo (its still and its clip), a film, and a photo.
@@ -2362,7 +2366,8 @@ mod tests {
             path: path.into(),
             size,
             mtime: when("2026-09-02 15:04:11"),
-            still: None,
+            taken: here(when("2026-09-02 15:04:11")),
+            live_video: false,
         }
     }
 

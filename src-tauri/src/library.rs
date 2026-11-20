@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::Path};
 
 use crate::{
     Context,
-    state::{FolderFacts, Media, Range, Settings, Takes, default_layout, local},
+    state::{FolderFacts, Media, Range, Settings, Takes, default_layout},
 };
 
 /// Identity is where it lived on the phone, its size, and the whole second it
@@ -117,10 +117,9 @@ pub fn new<'a>(
     media
         .iter()
         .filter(move |file| takes.takes(file))
-        // The dates picked are days in this timezone, and the file is named
-        // with its local day too, so the filter compares the same thing. AFC
-        // reports UTC.
-        .filter(move |file| range.takes(local(file.taken()).date()))
+        // The day it was taken where it was taken: the day the Photos app
+        // shows, and the day the file is named with.
+        .filter(move |file| range.takes(file.taken.date_naive()))
         .filter(|file| !keys.contains(&key(file)))
 }
 
@@ -345,7 +344,10 @@ mod tests {
             mtime: chrono::DateTime::from_timestamp(1_700_000_000, 300_000_000)
                 .unwrap()
                 .naive_utc(),
-            still: None,
+            taken: chrono::DateTime::from_timestamp(1_700_000_000, 0)
+                .unwrap()
+                .fixed_offset(),
+            live_video: false,
         }
     }
 
@@ -523,27 +525,23 @@ mod tests {
         assert!(!gone.exists());
     }
 
-    /// The dates picked are days here, and AFC says UTC: a photo taken late
-    /// at night falls on the local day. Only seen away from UTC.
+    /// Half past midnight in Tokyo is the day before in UTC, and the day
+    /// after wherever the computer is in Europe or the Americas.
     #[test]
-    fn a_range_takes_the_local_day_of_a_photo() {
-        let night = ["2026-09-03 23:30:00", "2026-09-04 00:30:00"]
-            .map(|at| chrono::NaiveDateTime::parse_from_str(at, "%Y-%m-%d %H:%M:%S").unwrap())
-            .into_iter()
-            .find(|utc| local(*utc).date() != utc.date());
-        let Some(utc) = night else {
-            return;
-        };
-
+    fn a_range_takes_the_day_a_photo_was_taken_where_it_was_taken() {
+        let tokyo = chrono::DateTime::parse_from_rfc3339("2026-09-04T00:30:00+09:00").unwrap();
         let photo = [Media {
-            mtime: utc,
+            taken: tokyo,
             ..file("/DCIM/100APPLE/IMG_0001.HEIC")
         }];
-        let on = |day| Range::Between { from: day, to: day };
+        let on = |day: &str| {
+            let day = day.parse().unwrap();
+            Range::Between { from: day, to: day }
+        };
         let taken = |range| new(&photo, Takes::Everything, range, &HashSet::new()).count();
 
-        assert_eq!(taken(on(local(utc).date())), 1);
-        assert_eq!(taken(on(utc.date())), 0);
+        assert_eq!(taken(on("2026-09-04")), 1);
+        assert_eq!(taken(on("2026-09-03")), 0);
     }
 
     #[test]
