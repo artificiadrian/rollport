@@ -335,7 +335,7 @@ fn phone_of(app: &AppHandle, udid: &str, path: &str) -> Option<String> {
 
     let known = match phone.roll.as_ref()? {
         Roll::Reading { announced, .. } => announced.iter().any(|file| file == path),
-        Roll::Done { media } => media.iter().any(|file| file.path == path),
+        Roll::Done { media, .. } => media.iter().any(|file| file.path == path),
     };
 
     known.then(|| phone.udid.clone())

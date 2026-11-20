@@ -41,10 +41,11 @@ const batch = (files: number, bytes = files * 1e6): Batch => ({
     clips: 0,
     newest: [],
 })
-const read = (fresh: number, bytes?: number): Roll => ({
+const read = (fresh: number, bytes?: number, undated = false): Roll => ({
     roll: "done",
     all: batch(fresh + 100),
     new: batch(fresh, bytes),
+    undated,
 })
 const reading = (failed: string | null = null): Roll => ({
     roll: "reading",
@@ -393,6 +394,17 @@ describe("which screen wins", () => {
         )
         assert.ok(shown.screen === "ready")
         assert.equal(shown.warning?.tone, "short")
+    })
+
+    test("undated files are said before a network drive", () => {
+        const shown = screen(
+            flow({
+                roll: read(3, undefined, true),
+                folder: { ...known, network: true },
+            }),
+        )
+        assert.ok(shown.screen === "ready")
+        assert.match(shown.warning?.text ?? "", /dates from Photos/)
     })
 
     test("nothing new and never imported: no last import is named", () => {

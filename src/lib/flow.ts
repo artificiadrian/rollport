@@ -40,6 +40,9 @@ export type Roll =
           all: Batch
           /// Those of them the folder has never taken.
           new: Batch
+          /// The files are dated by when they were written on the phone:
+          /// Photos' record could not be read.
+          undated: boolean
       }
 
 /// What could not be copied. One bad file does not end a run.
@@ -575,12 +578,17 @@ export function screen(flow: Flow): Screen {
                       tone: "short",
                       text: `Free up ${size(roll.new.bytes - folder.free)}, or choose fewer dates or media types in Options.`,
                   }
-                : folder.network
+                : roll.undated
                   ? {
                         tone: "note",
-                        text: "On a network drive, a dropped connection stops the import. You can go on later.",
+                        text: "Rollport could not read the dates from Photos. Files will be dated by when they were saved on the iPhone.",
                     }
-                  : null,
+                  : folder.network
+                    ? {
+                          tone: "note",
+                          text: "On a network drive, a dropped connection stops the import. You can go on later.",
+                      }
+                    : null,
     }
 }
 

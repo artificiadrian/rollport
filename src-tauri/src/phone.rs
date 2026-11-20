@@ -109,7 +109,8 @@ pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
 /// Every photo and video in /DCIM, with what it weighs and when it was taken.
 /// Photos' own record is read over a second connection while the walk runs:
 /// the walk waits on round trips, the copy of the database on bandwidth.
-pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
+/// Also whether the files are undated: Photos' record could not be read.
+pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<(Vec<Media>, bool), String> {
     // A walk that failed or was replaced has no use for the dates, and the
     // database is hundreds of megabytes on the same cable.
     let failed = AtomicBool::new(false);
@@ -125,10 +126,20 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>
     );
     let mut media = walked?;
 
-    settle(&mut media, &known);
+    let undated = match known {
+        Ok(known) => {
+            settle(&mut media, &known);
+            false
+        }
+        Err(reason) => {
+            eprintln!("dating files by when they were written: {reason}");
+            true
+        }
+    };
+
     mark_live_videos(&mut media);
 
-    Ok(media)
+    Ok((media, undated))
 }
 
 async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
@@ -216,14 +227,12 @@ pub enum Known {
 /// Core Data counts seconds from 2001-01-01 UTC.
 const APPLE_EPOCH: i64 = 978_307_200;
 
-/// What Photos knows about each file in /DCIM, by its path on the phone. An
-/// empty answer when the database cannot be had or read: then every file is
-/// dated by when it was written, as before.
+/// What Photos knows about each file in /DCIM, by its path on the phone.
 async fn photos(
     udid: &str,
     ticket: u64,
     wanted: &(dyn Fn() -> bool + Sync),
-) -> HashMap<String, Known> {
+) -> Result<HashMap<String, Known>, String> {
     let scratch =
         std::env::temp_dir().join(format!("rollport-photos-{}-{ticket}", std::process::id()));
 
@@ -266,10 +275,7 @@ async fn photos(
 
     let _ = fs::remove_dir_all(&scratch);
 
-    read.unwrap_or_else(|reason| {
-        eprintln!("dating files by when they were written: {reason}");
-        HashMap::new()
-    })
+    read
 }
 
 /// A copy of Photos.sqlite left behind by a run that was killed: hundreds of
@@ -2019,7 +2025,7 @@ mod tests {
             .udid;
 
         let started = Instant::now();
-        let known = photos(&udid, 0, &|| true).await;
+        let known = photos(&udid, 0, &|| true).await.unwrap();
         let deleted = known.values().filter(|k| **k == Known::Deleted).count();
         eprintln!(
             "Photos.sqlite: {} files, {deleted} in Recently Deleted, {:.1}s",

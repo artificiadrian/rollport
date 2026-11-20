@@ -151,6 +151,7 @@ function demo() {
             roll: "done",
             all: ALL,
             new: wanted({ range: "everything" }, "everything"),
+            undated: false,
         },
         run: null,
         range: { range: "everything" },
@@ -217,7 +218,12 @@ function demo() {
         return {
             ...flow,
             // As Rust: the folder now holds what landed, so less is new.
-            roll: { roll: "done", all: ALL, new: left(batch, imported) },
+            roll: {
+                roll: "done",
+                all: ALL,
+                new: left(batch, imported),
+                undated: false,
+            },
             run: {
                 run: "finished",
                 imported,
@@ -314,7 +320,12 @@ function demo() {
             flow = { ...ready, range: flow.range, folder: withSettings(ready) }
             publish({
                 ...flow,
-                roll: { roll: "done", all: ALL, new: current() },
+                roll: {
+                    roll: "done",
+                    all: ALL,
+                    new: current(),
+                    undated: false,
+                },
             })
         })
     }

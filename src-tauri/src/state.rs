@@ -167,7 +167,12 @@ pub enum Roll {
         failed: Option<String>,
     },
     /// Everything worth importing. The window is sent the tally, not the list.
-    Done { media: Vec<Media> },
+    Done {
+        media: Vec<Media>,
+        /// Photos' record could not be read, so every file is dated by when
+        /// it was written on the phone, and Recently Deleted is not known.
+        undated: bool,
+    },
 }
 
 /// What a copy needs, taken under the lock when it starts.
@@ -679,6 +684,8 @@ pub enum RollView {
         all: Batch,
         /// Those of them the folder has never taken.
         new: Batch,
+        /// The files are dated by when they were written on the phone.
+        undated: bool,
     },
 }
 
@@ -1009,15 +1016,16 @@ impl State {
         true
     }
 
-    /// A walk ended. Answers whether to try again.
-    pub fn roll_read(&mut self, ticket: u64, result: Result<Vec<Media>, String>) -> bool {
+    /// A walk ended, with the camera roll and whether it is undated. Answers
+    /// whether to try again.
+    pub fn roll_read(&mut self, ticket: u64, result: Result<(Vec<Media>, bool), String>) -> bool {
         let Some(roll) = self.reading(ticket) else {
             return false;
         };
 
         match result {
-            Ok(media) => {
-                *roll = Roll::Done { media };
+            Ok((media, undated)) => {
+                *roll = Roll::Done { media, undated };
 
                 // The window is about the next run now, unless the report is
                 // of this phone and left some: then its Continue is that run.
@@ -1126,7 +1134,7 @@ impl State {
 
         let (
             Some(Device::Ready { udid, .. }),
-            Some(Roll::Done { media }),
+            Some(Roll::Done { media, .. }),
             Folder::Known { path, facts },
         ) = (
             self.phone
@@ -1289,9 +1297,10 @@ impl State {
                     latest: announced.last().cloned(),
                     failed: failed.clone(),
                 },
-                Roll::Done { media } => RollView::Done {
+                Roll::Done { media, undated } => RollView::Done {
                     all: Batch::of(new(media, takes, self.range, &HashSet::new())),
                     new: Batch::of(new(media, takes, self.range, keys)),
+                    undated: *undated,
                 },
             });
 
@@ -1649,7 +1658,7 @@ mod tests {
     /// The reading that is waited for lands with this camera roll.
     fn read(state: &mut State, media: Vec<Media>) {
         let ticket = ticket(state);
-        state.roll_read(ticket, Ok(media));
+        state.roll_read(ticket, Ok((media, false)));
     }
 
     fn on(state: &State) -> Option<&str> {
@@ -1725,7 +1734,7 @@ mod tests {
 
             assert!(!state.roll_seen(old, 100, None));
             assert!(!state.roll_read(old, Err("the phone is locked".into())));
-            assert!(!state.roll_read(old, Ok(Vec::new())));
+            assert!(!state.roll_read(old, Ok((Vec::new(), false))));
             assert!(!matches!(state.view().roll, Some(RollView::Done { .. })));
             assert!(state.reading(ticket(&state)).is_some());
         }

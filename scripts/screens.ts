@@ -79,6 +79,7 @@ const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
         clips: Math.floor(fresh / 4),
         newest: fresh ? newest : [],
     },
+    undated: false,
 })
 
 const base: Flow = {
@@ -310,6 +311,9 @@ const STATES: State[] = [
         folder: folder({ free: 120e6 }),
     }),
     state("ready-network", "", { folder: folder({ network: true }) }),
+    state("ready-undated", "Photos' dates could not be read", {
+        roll: { ...done(4210, 312), undated: true },
+    }),
     state("ready-full-network", "A full disk is said before the network", {
         folder: folder({ free: 120e6, network: true }),
     }),
