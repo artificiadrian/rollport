@@ -109,8 +109,12 @@ pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
 /// Every photo and video in /DCIM, with what it weighs and when it was taken.
 /// Photos' own record is read over a second connection while the walk runs:
 /// the walk waits on round trips, the copy of the database on bandwidth.
-/// Also whether the files are undated: Photos' record could not be read.
-pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<(Vec<Media>, bool), String> {
+/// Also why the files are undated, when Photos' record could not be read.
+pub async fn walk(
+    app: &AppHandle,
+    udid: &str,
+    ticket: u64,
+) -> Result<(Vec<Media>, Option<String>), String> {
     // A walk that failed or was replaced has no use for the dates, and the
     // database is hundreds of megabytes on the same cable.
     let failed = AtomicBool::new(false);
@@ -129,11 +133,14 @@ pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<(Vec<Media
     let undated = match known {
         Ok(known) => {
             settle(&mut media, &known);
-            false
+            None
         }
         Err(reason) => {
-            eprintln!("dating files by when they were written: {reason}");
-            true
+            crate::note(
+                app,
+                &format!("dating files by when they were written: {reason}"),
+            );
+            Some(reason)
         }
     };
 
@@ -295,13 +302,15 @@ fn sweep_photos() {
             continue;
         }
 
-        let abandoned = fs::read_dir(entry.path()).is_ok_and(|files| {
-            files.flatten().all(|file| {
-                file.metadata()
-                    .and_then(|meta| meta.modified())
-                    .is_ok_and(|when| when.elapsed().is_ok_and(|age| age > ABANDONED))
-            })
-        });
+        let old = |meta: std::io::Result<fs::Metadata>| {
+            meta.and_then(|meta| meta.modified())
+                .is_ok_and(|when| when.elapsed().is_ok_and(|age| age > ABANDONED))
+        };
+
+        // The folder too: one just made is empty until its copy begins.
+        let abandoned = old(entry.metadata())
+            && fs::read_dir(entry.path())
+                .is_ok_and(|files| files.flatten().all(|file| old(file.metadata())));
 
         if abandoned {
             let _ = fs::remove_dir_all(entry.path());
@@ -803,17 +812,16 @@ pub async fn copy_all(
         // One unreadable file is not a reason to abandon the other nine
         // thousand, so what it was is reported at the end of the run.
         trouble: lost.trouble(),
+        // Known to whoever started the run.
+        undated: None,
     })
 }
 
-/// The files that did not arrive: how many, and the first, by name, with what
-/// it said. Which file, and what it said, is the difference between one bad
-/// photo and a phone that locked halfway through.
+/// The files that did not arrive, by name, with what each said. Which file,
+/// and what it said, is the difference between one bad photo and a phone that
+/// locked halfway through.
 #[derive(Default)]
-struct Lost {
-    failed: usize,
-    first: Option<(String, String)>,
-}
+struct Lost(Vec<(String, String)>);
 
 impl Lost {
     /// One file that did not arrive. After Stop it is not lost: the stop
@@ -821,21 +829,13 @@ impl Lost {
     /// next time. Nor after a broken folder, which raises the stop flag too
     /// and is said once, as the run's end.
     fn add(&mut self, name: &str, reason: String, stopped: bool) {
-        if stopped {
-            return;
+        if !stopped {
+            self.0.push((name.to_string(), reason));
         }
-
-        self.failed += 1;
-        self.first.get_or_insert_with(|| (name.to_string(), reason));
     }
 
     fn trouble(self) -> Option<Trouble> {
-        let failed = self.failed;
-        self.first.map(|(name, reason)| Trouble {
-            failed,
-            name,
-            reason,
-        })
+        (!self.0.is_empty()).then_some(Trouble(self.0))
     }
 }
 
@@ -1690,10 +1690,12 @@ mod tests {
         lost.add("IMG_0003.HEIC", "stopped".into(), true);
 
         let trouble = lost.trouble().expect("two were lost");
-        assert_eq!(trouble.failed, 2);
         assert_eq!(
-            (trouble.name.as_str(), trouble.reason.as_str()),
-            ("IMG_0001.HEIC", "timed out")
+            trouble.0,
+            [
+                ("IMG_0001.HEIC".to_string(), "timed out".to_string()),
+                ("IMG_0002.HEIC".to_string(), "gone".to_string()),
+            ]
         );
 
         let mut stopped = Lost::default();
@@ -1943,7 +1945,7 @@ mod tests {
 
     #[test]
     fn photos_dates_each_file_where_it_was_taken() {
-        let dir = std::env::temp_dir().join(format!("rollport-photos-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rollport-dates-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -2176,6 +2178,11 @@ mod tests {
             fs::create_dir_all(&dir).unwrap();
             let file = fs::File::create(dir.join("Photos.sqlite")).unwrap();
             file.set_modified(SystemTime::now() - Duration::from_secs(age))
+                .unwrap();
+            fs::File::open(&dir)
+                .and_then(|folder| {
+                    folder.set_modified(SystemTime::now() - Duration::from_secs(age))
+                })
                 .unwrap();
             dir
         };

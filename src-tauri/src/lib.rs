@@ -195,12 +195,23 @@ fn read_roll(app: &AppHandle, reading: Option<Reading>) {
     let app = app.clone();
 
     spawn(async move {
+        // A locked phone fails every few seconds for as long as it stays
+        // locked; the log hears each reason once.
+        let mut said = None;
+
         loop {
             let walked = guarded(spawn({
                 let (app, udid) = (app.clone(), udid.clone());
                 async move { walk(&app, &udid, ticket).await }
             }))
             .await;
+
+            if let Err(reason) = &walked
+                && said.as_ref() != Some(reason)
+            {
+                note(&app, &format!("cannot read the camera roll: {reason}"));
+                said = Some(reason.clone());
+            }
 
             if !with(&app, |state| state.roll_read(ticket, walked)) {
                 return;
@@ -226,6 +237,7 @@ async fn start_import(app: AppHandle) {
         settings,
         media,
         cancel,
+        undated,
     }) = with(&app, |state| {
         let import = state.start_import()?;
 
@@ -238,6 +250,11 @@ async fn start_import(app: AppHandle) {
     else {
         return;
     };
+
+    note(
+        &app,
+        &format!("importing {} files into {}", media.len(), path.display()),
+    );
 
     // Guarded, so a panic ends the run as a failure. Otherwise the run stays
     // copying for ever, everything is refused, and Stop reaches nothing.
@@ -256,14 +273,49 @@ async fn start_import(app: AppHandle) {
         trouble: None,
         newest: Vec::new(),
         udid,
+        undated: None,
     });
+    let report = Report { undated, ..report };
 
     // The folder is a library now, or holds more than it did, and it is the
     // one that knows how much room is left. Landed with the report, so the
     // report never shows beside the old count.
     let read = facts(&path).await;
     let next = with(&app, |state| state.copied(report, &path, read));
+
+    if let Some(details) = lock(&app).details() {
+        note(&app, &format!("import finished\n{details}"));
+    }
+
     follow(&app, next)
+}
+
+/// What the last run did, for the person to paste into a report of a problem.
+#[tauri::command]
+async fn run_details(app: AppHandle) -> Option<String> {
+    lock(&app).details()
+}
+
+/// One line in the log, for whoever looks into a problem later: the window
+/// shows what matters now, and the Windows build has no console. Kept small:
+/// past a megabyte the log starts again and the last one is kept beside it.
+fn note(app: &AppHandle, line: &str) {
+    use std::io::Write;
+
+    let Ok(dir) = app.path().app_log_dir() else {
+        return;
+    };
+    let _ = fs::create_dir_all(&dir);
+    let path = dir.join("rollport.log");
+
+    if fs::metadata(&path).is_ok_and(|meta| meta.len() > 1_000_000) {
+        let _ = fs::rename(&path, dir.join("rollport.old.log"));
+    }
+
+    if let Ok(mut log) = fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+        let _ = writeln!(log, "{now} {line}");
+    }
 }
 
 /// Stop the copy after the files it is on.
@@ -547,7 +599,10 @@ async fn write_settings(app: &AppHandle, path: Option<PathBuf>) {
     .await;
 
     if let Err(reason) = written {
-        eprintln!("cannot save the settings of {}: {reason}", path.display())
+        note(
+            app,
+            &format!("cannot save the settings of {}: {reason}", path.display()),
+        )
     }
 }
 
@@ -801,6 +856,7 @@ pub fn run() {
             set_layout,
             rescan,
             reveal_destination,
+            run_details,
             show_help,
             zoom
         ])

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { convertFileSrc } from "@tauri-apps/api/core"
+    import { convertFileSrc, invoke } from "@tauri-apps/api/core"
     import { cubicOut } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
     import { fade, fly } from "svelte/transition"
@@ -53,6 +53,31 @@
         /// `flow.folder`, known: this screen is only drawn with one.
         folder: Extract<Folder, { folder: "known" }>
     } = $props()
+
+    /// What the last run did, as text to paste into a report of a problem.
+    /// Asked for when a report with trouble shows, because WebKit lets a page
+    /// write the clipboard only within the click itself.
+    let details: string | null = $state(null)
+    let copied = $state(false)
+
+    $effect(() => {
+        if (view.screen !== "done" || view.badge !== "trouble") return
+        void flow.run
+        invoke<string | null>("run_details")
+            .then((text) => (details = text))
+            .catch((e) => console.error("run_details", e))
+    })
+
+    function copyDetails() {
+        if (details === null) return
+        navigator.clipboard
+            .writeText(details)
+            .then(() => {
+                copied = true
+                setTimeout(() => (copied = false), 2000)
+            })
+            .catch((e) => console.error("copy details", e))
+    }
 
     /// The phone the window is about, ready or not.
     const shown = $derived(
@@ -688,9 +713,18 @@
                         <Reason reason={view.reason} />
                     {/if}
                     {#if view.badge === "trouble"}
-                        <HelpLink page="troubleshooting"
-                            >Troubleshooting</HelpLink
-                        >
+                        <div class="flex gap-2">
+                            <HelpLink page="troubleshooting"
+                                >Troubleshooting</HelpLink
+                            >
+                            <button
+                                type="button"
+                                onclick={copyDetails}
+                                class="mt-2 rounded px-1 text-xs text-muted underline decoration-faint underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
+                            >
+                                {copied ? "Copied" : "Copy details"}
+                            </button>
+                        </div>
                     {/if}
                     <div class="mt-6 flex items-center gap-2">
                         {#if view.next === "continue" || view.next === "later"}

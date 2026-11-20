@@ -169,9 +169,10 @@ pub enum Roll {
     /// Everything worth importing. The window is sent the tally, not the list.
     Done {
         media: Vec<Media>,
-        /// Photos' record could not be read, so every file is dated by when
-        /// it was written on the phone, and Recently Deleted is not known.
-        undated: bool,
+        /// Why Photos' record could not be read, when it could not: then
+        /// every file is dated by when it was written on the phone, and
+        /// Recently Deleted is not known.
+        undated: Option<String>,
     },
 }
 
@@ -182,6 +183,8 @@ pub struct Import {
     pub settings: Settings,
     pub media: Vec<Media>,
     pub cancel: Arc<AtomicBool>,
+    /// Why the files are dated by when they were written, if they are.
+    pub undated: Option<String>,
 }
 
 /// A reading to start: which phone, and the ticket its answers carry.
@@ -501,17 +504,27 @@ pub struct Progress {
     pub latest: Option<String>,
 }
 
-/// What could not be copied. A count with nothing to name is a number the
-/// user can do nothing with, so the two are one thing or neither.
-#[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Trouble {
-    /// How many files were left on the phone.
-    pub failed: usize,
-    /// The first of them, by its own name, and what it said. Empty when a
-    /// worker crashed before it could say which file it was on.
-    pub name: String,
-    pub reason: String,
+/// What could not be copied: every file left on the phone, by its own name,
+/// with what it said, and never none. The window is told how many and the
+/// first; the rest are for Copy details and the log. A name is empty when a
+/// worker crashed before it could say which file it was on.
+#[derive(Clone)]
+pub struct Trouble(pub Vec<(String, String)>);
+
+impl Serialize for Trouble {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+
+        let (name, reason) = self
+            .0
+            .first()
+            .map_or(("", ""), |(name, reason)| (name.as_str(), reason.as_str()));
+        let mut out = serializer.serialize_struct("Trouble", 3)?;
+        out.serialize_field("failed", &self.0.len())?;
+        out.serialize_field("name", name)?;
+        out.serialize_field("reason", reason)?;
+        out.end()
+    }
 }
 
 /// The import while it runs, then what it did. Stop is the only action a
@@ -540,6 +553,9 @@ pub struct Report {
     pub end: End,
     /// One bad file does not end a run; it is reported at the end of it.
     pub trouble: Option<Trouble>,
+    /// Why the files were dated by when they were written, if they were.
+    #[serde(skip)]
+    pub undated: Option<String>,
     /// The newest few it copied, by path on the phone: the report's prints.
     pub newest: Vec<String>,
     /// The phone it copied from. Its Continue is only for that phone, and its
@@ -1016,9 +1032,13 @@ impl State {
         true
     }
 
-    /// A walk ended, with the camera roll and whether it is undated. Answers
-    /// whether to try again.
-    pub fn roll_read(&mut self, ticket: u64, result: Result<(Vec<Media>, bool), String>) -> bool {
+    /// A walk ended, with the camera roll and why it is undated, if it is.
+    /// Answers whether to try again.
+    pub fn roll_read(
+        &mut self,
+        ticket: u64,
+        result: Result<(Vec<Media>, Option<String>), String>,
+    ) -> bool {
         let Some(roll) = self.reading(ticket) else {
             return false;
         };
@@ -1134,7 +1154,7 @@ impl State {
 
         let (
             Some(Device::Ready { udid, .. }),
-            Some(Roll::Done { media, .. }),
+            Some(Roll::Done { media, undated }),
             Folder::Known { path, facts },
         ) = (
             self.phone
@@ -1161,6 +1181,7 @@ impl State {
             settings: facts.settings.clone(),
             cancel: Arc::new(AtomicBool::new(false)),
             media,
+            undated: undated.clone(),
         };
 
         // The phone imports into this folder from now on.
@@ -1180,6 +1201,55 @@ impl State {
         });
 
         Some(import)
+    }
+
+    /// What the last run did, as text a person pastes into a report of a
+    /// problem: on what, how it ended, and every file it left on the phone.
+    pub fn details(&self) -> Option<String> {
+        use std::fmt::Write;
+
+        let Some(Run::Finished(report)) = &self.run else {
+            return None;
+        };
+
+        let ios = match self.listed(&report.udid) {
+            Some(Device::Ready { version, .. }) => format!("iOS {version}"),
+            _ => "iOS not known".to_string(),
+        };
+        let dates = match &report.undated {
+            None => "from Photos".to_string(),
+            Some(reason) => format!("from the files, as Photos could not be read: {reason}"),
+        };
+        let ended = match &report.end {
+            End::Done => "done".to_string(),
+            End::Stopped => "stopped".to_string(),
+            End::Full => "the disk was full".to_string(),
+            End::Unplugged => "the iPhone was unplugged".to_string(),
+            End::Failed { reason } => format!("failed: {reason}"),
+        };
+        let failures = report
+            .trouble
+            .as_ref()
+            .map_or(&[][..], |trouble| &trouble.0);
+
+        let mut out = format!(
+            "Rollport {} on {} {}, iPhone with {ios}\n\
+             Dates: {dates}\n\
+             Ended: {ended}\n\
+             Imported: {}\n\
+             Not copied: {}\n",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+            report.imported,
+            failures.len(),
+        );
+        for (name, reason) in failures {
+            let name = if name.is_empty() { "a file" } else { name };
+            let _ = writeln!(out, "  {name}: {reason}");
+        }
+
+        Some(out)
     }
 
     /// How far the running copy has got.
@@ -1300,7 +1370,7 @@ impl State {
                 Roll::Done { media, undated } => RollView::Done {
                     all: Batch::of(new(media, takes, self.range, &HashSet::new())),
                     new: Batch::of(new(media, takes, self.range, keys)),
-                    undated: *undated,
+                    undated: undated.is_some(),
                 },
             });
 
@@ -1337,6 +1407,35 @@ impl State {
 mod tests {
     use super::*;
     use crate::library::key;
+
+    #[test]
+    fn details_name_every_file_left_and_why_the_dates_are_the_files() {
+        let mut state = state(vec![phone("a")]);
+        state.run = Some(Run::Finished(Report {
+            imported: 3,
+            end: End::Stopped,
+            trouble: Some(Trouble(vec![
+                ("IMG_0001.HEIC".into(), "timed out".into()),
+                ("".into(), "the copy stopped unexpectedly".into()),
+            ])),
+            undated: Some("Photos.sqlite: cannot open it".into()),
+            ..finished()
+        }));
+
+        let details = state.details().unwrap();
+        let lines: Vec<&str> = details.lines().skip(1).collect();
+        assert_eq!(
+            lines,
+            [
+                "Dates: from the files, as Photos could not be read: Photos.sqlite: cannot open it",
+                "Ended: stopped",
+                "Imported: 3",
+                "Not copied: 2",
+                "  IMG_0001.HEIC: timed out",
+                "  a file: the copy stopped unexpectedly",
+            ]
+        );
+    }
 
     #[test]
     fn a_batch_tells_kinds_apart_and_names_the_newest_prints() {
@@ -1658,7 +1757,7 @@ mod tests {
     /// The reading that is waited for lands with this camera roll.
     fn read(state: &mut State, media: Vec<Media>) {
         let ticket = ticket(state);
-        state.roll_read(ticket, Ok((media, false)));
+        state.roll_read(ticket, Ok((media, None)));
     }
 
     fn on(state: &State) -> Option<&str> {
@@ -1681,6 +1780,7 @@ mod tests {
             trouble: None,
             newest: Vec::new(),
             udid: "a".into(),
+            undated: None,
         }
     }
 
@@ -1734,7 +1834,7 @@ mod tests {
 
             assert!(!state.roll_seen(old, 100, None));
             assert!(!state.roll_read(old, Err("the phone is locked".into())));
-            assert!(!state.roll_read(old, Ok((Vec::new(), false))));
+            assert!(!state.roll_read(old, Ok((Vec::new(), None))));
             assert!(!matches!(state.view().roll, Some(RollView::Done { .. })));
             assert!(state.reading(ticket(&state)).is_some());
         }
@@ -1878,11 +1978,10 @@ mod tests {
             ..finished()
         };
         let lost = Report {
-            trouble: Some(Trouble {
-                failed: 3,
-                name: "IMG_0001.HEIC".into(),
-                reason: "the device is gone".into(),
-            }),
+            trouble: Some(Trouble(vec![(
+                "IMG_0001.HEIC".into(),
+                "the device is gone".into(),
+            )])),
             ..finished()
         };
         let full = Report {
@@ -2159,11 +2258,10 @@ mod tests {
         let mut state = state(vec![phone("a")]);
         start(&mut state);
         let lost = Report {
-            trouble: Some(Trouble {
-                failed: 1,
-                name: "IMG_0001.HEIC".into(),
-                reason: "the file vanished".into(),
-            }),
+            trouble: Some(Trouble(vec![(
+                "IMG_0001.HEIC".into(),
+                "the file vanished".into(),
+            )])),
             ..finished()
         };
         state.copied(lost, Path::new("/tmp/x"), Ok(folder(HashSet::new())));

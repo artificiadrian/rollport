@@ -271,8 +271,28 @@ import { site } from "../../site"
     <HelpSection question id="something-else">
         <p>
             Tell us what happened, which system you use (Mac, Windows, or
-            Linux), and your iPhone model.{" "}
+            Linux), and your iPhone model. If an import left files on the
+            iPhone, click <b>Copy details</b> under the message and paste the
+            text too.{" "}
             <a href={`${site.repo}/issues`}>Open an issue on GitHub</a>
         </p>
+        <p>Rollport also keeps a log, rollport.log, in this folder:</p>
+        <CommandList
+            items={[
+                {
+                    label: "Mac",
+                    command: "~/Library/Logs/com.artificiadrian.rollport",
+                },
+                {
+                    label: "Windows",
+                    command:
+                        "%LOCALAPPDATA%\\com.artificiadrian.rollport\\logs",
+                },
+                {
+                    label: "Linux",
+                    command: "~/.local/share/com.artificiadrian.rollport/logs",
+                },
+            ]}
+        />
     </HelpSection>
 </Help>
