@@ -227,8 +227,9 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
 #[derive(Debug, PartialEq)]
 pub enum Known {
     Taken(chrono::DateTime<chrono::FixedOffset>),
-    /// In Recently Deleted. The file stays in /DCIM for 30 days.
-    Deleted,
+    /// Photos does not show it: it is in Recently Deleted, where it stays in
+    /// /DCIM for 30 days, or it is a frame of a burst that was not picked.
+    Hidden,
 }
 
 /// Core Data counts seconds from 2001-01-01 UTC.
@@ -374,7 +375,8 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
     let db = rusqlite::Connection::open(path)?;
 
     let mut rows = db.prepare(
-        "SELECT a.ZDIRECTORY, a.ZFILENAME, a.ZDATECREATED, a.ZTRASHEDSTATE, x.ZTIMEZONEOFFSET
+        "SELECT a.ZDIRECTORY, a.ZFILENAME, a.ZDATECREATED, a.ZTRASHEDSTATE, x.ZTIMEZONEOFFSET,
+                a.ZAVALANCHEUUID IS NOT NULL AND a.ZVISIBILITYSTATE != 0
          FROM ZASSET a LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK
          WHERE a.ZDIRECTORY LIKE 'DCIM/%' AND a.ZFILENAME IS NOT NULL",
     )?;
@@ -384,9 +386,12 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
         let created: Option<f64> = row.get(2)?;
         let trashed: Option<i64> = row.get(3)?;
         let offset: Option<i64> = row.get(4)?;
+        // A burst keeps every frame in /DCIM, and Photos shows the picked
+        // ones: 0 is shown, 2 is not (as osxphotos reads it).
+        let unpicked: Option<bool> = row.get(5)?;
 
-        if trashed.unwrap_or(0) != 0 {
-            return Ok(Some((path, Known::Deleted)));
+        if trashed.unwrap_or(0) != 0 || unpicked.unwrap_or(false) {
+            return Ok(Some((path, Known::Hidden)));
         }
 
         let utc = created
@@ -421,7 +426,7 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
 pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
     let mut held: HashSet<String> = known
         .iter()
-        .filter(|(_, known)| **known == Known::Deleted)
+        .filter(|(_, known)| **known == Known::Hidden)
         .map(|(path, _)| stem(path))
         .collect();
 
@@ -1947,21 +1952,24 @@ mod tests {
 
     /// The tables and columns as iOS 27 has them, with the rows a camera roll
     /// gives: a shot from a trip, a photo saved from a chat years after it was
-    /// taken, one with no zone, and one in Recently Deleted.
+    /// taken, one with no zone, one in Recently Deleted, and a burst.
     fn photos_sqlite(dir: &Path) -> PathBuf {
         let path = dir.join("Photos.sqlite");
         let db = rusqlite::Connection::open(&path).unwrap();
         db.execute_batch(
             "CREATE TABLE ZASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
-                 ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZTRASHEDSTATE INTEGER);
+                 ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZTRASHEDSTATE INTEGER,
+                 ZAVALANCHEUUID VARCHAR, ZVISIBILITYSTATE INTEGER);
              CREATE TABLE ZADDITIONALASSETATTRIBUTES (Z_PK INTEGER PRIMARY KEY,
                  ZASSET INTEGER, ZTIMEZONEOFFSET INTEGER);
              INSERT INTO ZASSET VALUES
-                 (1, 'DCIM/100APPLE', 'IMG_0001.HEIC', 810000000.25, 0),
-                 (2, 'DCIM/100APPLE', 'IMG_0002.JPG', 560000000, 0),
-                 (3, 'DCIM/100APPLE', 'IMG_0003.PNG', 810000000, NULL),
-                 (4, 'DCIM/100APPLE', 'IMG_0004.HEIC', 810000000, 1),
-                 (5, 'PhotoData/CPLAssets', 'IMG_0005.HEIC', 810000000, 0);
+                 (1, 'DCIM/100APPLE', 'IMG_0001.HEIC', 810000000.25, 0, NULL, 0),
+                 (2, 'DCIM/100APPLE', 'IMG_0002.JPG', 560000000, 0, NULL, 0),
+                 (3, 'DCIM/100APPLE', 'IMG_0003.PNG', 810000000, NULL, NULL, 0),
+                 (4, 'DCIM/100APPLE', 'IMG_0004.HEIC', 810000000, 1, NULL, 0),
+                 (5, 'PhotoData/CPLAssets', 'IMG_0005.HEIC', 810000000, 0, NULL, 0),
+                 (6, 'DCIM/100APPLE', 'IMG_0006.HEIC', 810000000, 0, 'b', 0),
+                 (7, 'DCIM/100APPLE', 'IMG_0007.HEIC', 810000000, 0, 'b', 2);
              INSERT INTO ZADDITIONALASSETATTRIBUTES VALUES
                  (1, 1, 32400), (2, 2, 3600), (3, 3, NULL), (4, 4, 3600);",
         )
@@ -1989,14 +1997,20 @@ mod tests {
             known["/DCIM/100APPLE/IMG_0002.JPG"],
             at("2018-09-30T12:33:20+01:00")
         );
-        assert_eq!(known["/DCIM/100APPLE/IMG_0004.HEIC"], Known::Deleted);
+        assert_eq!(known["/DCIM/100APPLE/IMG_0004.HEIC"], Known::Hidden);
+        // A burst: the picked frame, and one that was not.
+        assert!(matches!(
+            known["/DCIM/100APPLE/IMG_0006.HEIC"],
+            Known::Taken(_)
+        ));
+        assert_eq!(known["/DCIM/100APPLE/IMG_0007.HEIC"], Known::Hidden);
         // No zone: the same instant, in this machine's zone.
         let Known::Taken(no_zone) = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
             panic!("a photo with no zone is still dated")
         };
         assert_eq!(no_zone.timestamp(), 810_000_000 + APPLE_EPOCH);
         // Only what is in /DCIM.
-        assert_eq!(known.len(), 4);
+        assert_eq!(known.len(), 6);
     }
 
     #[test]
@@ -2026,7 +2040,7 @@ mod tests {
                 "/DCIM/100APPLE/IMG_0001.HEIC".to_string(),
                 Known::Taken(taken),
             ),
-            ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Deleted),
+            ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Hidden),
             (
                 "/DCIM/100APPLE/IMG_0005.HEIC".to_string(),
                 Known::Taken(taken),
@@ -2081,13 +2095,13 @@ mod tests {
 
         let started = Instant::now();
         let known = photos(&udid, 0, &|| true).await.unwrap();
-        let deleted = known.values().filter(|k| **k == Known::Deleted).count();
+        let hidden = known.values().filter(|k| **k == Known::Hidden).count();
         eprintln!(
-            "Photos.sqlite: {} files, {deleted} in Recently Deleted, {:.1}s",
+            "Photos.sqlite: {} files, {hidden} hidden, {:.1}s",
             known.len(),
             started.elapsed().as_secs_f64()
         );
-        assert!(known.len() > deleted);
+        assert!(known.len() > hidden);
 
         let mut afc = files_of(&udid).await.unwrap();
 
