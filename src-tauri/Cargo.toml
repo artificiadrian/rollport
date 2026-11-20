@@ -27,7 +27,7 @@ tokio = { version = "1", features = ["rt", "sync", "time", "fs", "io-util", "mac
 tokio-stream = { version = "0.1", default-features = false }
 rfd = "0.17.2"
 chrono = { version = "0.4", default-features = false, features = ["alloc", "clock", "serde"] }
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
 fs4 = "0.13"
 percent-encoding = "2.3.2"
 
