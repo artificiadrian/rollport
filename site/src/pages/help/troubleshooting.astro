@@ -273,10 +273,9 @@ import { site } from "../../site"
             Tell us what happened, which system you use (Mac, Windows, or
             Linux), and your iPhone model. If an import left files on the
             iPhone, click <b>Copy details</b> under the message and paste the
-            text too.{" "}
-            <a href={`${site.repo}/issues`}>Open an issue on GitHub</a>
+            text too. Rollport also keeps a log, <code>rollport.log</code>, in
+            this folder:
         </p>
-        <p>Rollport also keeps a log, rollport.log, in this folder:</p>
         <CommandList
             items={[
                 {
@@ -294,5 +293,8 @@ import { site } from "../../site"
                 },
             ]}
         />
+        <p>
+            <a href={`${site.repo}/issues`}>Open an issue on GitHub</a>
+        </p>
     </HelpSection>
 </Help>
