@@ -110,7 +110,19 @@ pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
 /// Photos' own record is read over a second connection while the walk runs:
 /// the walk waits on round trips, the copy of the database on bandwidth.
 pub async fn walk(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
-    let (walked, known) = tokio::join!(walk_dcim(app, udid, ticket), photos(udid, ticket));
+    // A walk that failed or was replaced has no use for the dates, and the
+    // database is hundreds of megabytes on the same cable.
+    let failed = AtomicBool::new(false);
+    let wanted = || !failed.load(Ordering::Relaxed) && crate::lock(app).reading(ticket).is_some();
+
+    let (walked, known) = tokio::join!(
+        async {
+            let walked = walk_dcim(app, udid, ticket).await;
+            failed.store(walked.is_err(), Ordering::Relaxed);
+            walked
+        },
+        photos(udid, ticket, &wanted)
+    );
     let mut media = walked?;
 
     settle(&mut media, &known);
@@ -207,7 +219,11 @@ const APPLE_EPOCH: i64 = 978_307_200;
 /// What Photos knows about each file in /DCIM, by its path on the phone. An
 /// empty answer when the database cannot be had or read: then every file is
 /// dated by when it was written, as before.
-async fn photos(udid: &str, ticket: u64) -> HashMap<String, Known> {
+async fn photos(
+    udid: &str,
+    ticket: u64,
+    wanted: &(dyn Fn() -> bool + Sync),
+) -> HashMap<String, Known> {
     let scratch =
         std::env::temp_dir().join(format!("rollport-photos-{}-{ticket}", std::process::id()));
 
@@ -222,6 +238,7 @@ async fn photos(udid: &str, ticket: u64) -> HashMap<String, Known> {
             &mut afc,
             "/PhotoData/Photos.sqlite",
             &scratch.join("Photos.sqlite"),
+            wanted,
         )
         .await
         .doing("Photos.sqlite")?;
@@ -229,6 +246,7 @@ async fn photos(udid: &str, ticket: u64) -> HashMap<String, Known> {
             &mut afc,
             "/PhotoData/Photos.sqlite-wal",
             &scratch.join("Photos.sqlite-wal"),
+            wanted,
         )
         .await;
 
@@ -245,12 +263,21 @@ async fn photos(udid: &str, ticket: u64) -> HashMap<String, Known> {
 }
 
 /// One file from the phone to the disk, whole.
-async fn pull(afc: &mut AfcClient, from: &str, to: &Path) -> Result<(), String> {
+/// Stops early, closing what it opened, once it is no longer `wanted`.
+async fn pull(
+    afc: &mut AfcClient,
+    from: &str,
+    to: &Path,
+    wanted: &(dyn Fn() -> bool + Sync),
+) -> Result<(), String> {
     let mut file = within("cannot open it", afc.open(from, AfcFopenMode::RdOnly)).await?;
 
     let read = async {
         let mut sink = tokio::fs::File::create(to).await.doing("cannot write it")?;
-        loop {
+        for chunk in 0usize.. {
+            if chunk % 16 == 0 && !wanted() {
+                return Err("nobody is waiting for it".to_string());
+            }
             let bytes = within("cannot read it", file.read_n(CHUNK)).await?;
             if bytes.is_empty() {
                 break;
@@ -1930,7 +1957,7 @@ mod tests {
             .udid;
 
         let started = Instant::now();
-        let known = photos(&udid, 0).await;
+        let known = photos(&udid, 0, &|| true).await;
         let deleted = known.values().filter(|k| **k == Known::Deleted).count();
         eprintln!(
             "Photos.sqlite: {} files, {deleted} in Recently Deleted, {:.1}s",
@@ -1940,6 +1967,14 @@ mod tests {
         assert!(known.len() > deleted);
 
         let mut afc = files_of(&udid).await.unwrap();
+
+        // A copy nobody waits for stops, and leaves the connection usable.
+        let scratch =
+            std::env::temp_dir().join(format!("rollport-unwanted-{}", std::process::id()));
+        let stopped = pull(&mut afc, "/PhotoData/Photos.sqlite", &scratch, &|| false).await;
+        let _ = fs::remove_file(&scratch);
+        assert!(stopped.is_err());
+
         let mut late = None;
         for (path, known) in &known {
             let Known::Taken(taken) = known else { continue };
