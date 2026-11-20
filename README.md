@@ -32,7 +32,8 @@
 - Copies only new photos and videos, even after you delete or move old ones
 - Original files: HEIC, ProRAW, Live Photos, video, GIFs and camera RAW, never converted
 - Sorted by date: dated file names, year and month folders, or a pattern of your own
-- Choose a date range, and leave out videos, photos or Live Photo videos
+- Choose a date range, and which kinds to import: photos, Live Photos and their videos, videos, screenshots, screen recordings
+- Photos edited on the iPhone come with their edit beside the original
 - Stop at any time and continue later; unplugging during an import loses nothing
 - Remembers each iPhone's folder; drop a folder on the window to switch
 - Keyboard: <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> imports, <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>.</kbd> stops,
