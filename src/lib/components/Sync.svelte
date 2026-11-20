@@ -1,6 +1,6 @@
 <script lang="ts">
     import { convertFileSrc, invoke } from "@tauri-apps/api/core"
-    import { cubicOut } from "svelte/easing"
+    import { cubicOut, linear } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
     import { fade, fly } from "svelte/transition"
     import LoaderCircle from "@lucide/svelte/icons/loader-circle"
@@ -377,6 +377,21 @@
         wasReady = true
     })
 
+    // While the camera roll is counted, the walk reports every hundred files.
+    // The number runs up to each report over the time the last one took, so
+    // it counts rather than jumps, and reaches it about when the next arrives.
+    const found = new Tween(0, { easing: linear })
+    let reported = { found: 0, at: 0 }
+    $effect(() => {
+        if (view.screen !== "counting") return
+        const at = performance.now()
+        const counting = view.found > reported.found && !still
+        found.set(view.found, {
+            duration: counting ? Math.min(at - reported.at, 300) : 0,
+        })
+        reported = { found: view.found, at }
+    })
+
     /// The last run copied nothing, so its button starts it again rather than
     /// going on.
     const again = $derived(
@@ -665,7 +680,9 @@
                         Import {count(view.files)}
                     </Button>
                 {:else if view.screen === "counting"}
-                    <p class="{hero} text-muted">{view.count}</p>
+                    <p class="{hero} text-muted">
+                        {count(Math.round(found.current))}
+                    </p>
                     <p class="mt-2 text-lg font-medium">
                         photos and videos found
                     </p>
