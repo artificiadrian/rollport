@@ -322,7 +322,7 @@ impl Library {
     /// Write the folder's settings down. The layout only while no file has been
     /// named with it: the count is asked here, not of keys that may be old.
     pub fn write_settings(&self, settings: &Settings) -> Result<(), String> {
-        self.set("takes", settings.takes.stored())?;
+        self.set("takes", &settings.takes.stored())?;
 
         if self.imported()? == 0 {
             self.set("layout", &stored(&settings.layout))?;
@@ -500,7 +500,7 @@ mod tests {
         let library = Library::create(&dir).unwrap();
         let first = Settings {
             layout: "{taken:%Y}/{name}".into(),
-            takes: Takes::Photos,
+            takes: Takes::read("photos"),
         };
 
         library.write_settings(&first).unwrap();
@@ -510,7 +510,7 @@ mod tests {
         library
             .write_settings(&Settings {
                 layout: default_layout(),
-                takes: Takes::Videos,
+                takes: Takes::read("videos"),
             })
             .unwrap();
 
@@ -521,7 +521,7 @@ mod tests {
             library.setting("layout").unwrap().as_deref(),
             Some("{mtime:%Y}/{name}")
         );
-        assert!(matches!(settings.takes, Takes::Videos));
+        assert!(settings.takes == Takes::read("videos"));
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -549,7 +549,7 @@ mod tests {
             let day = day.parse().unwrap();
             Range::Between { from: day, to: day }
         };
-        let taken = |range| new(&photo, Takes::Everything, range, &HashSet::new()).count();
+        let taken = |range| new(&photo, Takes::EVERYTHING, range, &HashSet::new()).count();
 
         assert_eq!(taken(on("2026-09-04")), 1);
         assert_eq!(taken(on("2026-09-03")), 0);
@@ -564,7 +564,7 @@ mod tests {
         ];
         let keys = HashSet::from([key(&media[1])]);
 
-        let new: Vec<_> = new(&media, Takes::Everything, Range::Everything, &keys)
+        let new: Vec<_> = new(&media, Takes::EVERYTHING, Range::Everything, &keys)
             .map(|file| file.path.as_str())
             .collect();
         assert_eq!(

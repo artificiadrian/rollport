@@ -4,7 +4,17 @@
 //
 // The flows are typed with the app's own Flow, so a change there that this
 // file does not follow fails the site's type check.
-import type { Batch, Flow, Range, Run, Takes } from "../../src/lib/flow"
+import type { Batch, Counts, Flow, Range, Run, Takes } from "../../src/lib/flow"
+
+/** What a new folder takes, as EVERYTHING in flow.ts: this file runs without imports. */
+const EVERYTHING: Takes = {
+    photos: true,
+    livePhotos: true,
+    liveVideos: true,
+    videos: true,
+    screenshots: true,
+    screenRecordings: true,
+}
 
 /** What the demo tells the page around it. */
 export type DemoMessage =
@@ -85,11 +95,23 @@ function demo() {
         newest: ["sunset", "lake", "city"].map(photo),
     }
 
+    /** The demo's camera roll by kind: photos and videos only. */
+    function counts(): Counts {
+        return {
+            photos: PHOTOS,
+            livePhotos: 0,
+            liveVideos: 0,
+            videos: VIDEOS,
+            screenshots: 0,
+            screenRecordings: 0,
+        }
+    }
+
     /** What is new for a range and a choice of kinds (Takes in state.rs). */
     function wanted(range: Range, takes: Takes): Batch {
         const share = reach(range)
-        const photos = takes === "videos" ? 0 : Math.round(PHOTOS * share)
-        const videos = takes === "photos" ? 0 : Math.round(VIDEOS * share)
+        const photos = takes.photos ? Math.round(PHOTOS * share) : 0
+        const videos = takes.videos ? Math.round(VIDEOS * share) : 0
         const files = photos + videos
         // The newest prints are the latest days' photos; an older range, older ones.
         const recent =
@@ -128,7 +150,7 @@ function demo() {
     /** What is new now, for the range and kinds the visitor chose. */
     function current(): Batch {
         const takes =
-            flow.folder.folder === "known" ? flow.folder.takes : "everything"
+            flow.folder.folder === "known" ? flow.folder.takes : EVERYTHING
         const batch = wanted(flow.range, takes)
         return left(batch, Math.min(copied, batch.files))
     }
@@ -145,13 +167,14 @@ function demo() {
             // The default naming, as the help says a new folder starts with.
             layout: "{taken:%Y-%m-%d_%H-%M-%S}_{name}",
             naming: "2026-09-02_15-04-11_IMG_0001.HEIC",
-            takes: "everything",
+            takes: EVERYTHING,
         },
         roll: {
             roll: "done",
             all: ALL,
-            new: wanted({ range: "everything" }, "everything"),
+            new: wanted({ range: "everything" }, EVERYTHING),
             undated: false,
+            counts: counts(),
         },
         run: null,
         range: { range: "everything" },
@@ -223,6 +246,7 @@ function demo() {
                 all: ALL,
                 new: left(batch, imported),
                 undated: false,
+                counts: counts(),
             },
             run: {
                 run: "finished",
@@ -325,6 +349,7 @@ function demo() {
                     all: ALL,
                     new: current(),
                     undated: false,
+                    counts: counts(),
                 },
             })
         })

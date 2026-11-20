@@ -4,7 +4,9 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import {
+    EVERYTHING,
     QUIET,
+    named,
     screen,
     duration,
     elapsed,
@@ -46,6 +48,14 @@ const read = (fresh: number, bytes?: number, undated = false): Roll => ({
     all: batch(fresh + 100),
     new: batch(fresh, bytes),
     undated,
+    counts: {
+        photos: fresh,
+        livePhotos: 0,
+        liveVideos: 0,
+        videos: 0,
+        screenshots: 0,
+        screenRecordings: 0,
+    },
 })
 const reading = (failed: string | null = null): Roll => ({
     roll: "reading",
@@ -63,7 +73,7 @@ const known: Extract<Flow["folder"], { folder: "known" }> = {
     network: false,
     layout: "{name}",
     naming: "IMG_0001.HEIC",
-    takes: "everything",
+    takes: EVERYTHING,
 }
 
 const flow = (changes: Partial<Flow> = {}): Flow => ({
@@ -331,6 +341,34 @@ describe("the report's title, badge and words", () => {
         const shown = done(flow({ run: finished({ end: "unplugged" }) }))
         assert.equal(shown.title, "Disconnected after 140")
         assert.equal(shown.badge, "unplugged")
+    })
+})
+
+describe("the media types in words", () => {
+    test("all, what is left out, or what is taken", () => {
+        assert.equal(named(EVERYTHING), "All media")
+        assert.equal(
+            named({ ...EVERYTHING, liveVideos: false }),
+            "No Live Photo videos",
+        )
+        assert.equal(
+            named({
+                ...EVERYTHING,
+                screenshots: false,
+                screenRecordings: false,
+            }),
+            "No screenshots or screen recordings",
+        )
+        assert.equal(
+            named({
+                ...EVERYTHING,
+                livePhotos: false,
+                liveVideos: false,
+                screenshots: false,
+                screenRecordings: false,
+            }),
+            "Photos and videos",
+        )
     })
 })
 

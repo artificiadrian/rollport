@@ -43,6 +43,8 @@ export type Roll =
           /// The files are dated by when they were written on the phone:
           /// Photos' record could not be read.
           undated: boolean
+          /// New files of each kind in the range, whatever the folder takes.
+          counts: Counts
       }
 
 /// What could not be copied. One bad file does not end a run.
@@ -103,8 +105,7 @@ export type Folder =
           network: boolean
           layout: string
           naming: string
-          /// What it takes in. One answer, because "photos only, but bring the
-          /// Live Photo videos" cannot mean anything.
+          /// What it takes in: one answer for each kind.
           takes: Takes
       }
 
@@ -127,7 +128,25 @@ export type Range =
     | { range: "last"; days: number }
     | { range: "between"; from: string; to: string }
 
-export type Takes = "everything" | "noLiveVideos" | "photos" | "videos"
+/// The kinds of file a folder can take in, as Rust names them.
+export type Kind =
+    | "photos"
+    | "livePhotos"
+    | "liveVideos"
+    | "videos"
+    | "screenshots"
+    | "screenRecordings"
+export type Takes = Record<Kind, boolean>
+/// What a new folder takes: everything.
+export const EVERYTHING: Takes = {
+    photos: true,
+    livePhotos: true,
+    liveVideos: true,
+    videos: true,
+    screenshots: true,
+    screenRecordings: true,
+}
+export type Counts = Record<Kind, number>
 
 /// The facts Rust holds, side by side. What to show is worked out from them
 /// in `screen`.
@@ -224,20 +243,41 @@ export const PRESETS: { range: Range; label: string }[] = [
     { range: { range: "last", days: 365 }, label: "Last 12 months" },
 ]
 
-/// What a folder takes in, as the window says it. A Live Photo's .mov is part
-/// of a picture rather than a film of its own, so only the first of these
-/// brings them along.
-export const TAKES: Record<Takes, string> = {
-    everything: "All media",
-    noLiveVideos: "No Live Photo videos",
-    photos: "Photos only",
-    videos: "Videos only",
+/// Each kind as the window names it, in the order Options lists them.
+export const KINDS: { kind: Kind; noun: string }[] = [
+    { kind: "photos", noun: "photos" },
+    { kind: "livePhotos", noun: "Live Photos" },
+    { kind: "liveVideos", noun: "Live Photo videos" },
+    { kind: "videos", noun: "videos" },
+    { kind: "screenshots", noun: "screenshots" },
+    { kind: "screenRecordings", noun: "screen recordings" },
+]
+
+/// What a folder takes in, as the window says it: "All media", what it leaves
+/// out when that is shorter, or else what it takes.
+export function named(takes: Takes) {
+    const on = KINDS.filter(({ kind }) => takes[kind]).map(({ noun }) => noun)
+    const off = KINDS.filter(({ kind }) => !takes[kind]).map(({ noun }) => noun)
+    const words =
+        off.length === 0
+            ? "all media"
+            : off.length <= on.length
+              ? `no ${list(off, "or")}`
+              : list(on, "and")
+    return `${words.charAt(0).toUpperCase()}${words.slice(1)}`
+}
+
+/// "a", "a and b", "a, b and c".
+function list(words: string[], and: string) {
+    return words.length < 3
+        ? words.join(` ${and} `)
+        : `${words.slice(0, -1).join(", ")} ${and} ${words.at(-1)}`
 }
 
 /// The footer's summary of the Options: "Any date, all media". The media types
 /// lowercase their first letter, after the date.
 export function summary(range: Range, takes: Takes) {
-    const what = TAKES[takes]
+    const what = named(takes)
     return `${when(range)}, ${what.charAt(0).toLowerCase()}${what.slice(1)}`
 }
 

@@ -9,13 +9,14 @@ import { execFileSync } from "node:child_process"
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { webkit, type Page } from "playwright"
-import type {
-    Device,
-    Flow,
-    Folder,
-    Report,
-    Roll,
-    Run,
+import {
+    EVERYTHING,
+    type Device,
+    type Flow,
+    type Folder,
+    type Report,
+    type Roll,
+    type Run,
 } from "../src/lib/flow.ts"
 
 const root = new URL("../", import.meta.url)
@@ -49,7 +50,7 @@ const known: Folder = {
     network: false,
     layout: "{taken:%Y}/{taken:%m}/{name}",
     naming: "2026/09/IMG_4821.HEIC",
-    takes: "everything",
+    takes: EVERYTHING,
 }
 const folder = (changes: Partial<Extract<Folder, { folder: "known" }>>) =>
     ({ ...known, ...changes }) as Folder
@@ -80,6 +81,14 @@ const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
         newest: fresh ? newest : [],
     },
     undated: false,
+    counts: {
+        photos: Math.floor(fresh / 2),
+        livePhotos: Math.floor(fresh / 4),
+        liveVideos: Math.floor(fresh / 4),
+        videos: Math.floor(fresh / 20),
+        screenshots: 12,
+        screenRecordings: 1,
+    },
 })
 
 const base: Flow = {
@@ -325,7 +334,14 @@ const STATES: State[] = [
         "The footer says the range and the media types",
         {
             range: { range: "between", from: "2026-06-01", to: "2026-08-31" },
-            folder: folder({ takes: "photos" }),
+            folder: folder({
+                takes: {
+                    ...EVERYTHING,
+                    liveVideos: false,
+                    videos: false,
+                    screenRecordings: false,
+                },
+            }),
             // What Rust counts with them: photos only, from those days.
             roll: {
                 ...done(4210, 0),

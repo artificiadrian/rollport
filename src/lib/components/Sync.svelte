@@ -933,6 +933,10 @@
         transition:fly={{ y: 8, duration: still ? 0 : 150 }}
         class="fixed right-3 bottom-14 left-3 z-50 max-h-[calc(100vh-var(--spacing)*17)] overflow-y-auto rounded-xl border border-line bg-canvas shadow-xl"
     >
-        <Options {folder} range={flow.range} />
+        <Options
+            {folder}
+            range={flow.range}
+            counts={flow.roll?.roll === "done" ? flow.roll.counts : null}
+        />
     </div>
 {/if}

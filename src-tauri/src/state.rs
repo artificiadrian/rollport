@@ -345,58 +345,116 @@ impl Range {
     }
 }
 
-/// What a folder takes in. Leaving the video half of a Live Photo behind and
-/// taking no videos at all were once two answers, and their combinations were
-/// never all legal — "photos only, but bring the Live Photo videos" cannot mean
-/// anything. So they are one answer.
+/// What a folder takes in: one answer for each kind of file. A file Photos
+/// does not describe is a photo or a video.
 ///
 /// It travels with the folder, because it decides what ends up in there and it
 /// means the same thing every time it is read. A date range does not: "the last
 /// seven days" is a different week tomorrow, which is why that one is never
 /// written down.
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum Takes {
-    Everything,
-    /// A Live Photo's .mov is part of a picture rather than a film of its own,
-    /// and it is most of what a camera roll weighs.
-    NoLiveVideos,
-    Photos,
-    Videos,
+pub struct Takes {
+    pub photos: bool,
+    pub live_photos: bool,
+    /// The short clip with each Live Photo: part of a picture rather than a
+    /// film of its own, and most of what a camera roll weighs.
+    pub live_videos: bool,
+    pub videos: bool,
+    pub screenshots: bool,
+    pub screen_recordings: bool,
 }
 
+/// How the folder writes each answer down, in the order of `Takes::flags`.
+const KINDS: [&str; 6] = [
+    "photos",
+    "livePhotos",
+    "liveVideos",
+    "videos",
+    "screenshots",
+    "screenRecordings",
+];
+
 impl Takes {
+    /// What a new folder takes, and one that has never said.
+    pub const EVERYTHING: Takes = Takes {
+        photos: true,
+        live_photos: true,
+        live_videos: true,
+        videos: true,
+        screenshots: true,
+        screen_recordings: true,
+    };
+
     pub fn takes(&self, file: &Media) -> bool {
-        match self {
-            Takes::Everything => true,
-            Takes::NoLiveVideos => !file.is_live_video(),
-            Takes::Photos => !file.is_video(),
-            Takes::Videos => file.is_video() && !file.is_live_video(),
+        match file.kind {
+            Kind::Photo => self.photos,
+            Kind::LivePhoto => self.live_photos,
+            Kind::LiveVideo => self.live_videos,
+            Kind::Video => self.videos,
+            Kind::Screenshot => self.screenshots,
+            Kind::ScreenRecording => self.screen_recordings,
         }
     }
 
-    /// How the folder writes it down, and how it reads it back.
-    pub fn stored(&self) -> &'static str {
-        match self {
-            Takes::Everything => "everything",
-            Takes::NoLiveVideos => "noLiveVideos",
-            Takes::Photos => "photos",
-            Takes::Videos => "videos",
-        }
+    /// One that takes nothing is no answer: an import of it would do nothing.
+    pub fn any(&self) -> bool {
+        self.flags().contains(&true)
     }
 
-    /// A folder that has never said, and one that says something we do not
-    /// know, both take everything: that is what a new folder does.
-    pub fn read(stored: &str) -> Takes {
+    fn flags(&self) -> [bool; 6] {
         [
-            Takes::Everything,
-            Takes::NoLiveVideos,
-            Takes::Photos,
-            Takes::Videos,
+            self.photos,
+            self.live_photos,
+            self.live_videos,
+            self.videos,
+            self.screenshots,
+            self.screen_recordings,
         ]
-        .into_iter()
-        .find(|takes| takes.stored() == stored)
-        .unwrap_or(Takes::Everything)
+    }
+
+    /// How the folder writes it down: the kinds it takes.
+    pub fn stored(&self) -> String {
+        KINDS
+            .iter()
+            .zip(self.flags())
+            .filter(|(_, on)| *on)
+            .map(|(name, _)| *name)
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    /// How it reads it back. The four answers 0.1.0 wrote take what they took
+    /// then; a folder that has never said, and one that says nothing we know,
+    /// take everything, as a new folder does.
+    pub fn read(stored: &str) -> Takes {
+        let has = |names: &[&str]| {
+            let on = |name| names.contains(&name);
+            Takes {
+                photos: on("photos"),
+                live_photos: on("livePhotos"),
+                live_videos: on("liveVideos"),
+                videos: on("videos"),
+                screenshots: on("screenshots"),
+                screen_recordings: on("screenRecordings"),
+            }
+        };
+
+        let takes = match stored {
+            "noLiveVideos" => Takes {
+                live_videos: false,
+                ..Takes::EVERYTHING
+            },
+            "photos" => has(&["photos", "livePhotos", "screenshots"]),
+            "videos" => has(&["videos", "screenRecordings"]),
+            _ => has(&stored.split(',').collect::<Vec<_>>()),
+        };
+
+        if takes.any() {
+            takes
+        } else {
+            Takes::EVERYTHING
+        }
     }
 }
 
@@ -629,7 +687,7 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             layout: default_layout(),
-            takes: Takes::Everything,
+            takes: Takes::EVERYTHING,
         }
     }
 }
@@ -726,7 +784,39 @@ pub enum RollView {
         new: Batch,
         /// The files are dated by when they were written on the phone.
         undated: bool,
+        /// New files of each kind in the range, whatever the folder takes:
+        /// what each choice under Media types would add.
+        counts: Counts,
     },
+}
+
+/// How many files of each kind, in the order and with the names of `Takes`.
+#[derive(Serialize, Clone, Default, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Counts {
+    pub photos: usize,
+    pub live_photos: usize,
+    pub live_videos: usize,
+    pub videos: usize,
+    pub screenshots: usize,
+    pub screen_recordings: usize,
+}
+
+impl Counts {
+    pub fn of<'a>(media: impl IntoIterator<Item = &'a Media>) -> Counts {
+        let mut counts = Counts::default();
+        for file in media {
+            *match file.kind {
+                Kind::Photo => &mut counts.photos,
+                Kind::LivePhoto => &mut counts.live_photos,
+                Kind::LiveVideo => &mut counts.live_videos,
+                Kind::Video => &mut counts.videos,
+                Kind::Screenshot => &mut counts.screenshots,
+                Kind::ScreenRecording => &mut counts.screen_recordings,
+            } += 1;
+        }
+        counts
+    }
 }
 
 /// Where the photos come from. It changes on its own — phones attach while you
@@ -883,6 +973,10 @@ impl State {
         let Folder::Known { path, facts } = &mut self.folder else {
             return None;
         };
+
+        if !takes.any() {
+            return None;
+        }
 
         facts.settings.takes = takes;
         Some(path.clone())
@@ -1373,7 +1467,7 @@ impl State {
         let none = HashSet::new();
         let (takes, keys) = match self.folder.facts() {
             Some(facts) => (facts.settings.takes, &facts.keys),
-            None => (Takes::Everything, &none),
+            None => (Takes::EVERYTHING, &none),
         };
 
         let roll = self
@@ -1395,6 +1489,7 @@ impl State {
                     all: Batch::of(new(media, takes, self.range, &HashSet::new())),
                     new: Batch::of(new(media, takes, self.range, keys)),
                     undated: undated.is_some(),
+                    counts: Counts::of(new(media, Takes::EVERYTHING, self.range, keys)),
                 },
             });
 
@@ -1473,7 +1568,7 @@ mod tests {
             kind: if live_video {
                 Kind::LiveVideo
             } else {
-                Kind::Photo
+                Kind::of(path)
             },
         };
         let media = [
@@ -1652,7 +1747,7 @@ mod tests {
             kind: if live_video {
                 Kind::LiveVideo
             } else {
-                Kind::Photo
+                Kind::of(path)
             },
         };
 
@@ -1668,10 +1763,10 @@ mod tests {
         );
 
         for (takes, files) in [
-            (Takes::Everything, 4),
-            (Takes::NoLiveVideos, 3),
-            (Takes::Photos, 2),
-            (Takes::Videos, 1),
+            (Takes::EVERYTHING, 4),
+            (Takes::read("noLiveVideos"), 3),
+            (Takes::read("photos"), 2),
+            (Takes::read("videos"), 1),
         ] {
             state.set_takes(takes);
             assert_eq!(fresh(&state).files, files);
@@ -1683,13 +1778,21 @@ mod tests {
     /// before it had a name.
     #[test]
     fn a_folder_that_has_never_said_takes_everything() {
-        assert!(matches!(Takes::read(""), Takes::Everything));
-        assert!(matches!(Takes::read("nonsense"), Takes::Everything));
-        assert!(matches!(Takes::read("photos"), Takes::Photos));
-        assert!(matches!(
-            Takes::read(Takes::NoLiveVideos.stored()),
-            Takes::NoLiveVideos
-        ));
+        assert_eq!(Takes::read(""), Takes::EVERYTHING);
+        assert_eq!(Takes::read("nonsense"), Takes::EVERYTHING);
+        // What 0.1.0 wrote takes what it took then.
+        assert_eq!(
+            Takes::read("noLiveVideos").stored(),
+            "photos,livePhotos,videos,screenshots,screenRecordings"
+        );
+        assert_eq!(
+            Takes::read("photos").stored(),
+            "photos,livePhotos,screenshots"
+        );
+        assert_eq!(Takes::read("videos").stored(), "videos,screenRecordings");
+        // And what this version writes reads back the same.
+        let some = Takes::read("livePhotos,screenshots");
+        assert_eq!(Takes::read(&some.stored()), some);
     }
 
     /// Two days typed as a range are both in it.
@@ -1739,16 +1842,13 @@ mod tests {
     fn checking_again_keeps_the_settings_the_person_set() {
         let mut state = state(vec![phone("a")]);
         open(&mut state, folder(HashSet::new()));
-        state.set_takes(Takes::Photos);
+        state.set_takes(Takes::read("photos"));
 
         state.rescan();
         state.reread(Path::new("/tmp/x"), Ok(folder(HashSet::new())));
         assert!(matches!(
             state.view().folder,
-            FolderView::Known {
-                takes: Takes::Photos,
-                ..
-            }
+            FolderView::Known { takes, .. } if takes == Takes::read("photos")
         ));
     }
 
@@ -1918,7 +2018,7 @@ mod tests {
         assert_eq!(state.rescan(), (None, None));
         assert_eq!(state.choose_destination("/tmp/y".into()), None);
         state.set_range(Range::Last { days: 7 });
-        assert_eq!(state.set_takes(Takes::Photos), None);
+        assert_eq!(state.set_takes(Takes::read("photos")), None);
         assert_eq!(state.set_layout("{name}".into()), Ok(None));
 
         // Every one of those used to drop the job, and with it the only handle
@@ -1934,7 +2034,7 @@ mod tests {
         assert!(matches!(state.view().roll, Some(RollView::Done { .. })));
         assert!(state.range == Range::Everything);
         let settings = &state.folder.facts().expect("the folder is open").settings;
-        assert!(matches!(settings.takes, Takes::Everything));
+        assert!(settings.takes == Takes::EVERYTHING);
         assert_eq!(settings.layout, default_layout());
     }
 
@@ -2274,13 +2374,13 @@ mod tests {
     fn a_second_read_of_the_open_folder_keeps_what_changed_since() {
         let mut state = state(vec![phone("a")]);
         open(&mut state, folder(HashSet::new()));
-        state.set_takes(Takes::Photos);
+        state.set_takes(Takes::read("photos"));
 
         state.opened(Path::new("/tmp/x"), Ok(folder(HashSet::new())));
-        assert!(matches!(
+        assert_eq!(
             state.folder.facts().map(|facts| facts.settings.takes),
-            Some(Takes::Photos)
-        ));
+            Some(Takes::read("photos"))
+        );
     }
 
     /// Files lost while the phone stayed: once it is back, they are what

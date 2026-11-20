@@ -3,17 +3,26 @@
     import { invoke } from "@tauri-apps/api/core"
     import ChevronDown from "@lucide/svelte/icons/chevron-down"
     import Lock from "@lucide/svelte/icons/lock"
+    import Film from "@lucide/svelte/icons/film"
+    import ImageIcon from "@lucide/svelte/icons/image"
+    import MonitorPlay from "@lucide/svelte/icons/monitor-play"
+    import Scan from "@lucide/svelte/icons/scan"
+    import Target from "@lucide/svelte/icons/target"
+    import Video from "@lucide/svelte/icons/video"
     import Menu from "$lib/components/Menu.svelte"
     import {
+        KINDS,
         LAYOUTS,
         PRESETS,
-        TAKES,
+        count,
         keyOf,
+        named,
         tell,
         when,
+        type Counts,
         type Folder,
+        type Kind,
         type Range,
-        type Takes,
     } from "$lib/flow"
 
     // What the popover under Options holds: which dates this run takes, and
@@ -23,9 +32,12 @@
     let {
         folder,
         range,
+        counts,
     }: {
         folder: Extract<Folder, { folder: "known" }>
         range: Range
+        /// New files of each kind on this iPhone, once its camera roll is read.
+        counts: Counts | null
     } = $props()
 
     const onrange = (range: Range) => tell("set_range", { range })
@@ -147,17 +159,37 @@
         { value: "between", label: "Between two dates" },
     ]
 
-    // What a choice leaves in or out, where its name alone does not say.
-    const KIND_DETAILS: Partial<Record<Takes, string>> = {
-        everything: "Photos, videos and Live Photo videos",
-        noLiveVideos: "The short clip with each Live Photo is left out",
-    }
+    // Each kind is ticked on its own, with how many new files of it the
+    // iPhone holds. The last one ticked cannot be unticked: an import of
+    // nothing is not an answer, and Rust refuses it too.
+    const ICONS = {
+        photos: ImageIcon,
+        livePhotos: Target,
+        liveVideos: Film,
+        videos: Video,
+        screenshots: Scan,
+        screenRecordings: MonitorPlay,
+    } satisfies Record<Kind, unknown>
 
-    const KINDS = Object.entries(TAKES).map(([value, label]) => ({
-        value,
-        label,
-        detail: KIND_DETAILS[value as Takes],
-    }))
+    const kinds = $derived(
+        KINDS.map(({ kind, noun }) => ({
+            value: kind,
+            label: `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`,
+            icon: ICONS[kind],
+            aside: counts ? count(counts[kind]) : undefined,
+        })),
+    )
+    const ticked = $derived(
+        KINDS.map(({ kind }) => kind).filter((kind) => folder.takes[kind]),
+    )
+
+    function tickKinds(values: string[]) {
+        if (values.length === 0) return
+        const takes = Object.fromEntries(
+            KINDS.map(({ kind }) => [kind, values.includes(kind)]),
+        ) as Record<Kind, boolean>
+        tell("set_takes", { takes })
+    }
 
     const NAMES = [
         ...LAYOUTS.map((option) => ({
@@ -228,15 +260,15 @@
     </div>
 
     <Menu
-        value={folder.takes}
-        items={KINDS}
-        onchoose={(value) => tell("set_takes", { takes: value as Takes })}
+        multiple={ticked}
+        ontick={tickKinds}
+        items={kinds}
         label="Media types, saved with this folder"
         title="Saved with this folder."
         class={trigger}
     >
         <span class="text-muted" aria-hidden="true">Media types</span>
-        {@render answer(TAKES[folder.takes])}
+        {@render answer(named(folder.takes))}
     </Menu>
 
     <!-- The naming stopped being a question when the folder named its first
