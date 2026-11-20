@@ -8,7 +8,7 @@ use std::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     },
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime},
 };
 
 use idevice::{
@@ -977,22 +977,16 @@ pub async fn copy(
     // The name is derived from the file, so a file we copied before lands on
     // the name it already has. Size alone is not enough to say it is the same
     // file — two shots can share a name and a size under the {name} layout —
-    // so the time has to match too, and we set that on every copy. Either
-    // time: the CLI and our own first release dated files by when they were
-    // written on the phone.
+    // so the time has to match too, and we set that on every copy.
+    // The CLI and 0.1.0 named and dated a file by when it was written on the
+    // phone, in this computer's zone, so a folder they filled has it under
+    // that name. A Live Photo's clip was named by its still's time, which is
+    // not known here.
     // The legacy CLI never made this claim at all; it suffixed and downloaded
     // again. This is that, minus re-downloading what is demonstrably here.
-    if let Ok(existing) = fs::metadata(&target)
-        && existing.len() == file.size
-        && existing
-            .modified()
-            .ok()
-            .and_then(|when| when.duration_since(UNIX_EPOCH).ok())
-            .is_some_and(|since| {
-                let since = since.as_secs() as i64;
-                since == file.taken.timestamp() || since == file.mtime.and_utc().timestamp()
-            })
-    {
+    let named_before = destination.join(render(layout, name, here(file.mtime).naive_local()));
+
+    if holds(&target, file) || (!file.is_live_video() && holds(&named_before, file)) {
         return Ok(Copied::Already);
     }
 
@@ -1134,6 +1128,18 @@ pub async fn copy(
     }
 
     Ok(Copied::Fetched)
+}
+
+/// Whether this file on disk is that one from the phone: the same size, and
+/// dated with either of its times to the second.
+fn holds(path: &Path, file: &Media) -> bool {
+    fs::metadata(path).is_ok_and(|on_disk| {
+        on_disk.len() == file.size
+            && on_disk.modified().is_ok_and(|when| {
+                let second = chrono::DateTime::<chrono::Utc>::from(when).timestamp();
+                second == file.taken.timestamp() || second == file.mtime.and_utc().timestamp()
+            })
+    })
 }
 
 /// Sets when a file was last changed. Windows asks only for the right to
@@ -2053,6 +2059,58 @@ mod tests {
         )
         .await;
         assert!(matches!(again, Ok(Copied::Already)));
+
+        // A folder 0.1.0 filled: the file under the name and date of when it
+        // was written on the phone.
+        fs::remove_dir_all(&dir).unwrap();
+        let before = dir.join(render(
+            layout,
+            name_of(&file.path),
+            here(file.mtime).naive_local(),
+        ));
+        fs::create_dir_all(before.parent().unwrap()).unwrap();
+        fs::write(&before, vec![0; file.size as usize]).unwrap();
+        stamp(&before, file.mtime.and_utc().fixed_offset()).unwrap();
+        let filled = copy(
+            &mut afc,
+            &file,
+            &dir,
+            layout,
+            &AtomicBool::new(false),
+            &AtomicU64::new(0),
+            &Mutex::new(0),
+        )
+        .await;
+        eprintln!("0.1.0 named it {}", before.display());
+        assert!(matches!(filled, Ok(Copied::Already)), "{filled:?}");
+        assert!(!target.exists());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_file_on_disk_is_the_one_from_the_phone_by_size_and_either_time() {
+        let dir = std::env::temp_dir().join(format!("rollport-holds-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("IMG_0001.HEIC");
+        fs::write(&path, [0; 42]).unwrap();
+
+        let file = Media {
+            path: "/DCIM/100APPLE/IMG_0001.HEIC".into(),
+            size: 42,
+            mtime: when("2026-11-02 10:00:00"),
+            // Before 1970: a date somebody set in Photos.
+            taken: chrono::DateTime::parse_from_rfc3339("1965-05-01T08:00:00+01:00").unwrap(),
+            live_video: false,
+        };
+        let dated = |at: chrono::DateTime<chrono::FixedOffset>| {
+            stamp(&path, at).unwrap();
+            holds(&path, &file)
+        };
+
+        assert!(dated(file.taken));
+        assert!(dated(file.mtime.and_utc().fixed_offset()));
+        assert!(!dated(file.taken + chrono::Duration::seconds(1)));
 
         let _ = fs::remove_dir_all(&dir);
     }
