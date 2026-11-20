@@ -100,7 +100,7 @@ impl Batch {
             batch.videos += usize::from(file.is_video() && !file.is_live_video());
             batch.clips += usize::from(file.is_live_video());
 
-            if !file.is_live_video() {
+            if !file.is_live_video() && !file.is_edit() {
                 newest.push(file);
                 newest.sort_by_key(|file| std::cmp::Reverse(file.taken));
                 newest.truncate(PRINTS);
@@ -155,9 +155,19 @@ impl Kind {
     }
 }
 
+/// Where Photos keeps its render of an edited file, under the original's
+/// path: /PhotoData/Mutations/DCIM/122APPLE/IMG_2739/Adjustments/.
+pub const MUTATIONS: &str = "/PhotoData/Mutations";
+
 impl Media {
     pub fn is_live_video(&self) -> bool {
         self.kind == Kind::LiveVideo
+    }
+
+    /// Photos' render of an edit, beside its original in the folder. It has
+    /// no thumbnail of its own, so it is never one of the prints.
+    pub fn is_edit(&self) -> bool {
+        self.path.starts_with(MUTATIONS)
     }
 
     /// A film, or a Live Photo's clip.

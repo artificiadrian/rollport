@@ -32,8 +32,8 @@ use crate::{
     library::{Library, room},
     said,
     state::{
-        Batch, Device, Devices, End, Kind, Media, Need, Progress, Report, Settings, Trouble,
-        check_name, here, render,
+        Batch, Device, Devices, End, Kind, MUTATIONS, Media, Need, Progress, Report, Settings,
+        Trouble, check_name, here, render,
     },
     with,
 };
@@ -130,9 +130,20 @@ pub async fn walk(
     );
     let mut media = walked?;
 
+    let mut edited = Vec::new();
     let undated = match known {
         Ok(known) => {
             settle(&mut media, &known);
+            edited = media
+                .iter()
+                .filter(|file| {
+                    matches!(
+                        known.get(&file.path),
+                        Some(Known::Taken { edited: true, .. })
+                    )
+                })
+                .map(|file| file.path.clone())
+                .collect();
             None
         }
         Err(reason) => {
@@ -146,7 +157,60 @@ pub async fn walk(
 
     mark_live_videos(&mut media);
 
+    // An edit made in Photos is a file of its own beside the original, which
+    // /DCIM keeps as it was taken. Without them the import still stands.
+    if !edited.is_empty() {
+        match edits(udid, &media, &edited).await {
+            Ok(edits) => media.extend(edits),
+            Err(reason) => crate::note(app, &format!("cannot read the edits: {reason}")),
+        }
+    }
+
     Ok((media, undated))
+}
+
+/// Photos' render of each edited file: FullSizeRender.jpg, .heic or .mov,
+/// beside the recipe of the edit. It is dated and sorted with its original;
+/// the clip of an edited Live Photo is that Live Photo's clip.
+async fn edits(udid: &str, media: &[Media], edited: &[String]) -> Result<Vec<Media>, String> {
+    let mut afc = files_of(udid).await?;
+    let mut found = Vec::new();
+
+    for original in media.iter().filter(|file| edited.contains(&file.path)) {
+        let Some((folder, name)) = original.path.rsplit_once('/') else {
+            continue;
+        };
+        let stem = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
+        let adjustments = format!("{MUTATIONS}{folder}/{stem}/Adjustments");
+
+        // Photos says it was edited; an edit it has not rendered yet has no
+        // file to copy, and comes with a later import.
+        let Ok(names) = within("", afc.list_dir(&adjustments)).await else {
+            continue;
+        };
+
+        for name in names
+            .iter()
+            .filter(|name| name.starts_with("FullSizeRender."))
+        {
+            let path = format!("{adjustments}/{name}");
+            let info = within("cannot read an edit", afc.get_file_info(&path)).await?;
+            let kind = match (original.kind, Kind::of(&path)) {
+                (Kind::LivePhoto, Kind::Video) => Kind::LiveVideo,
+                (kind, _) => kind,
+            };
+
+            found.push(Media {
+                path,
+                size: info.size as u64,
+                mtime: info.modified,
+                taken: original.taken,
+                kind,
+            });
+        }
+    }
+
+    Ok(found)
 }
 
 async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media>, String> {
@@ -226,9 +290,13 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
 /// What the Photos app knows about one file in /DCIM.
 #[derive(Debug, PartialEq)]
 pub enum Known {
-    /// When it was taken, and what it is when Photos says more than the
-    /// file's name does.
-    Taken(chrono::DateTime<chrono::FixedOffset>, Option<Kind>),
+    Taken {
+        taken: chrono::DateTime<chrono::FixedOffset>,
+        /// What it is, when Photos says more than the file's name does.
+        kind: Option<Kind>,
+        /// Edited in Photos: its render sits under /PhotoData/Mutations.
+        edited: bool,
+    },
     /// Photos does not show it: it is in Recently Deleted, where it stays in
     /// /DCIM for 30 days, or it is a frame of a burst that was not picked.
     Hidden,
@@ -414,7 +482,8 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
     };
 
     let mut rows = db.prepare(&format!(
-        "SELECT a.ZDIRECTORY, a.ZFILENAME, {}, {}, {}, {} IS NOT NULL AND {} != 0, {}
+        "SELECT a.ZDIRECTORY, a.ZFILENAME, {}, {}, {}, {} IS NOT NULL AND {} != 0, {},
+                COALESCE({}, 0) > 0 OR COALESCE({}, 0) = 1
          FROM {table} a {join}
          WHERE a.ZDIRECTORY LIKE 'DCIM/%' AND a.ZFILENAME IS NOT NULL",
         a("ZDATECREATED"),
@@ -423,6 +492,8 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
         a("ZAVALANCHEUUID"),
         a("ZVISIBILITYSTATE"),
         a("ZKINDSUBTYPE"),
+        a("ZADJUSTMENTSSTATE"),
+        a("ZHASADJUSTMENTS"),
     ))?;
 
     rows.query_map([], |row| {
@@ -439,6 +510,7 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
             Some(103) => Some(Kind::ScreenRecording),
             _ => None,
         };
+        let edited: Option<bool> = row.get(7)?;
 
         if trashed.unwrap_or(0) != 0 || unpicked.unwrap_or(false) {
             return Ok(Some((path, Known::Hidden)));
@@ -459,7 +531,15 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
             .and_then(chrono::FixedOffset::east_opt)
             .map_or_else(|| here(utc), |zone| utc.and_utc().with_timezone(&zone));
 
-        Ok(Some((path, Known::Taken(taken, kind))))
+        let edited = edited.unwrap_or(false);
+        Ok(Some((
+            path,
+            Known::Taken {
+                taken,
+                kind,
+                edited,
+            },
+        )))
     })?
     .filter_map(Result::transpose)
     .collect()
@@ -493,7 +573,7 @@ pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
     media.retain(|file| !held.contains(&stem(&file.path)));
 
     for file in media.iter_mut() {
-        if let Some(Known::Taken(taken, kind)) = known.get(&file.path) {
+        if let Some(Known::Taken { taken, kind, .. }) = known.get(&file.path) {
             file.taken = *taken;
             file.kind = kind.unwrap_or(file.kind);
         }
@@ -581,9 +661,21 @@ fn requote(quote: Option<(f64, f64)>, fresh: Option<f64>, now: f64) -> Option<(f
     }
 }
 
-/// The file's own name, without the folders it sat in.
-pub fn name_of(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
+/// The file's own name, without the folders it sat in. An edit is named as
+/// Apple names an edited copy: IMG_2739's FullSizeRender.jpg is IMG_E2739.JPG.
+pub fn name_of(path: &str) -> String {
+    let name = path.rsplit('/').next().unwrap_or(path);
+
+    if !path.starts_with(MUTATIONS) {
+        return name.to_string();
+    }
+    // …/IMG_2739/Adjustments/FullSizeRender.jpg
+    let original = path.rsplit('/').nth(2).unwrap_or(name);
+    let extension = extension(name).unwrap_or_default().to_uppercase();
+    match original.split_once('_') {
+        Some((prefix, number)) => format!("{prefix}_E{number}.{extension}"),
+        None => format!("{original}_E.{extension}"),
+    }
 }
 
 /// Four connections at once. When the files are small most of the time goes
@@ -772,7 +864,7 @@ pub async fn copy_all(
                 copied_bytes += file.size;
 
                 // A Live Photo's clip has no thumbnail; its still stands for it.
-                if !file.is_live_video() {
+                if !file.is_live_video() && !file.is_edit() {
                     latest = Some(file.path.clone());
                 }
 
@@ -796,13 +888,13 @@ pub async fn copy_all(
             // rest of the camera roll is still worth copying, and the folder
             // will offer this one again next time.
             Err(Failed::File(reason)) => {
-                lost.add(name_of(&file.path), reason, cancel.load(Ordering::Relaxed));
+                lost.add(&name_of(&file.path), reason, cancel.load(Ordering::Relaxed));
                 Ok(())
             }
             Err(Failed::TooLarge) => {
                 let reason = "too large for this drive: FAT32 drives hold files up to 4 GB";
                 lost.add(
-                    name_of(&file.path),
+                    &name_of(&file.path),
                     reason.into(),
                     cancel.load(Ordering::Relaxed),
                 );
@@ -1079,7 +1171,7 @@ pub async fn copy(
     streamed: &AtomicU64,
     held: &Mutex<u64>,
 ) -> Result<Copied, Failed> {
-    let name = name_of(&file.path);
+    let name = &name_of(&file.path);
     let rendered = render(layout, name, file.taken.naive_local());
 
     // A layout is checked before a folder is allowed to keep it, but one may
@@ -1984,7 +2076,7 @@ mod tests {
         let layout = "{mtime:%Y-%m-%d_%H-%M-%S}_{name}";
         let names: Vec<String> = media
             .iter()
-            .map(|file| render(layout, name_of(&file.path), file.taken.naive_local()))
+            .map(|file| render(layout, &name_of(&file.path), file.taken.naive_local()))
             .collect();
         assert_eq!(
             names,
@@ -2036,8 +2128,11 @@ mod tests {
         let known = read_photos(&photos_sqlite(&dir)).unwrap();
         let _ = fs::remove_dir_all(&dir);
 
-        let at =
-            |text: &str| Known::Taken(chrono::DateTime::parse_from_rfc3339(text).unwrap(), None);
+        let at = |text: &str| Known::Taken {
+            taken: chrono::DateTime::parse_from_rfc3339(text).unwrap(),
+            kind: None,
+            edited: false,
+        };
 
         // 810000000 seconds after 2001-01-01 is 2026-09-02 00:00:00 UTC.
         assert_eq!(
@@ -2052,11 +2147,11 @@ mod tests {
         // A burst: the picked frame, and one that was not.
         assert!(matches!(
             known["/DCIM/100APPLE/IMG_0006.HEIC"],
-            Known::Taken(..)
+            Known::Taken { .. }
         ));
         assert_eq!(known["/DCIM/100APPLE/IMG_0007.HEIC"], Known::Hidden);
         // No zone: the same instant, in this machine's zone.
-        let Known::Taken(no_zone, _) = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
+        let Known::Taken { taken: no_zone, .. } = known["/DCIM/100APPLE/IMG_0003.PNG"] else {
             panic!("a photo with no zone is still dated")
         };
         assert_eq!(no_zone.timestamp(), 810_000_000 + APPLE_EPOCH);
@@ -2076,20 +2171,40 @@ mod tests {
             .unwrap()
             .execute_batch(
                 "CREATE TABLE ZGENERICASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
-                     ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZKINDSUBTYPE INTEGER);
+                     ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZKINDSUBTYPE INTEGER,
+                     ZHASADJUSTMENTS INTEGER);
                  INSERT INTO ZGENERICASSET VALUES
-                     (1, 'DCIM/100APPLE', 'IMG_0001.PNG', 810000000, 10);",
+                     (1, 'DCIM/100APPLE', 'IMG_0001.PNG', 810000000, 10, 1);",
             )
             .unwrap();
 
         let known = read_photos(&path).unwrap();
         let _ = fs::remove_dir_all(&dir);
 
-        let Known::Taken(taken, kind) = known["/DCIM/100APPLE/IMG_0001.PNG"] else {
+        let Known::Taken {
+            taken,
+            kind,
+            edited,
+        } = known["/DCIM/100APPLE/IMG_0001.PNG"]
+        else {
             panic!("an old database still dates its photos")
         };
         assert_eq!(taken.timestamp(), 810_000_000 + APPLE_EPOCH);
         assert_eq!(kind, Some(Kind::Screenshot));
+        assert!(edited);
+    }
+
+    #[test]
+    fn an_edit_is_named_as_apple_names_an_edited_copy() {
+        let edit = |original: &str, render: &str| {
+            name_of(&format!(
+                "/PhotoData/Mutations/DCIM/122APPLE/{original}/Adjustments/{render}"
+            ))
+        };
+        assert_eq!(edit("IMG_2739", "FullSizeRender.jpg"), "IMG_E2739.JPG");
+        assert_eq!(edit("IMG_2917", "FullSizeRender.mov"), "IMG_E2917.MOV");
+        assert_eq!(edit("DSC0001", "FullSizeRender.heic"), "DSC0001_E.HEIC");
+        assert_eq!(name_of("/DCIM/122APPLE/IMG_2739.PNG"), "IMG_2739.PNG");
     }
 
     #[test]
@@ -2117,12 +2232,20 @@ mod tests {
         let known = HashMap::from([
             (
                 "/DCIM/100APPLE/IMG_0001.HEIC".to_string(),
-                Known::Taken(taken, None),
+                Known::Taken {
+                    taken,
+                    kind: None,
+                    edited: false,
+                },
             ),
             ("/DCIM/100APPLE/IMG_0004.HEIC".to_string(), Known::Hidden),
             (
                 "/DCIM/100APPLE/IMG_0005.HEIC".to_string(),
-                Known::Taken(taken, None),
+                Known::Taken {
+                    taken,
+                    kind: None,
+                    edited: false,
+                },
             ),
         ]);
 
@@ -2183,7 +2306,10 @@ mod tests {
         assert!(known.len() > hidden);
         let mut kinds = HashMap::new();
         for known in known.values() {
-            if let Known::Taken(_, Some(kind)) = known {
+            if let Known::Taken {
+                kind: Some(kind), ..
+            } = known
+            {
                 *kinds.entry(format!("{kind:?}")).or_insert(0) += 1;
             }
         }
@@ -2200,7 +2326,7 @@ mod tests {
 
         let mut late = None;
         for (path, known) in &known {
-            let Known::Taken(taken, _) = known else {
+            let Known::Taken { taken, .. } = known else {
                 continue;
             };
             let info = afc.get_file_info(path).await.unwrap();
@@ -2236,7 +2362,7 @@ mod tests {
 
         let target = dir.join(render(
             layout,
-            name_of(&file.path),
+            &name_of(&file.path),
             file.taken.naive_local(),
         ));
         let on_disk = fs::metadata(&target).unwrap().modified().unwrap();
@@ -2261,7 +2387,7 @@ mod tests {
         fs::remove_dir_all(&dir).unwrap();
         let before = dir.join(render(
             layout,
-            name_of(&file.path),
+            &name_of(&file.path),
             here(file.mtime).naive_local(),
         ));
         fs::create_dir_all(before.parent().unwrap()).unwrap();
@@ -2280,6 +2406,53 @@ mod tests {
         eprintln!("0.1.0 named it {}", before.display());
         assert!(matches!(filled, Ok(Copied::Already)), "{filled:?}");
         assert!(!target.exists());
+
+        // An edited photo: its render comes beside it, named as Apple names
+        // an edited copy, and dated with the original.
+        let (path, taken) = known
+            .iter()
+            .find_map(|(path, known)| match known {
+                Known::Taken {
+                    taken,
+                    edited: true,
+                    ..
+                } => Some((path.clone(), *taken)),
+                _ => None,
+            })
+            .expect("an edited photo on this iPhone");
+        let info = afc.get_file_info(&path).await.unwrap();
+        let original = Media {
+            kind: Kind::of(&path),
+            path,
+            size: info.size as u64,
+            mtime: info.modified,
+            taken,
+        };
+        let found = edits(
+            &udid,
+            std::slice::from_ref(&original),
+            std::slice::from_ref(&original.path),
+        )
+        .await
+        .unwrap();
+        let edit = found.first().expect("its render");
+        let copied = copy(
+            &mut afc,
+            edit,
+            &dir,
+            layout,
+            &AtomicBool::new(false),
+            &AtomicU64::new(0),
+            &Mutex::new(0),
+        )
+        .await;
+        assert!(matches!(copied, Ok(Copied::Fetched)), "{copied:?}");
+        let landed = dir.join(render(layout, &name_of(&edit.path), taken.naive_local()));
+        eprintln!("{} edited, landed at {}", original.path, landed.display());
+        assert_eq!(
+            fs::metadata(&landed).unwrap().modified().unwrap(),
+            SystemTime::from(taken)
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
