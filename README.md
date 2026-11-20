@@ -104,7 +104,7 @@ and then Rollport: the same idea, as an app anyone can use.
 
 ## Building
 
-Requirements: [Rust](https://rustup.rs), [Node.js](https://nodejs.org) ≥ 22.18,
+Requirements: [Rust](https://rustup.rs), [Node.js](https://nodejs.org) ≥ 22.23.4,
 [pnpm](https://pnpm.io/installation), and the
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 

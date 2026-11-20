@@ -6,7 +6,7 @@
 ## What you need
 
 - [Rust](https://rustup.rs) 1.90 or later
-- [Node.js](https://nodejs.org) 22.18 or later (the scripts use Node's built-in
+- [Node.js](https://nodejs.org) 22.23.4 or later (the scripts use Node's built-in
   TypeScript support)
 - [pnpm](https://pnpm.io/installation) 11
 - Tauri's [prerequisites](https://v2.tauri.app/start/prerequisites/): the Xcode
