@@ -125,9 +125,9 @@ pub fn new<'a>(
         .filter(|file| !keys.contains(&key(file)))
 }
 
-/// Whether the folder sits on a network drive. rollport-library.db runs in SQLite's WAL
-/// mode, which does not work over a network file system, and a copy there can
-/// fail halfway when the link drops.
+/// Whether the folder sits on a network drive. SQLite's WAL mode does not work
+/// over a network file system, so rollport-library.db is kept in its older
+/// journal mode there, and a copy there can fail halfway when the link drops.
 #[cfg(target_os = "macos")]
 fn on_network(path: &Path) -> bool {
     use std::os::unix::ffi::OsStrExt;
@@ -215,7 +215,11 @@ impl Library {
         // already has files on disk.
         db.busy_timeout(std::time::Duration::from_secs(10))
             .doing("cannot prepare rollport-library.db")?;
-        let _ = db.pragma_update(None, "journal_mode", "WAL");
+        // WAL needs memory shared between the processes that open the file,
+        // which a network file system does not give. The mode is kept in the
+        // file, so a library moved onto a share is switched back on open.
+        let mode = if on_network(folder) { "DELETE" } else { "WAL" };
+        let _ = db.pragma_update(None, "journal_mode", mode);
 
         let version: i64 = db
             .pragma_query_value(None, "user_version", |row| row.get(0))
