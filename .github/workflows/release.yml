@@ -54,9 +54,12 @@ jobs:
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
+      # Never saved: a tag's cache is one no later tag can read, and in the
+      # 10 GB a repository gets it would push out main's.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          save-if: false
 
       - name: Linux libraries
         if: matrix.platform == 'ubuntu-22.04'

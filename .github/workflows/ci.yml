@@ -55,9 +55,13 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      # Saved from main only. Branches and tags read main's cache; one saved
+      # under a branch or a tag serves that ref alone, and takes room from
+      # main's in the 10 GB a repository gets.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Linux libraries
         run: |
