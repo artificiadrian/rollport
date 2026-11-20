@@ -231,26 +231,34 @@ async fn photos(
         fs::create_dir_all(&scratch).doing("cannot make a scratch folder")?;
         let mut afc = files_of(udid).await?;
 
-        // Recent changes sit in the -wal file until Photos folds them in, and
-        // SQLite replays it on open. Not the -shm: it is an index of the -wal
-        // in shared memory, and SQLite rebuilds it.
-        pull(
-            &mut afc,
-            "/PhotoData/Photos.sqlite",
-            &scratch.join("Photos.sqlite"),
-            wanted,
-        )
-        .await
-        .doing("Photos.sqlite")?;
-        let _ = pull(
-            &mut afc,
-            "/PhotoData/Photos.sqlite-wal",
-            &scratch.join("Photos.sqlite-wal"),
-            wanted,
-        )
-        .await;
+        let (db, wal) = (
+            scratch.join("Photos.sqlite"),
+            scratch.join("Photos.sqlite-wal"),
+        );
 
-        read_photos(&scratch.join("Photos.sqlite")).doing("cannot read Photos.sqlite")
+        // Photos writes while we copy: a database and -wal from two moments
+        // read as damaged, or worse, as rows that never stood together. So the
+        // copy counts only when neither file changed on the phone meanwhile.
+        for _ in 0..3 {
+            let before = moments(&mut afc).await;
+
+            // Recent changes sit in the -wal file until Photos folds them in,
+            // and SQLite replays it on open. Not the -shm: it is an index of
+            // the -wal in shared memory, and SQLite rebuilds it.
+            pull(&mut afc, PHOTOS_DB, &db, wanted)
+                .await
+                .doing("Photos.sqlite")?;
+            let _ = fs::remove_file(&wal);
+            if pull(&mut afc, PHOTOS_WAL, &wal, wanted).await.is_err() {
+                let _ = fs::remove_file(&wal);
+            }
+
+            if moments(&mut afc).await == before {
+                return read_photos(&db).doing("cannot read Photos.sqlite");
+            }
+        }
+
+        Err("Photos kept changing while it was copied".to_string())
     }
     .await;
 
@@ -260,6 +268,21 @@ async fn photos(
         eprintln!("dating files by when they were written: {reason}");
         HashMap::new()
     })
+}
+
+const PHOTOS_DB: &str = "/PhotoData/Photos.sqlite";
+const PHOTOS_WAL: &str = "/PhotoData/Photos.sqlite-wal";
+
+/// The size and change time of the database and its -wal, as far as AFC says.
+async fn moments(afc: &mut AfcClient) -> [Option<(usize, chrono::NaiveDateTime)>; 2] {
+    let mut seen = [None, None];
+    for (slot, path) in seen.iter_mut().zip([PHOTOS_DB, PHOTOS_WAL]) {
+        *slot = within("", afc.get_file_info(path))
+            .await
+            .ok()
+            .map(|info| (info.size, info.modified));
+    }
+    seen
 }
 
 /// One file from the phone to the disk, whole.
