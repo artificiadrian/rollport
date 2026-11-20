@@ -1195,9 +1195,11 @@ fn holds(path: &Path, file: &Media) -> bool {
     })
 }
 
-/// Sets when a file was last changed. Windows asks only for the right to
-/// change its attributes: asking to write it is refused while OneDrive, the
-/// indexer or a virus scanner has the new file open.
+/// Dates a file: when it was changed, and on macOS and Windows when it was
+/// created, which Explorer and Windows Photos sort by. Linux keeps no
+/// settable creation date. Windows asks only for the right to change its
+/// attributes: asking to write it is refused while OneDrive, the indexer or
+/// a virus scanner has the new file open.
 fn stamp(path: &Path, when: chrono::DateTime<chrono::FixedOffset>) -> std::io::Result<()> {
     let mut options = fs::File::options();
     options.write(true);
@@ -1208,7 +1210,15 @@ fn stamp(path: &Path, when: chrono::DateTime<chrono::FixedOffset>) -> std::io::R
         options.access_mode(windows_sys::Win32::Storage::FileSystem::FILE_WRITE_ATTRIBUTES);
     }
 
-    options.open(path)?.set_modified(SystemTime::from(when))
+    let when = SystemTime::from(when);
+    let times = fs::FileTimes::new().set_modified(when);
+
+    #[cfg(target_os = "macos")]
+    let times = std::os::macos::fs::FileTimesExt::set_created(times, when);
+    #[cfg(windows)]
+    let times = std::os::windows::fs::FileTimesExt::set_created(times, when);
+
+    options.open(path)?.set_times(times)
 }
 
 /// One file's share of the room on the disk, from before its first byte
@@ -2164,6 +2174,12 @@ mod tests {
         };
 
         assert!(dated(file.taken));
+        #[cfg(target_os = "macos")]
+        {
+            use std::os::macos::fs::MetadataExt;
+            let meta = fs::metadata(&path).unwrap();
+            assert_eq!(meta.st_birthtime(), file.taken.timestamp());
+        }
         assert!(dated(file.mtime.and_utc().fixed_offset()));
         assert!(!dated(file.taken + chrono::Duration::seconds(1)));
 
