@@ -1,6 +1,6 @@
 [package]
 name = "rollport"
-version = "0.1.0"
+version = "0.2.0"
 description = "Copies the photos and videos from an iPhone to a folder on your computer, over USB."
 authors = ["artificiadrian"]
 edition = "2024"
