@@ -346,6 +346,7 @@ mod tests {
     fn file(path: &str) -> Media {
         Media {
             path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
             size: 42,
             mtime: chrono::DateTime::from_timestamp(1_700_000_000, 300_000_000)
                 .unwrap()

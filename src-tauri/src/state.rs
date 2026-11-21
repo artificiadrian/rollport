@@ -115,7 +115,13 @@ impl Batch {
 /// One file on the phone, as the scan found it.
 #[derive(Clone)]
 pub struct Media {
+    /// Where it is on the phone, and with its size and mtime what the folder
+    /// knows it by.
     pub path: String,
+    /// What it is called in the folder: its own name on the phone; for an
+    /// edit, Apple's name for an edited copy; for an original iCloud keeps on
+    /// the phone, the name it had where it was taken.
+    pub name: String,
     pub size: u64,
     /// When the file was last written on the phone, as AFC says. Part of what
     /// the folder knows the file by, and nothing else: a photo saved from a
@@ -1571,6 +1577,7 @@ mod tests {
     fn a_batch_tells_kinds_apart_and_names_the_newest_prints() {
         let file = |path: &str, live_video: bool, second| Media {
             path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
             size: 10,
             mtime: chrono::NaiveDateTime::default(),
             taken: chrono::DateTime::from_timestamp(second, 0)
@@ -1752,6 +1759,7 @@ mod tests {
 
         let file = |path: &str, live_video: bool| Media {
             path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),
@@ -2631,6 +2639,7 @@ mod tests {
     fn media(path: &str, size: u64) -> Media {
         Media {
             path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
             size,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),

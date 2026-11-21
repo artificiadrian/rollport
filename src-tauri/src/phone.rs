@@ -201,6 +201,7 @@ async fn edits(udid: &str, media: &[Media], edited: &[String]) -> Result<Vec<Med
             };
 
             found.push(Media {
+                name: edited_name(&original.name, &path),
                 path,
                 size: info.size as u64,
                 mtime: info.modified,
@@ -259,6 +260,7 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
 
             let file = Media {
                 kind: Kind::of(&path),
+                name: name.clone(),
                 path,
                 size: info.size as u64,
                 mtime: info.modified,
@@ -661,20 +663,14 @@ fn requote(quote: Option<(f64, f64)>, fresh: Option<f64>, now: f64) -> Option<(f
     }
 }
 
-/// The file's own name, without the folders it sat in. An edit is named as
-/// Apple names an edited copy: IMG_2739's FullSizeRender.jpg is IMG_E2739.JPG.
-pub fn name_of(path: &str) -> String {
-    let name = path.rsplit('/').next().unwrap_or(path);
-
-    if !path.starts_with(MUTATIONS) {
-        return name.to_string();
-    }
-    // …/IMG_2739/Adjustments/FullSizeRender.jpg
-    let original = path.rsplit('/').nth(2).unwrap_or(name);
-    let extension = extension(name).unwrap_or_default().to_uppercase();
-    match original.split_once('_') {
+/// Apple's name for an edited copy: IMG_E2739.JPG for IMG_2739.PNG's render
+/// in JPEG.
+pub fn edited_name(original: &str, render: &str) -> String {
+    let stem = original.rsplit_once('.').map_or(original, |(stem, _)| stem);
+    let extension = extension(render).unwrap_or_default().to_uppercase();
+    match stem.split_once('_') {
         Some((prefix, number)) => format!("{prefix}_E{number}.{extension}"),
-        None => format!("{original}_E.{extension}"),
+        None => format!("{stem}_E.{extension}"),
     }
 }
 
@@ -888,16 +884,12 @@ pub async fn copy_all(
             // rest of the camera roll is still worth copying, and the folder
             // will offer this one again next time.
             Err(Failed::File(reason)) => {
-                lost.add(&name_of(&file.path), reason, cancel.load(Ordering::Relaxed));
+                lost.add(&file.name, reason, cancel.load(Ordering::Relaxed));
                 Ok(())
             }
             Err(Failed::TooLarge) => {
                 let reason = "too large for this drive: FAT32 drives hold files up to 4 GB";
-                lost.add(
-                    &name_of(&file.path),
-                    reason.into(),
-                    cancel.load(Ordering::Relaxed),
-                );
+                lost.add(&file.name, reason.into(), cancel.load(Ordering::Relaxed));
                 Ok(())
             }
         };
@@ -1171,7 +1163,7 @@ pub async fn copy(
     streamed: &AtomicU64,
     held: &Mutex<u64>,
 ) -> Result<Copied, Failed> {
-    let name = &name_of(&file.path);
+    let name = &file.name;
     let rendered = render(layout, name, file.taken.naive_local());
 
     // A layout is checked before a folder is allowed to keep it, but one may
@@ -1786,6 +1778,11 @@ pub async fn value(lockdown: &mut LockdownClient, key: &str) -> Result<String, S
 mod tests {
     use super::*;
 
+    /// A file's own name, without the folders it sat in.
+    fn name_of(path: &str) -> &str {
+        path.rsplit('/').next().unwrap_or(path)
+    }
+
     #[test]
     fn only_the_products_usbmuxd_serves_count_as_an_iphone() {
         assert!(is_iphone("05ac", "12a8")); // iPhone
@@ -2029,6 +2026,7 @@ mod tests {
     fn the_video_half_of_a_live_photo_is_marked() {
         let file = |path: &str| Media {
             path: path.into(),
+            name: name_of(path).into(),
             size: 1,
             mtime: when("2026-09-02 15:04:11"),
             taken: here(when("2026-09-02 15:04:11")),
@@ -2059,6 +2057,7 @@ mod tests {
     fn a_live_photo_clip_is_named_and_dated_with_its_still() {
         let file = |path: &str, at: &str| Media {
             path: path.into(),
+            name: name_of(path).into(),
             size: 1,
             mtime: when(at),
             taken: when(at).and_utc().fixed_offset(),
@@ -2076,7 +2075,7 @@ mod tests {
         let layout = "{mtime:%Y-%m-%d_%H-%M-%S}_{name}";
         let names: Vec<String> = media
             .iter()
-            .map(|file| render(layout, &name_of(&file.path), file.taken.naive_local()))
+            .map(|file| render(layout, &file.name, file.taken.naive_local()))
             .collect();
         assert_eq!(
             names,
@@ -2196,21 +2195,25 @@ mod tests {
 
     #[test]
     fn an_edit_is_named_as_apple_names_an_edited_copy() {
-        let edit = |original: &str, render: &str| {
-            name_of(&format!(
-                "/PhotoData/Mutations/DCIM/122APPLE/{original}/Adjustments/{render}"
-            ))
-        };
-        assert_eq!(edit("IMG_2739", "FullSizeRender.jpg"), "IMG_E2739.JPG");
-        assert_eq!(edit("IMG_2917", "FullSizeRender.mov"), "IMG_E2917.MOV");
-        assert_eq!(edit("DSC0001", "FullSizeRender.heic"), "DSC0001_E.HEIC");
-        assert_eq!(name_of("/DCIM/122APPLE/IMG_2739.PNG"), "IMG_2739.PNG");
+        assert_eq!(
+            edited_name("IMG_2739.PNG", "a/FullSizeRender.jpg"),
+            "IMG_E2739.JPG"
+        );
+        assert_eq!(
+            edited_name("IMG_2917.MOV", "a/FullSizeRender.mov"),
+            "IMG_E2917.MOV"
+        );
+        assert_eq!(
+            edited_name("DSC0001.HEIC", "a/FullSizeRender.heic"),
+            "DSC0001_E.HEIC"
+        );
     }
 
     #[test]
     fn settling_dates_by_photos_and_leaves_out_recently_deleted() {
         let file = |path: &str| Media {
             path: path.into(),
+            name: name_of(path).into(),
             size: 1,
             mtime: when("2026-11-02 10:00:00"),
             taken: here(when("2026-11-02 10:00:00")),
@@ -2332,6 +2335,7 @@ mod tests {
             let info = afc.get_file_info(path).await.unwrap();
             if (info.modified - taken.naive_utc()).num_days() > 30 {
                 late = Some(Media {
+                    name: name_of(path).into(),
                     path: path.clone(),
                     size: info.size as u64,
                     mtime: info.modified,
@@ -2360,11 +2364,7 @@ mod tests {
         .await;
         assert!(matches!(copied, Ok(Copied::Fetched)), "{copied:?}");
 
-        let target = dir.join(render(
-            layout,
-            &name_of(&file.path),
-            file.taken.naive_local(),
-        ));
+        let target = dir.join(render(layout, &file.name, file.taken.naive_local()));
         let on_disk = fs::metadata(&target).unwrap().modified().unwrap();
         eprintln!("landed at {}", target.display());
         assert_eq!(on_disk, SystemTime::from(file.taken));
@@ -2385,11 +2385,7 @@ mod tests {
         // A folder 0.1.0 filled: the file under the name and date of when it
         // was written on the phone.
         fs::remove_dir_all(&dir).unwrap();
-        let before = dir.join(render(
-            layout,
-            &name_of(&file.path),
-            here(file.mtime).naive_local(),
-        ));
+        let before = dir.join(render(layout, &file.name, here(file.mtime).naive_local()));
         fs::create_dir_all(before.parent().unwrap()).unwrap();
         fs::write(&before, vec![0; file.size as usize]).unwrap();
         stamp(&before, file.mtime.and_utc().fixed_offset()).unwrap();
@@ -2423,6 +2419,7 @@ mod tests {
         let info = afc.get_file_info(&path).await.unwrap();
         let original = Media {
             kind: Kind::of(&path),
+            name: name_of(&path).into(),
             path,
             size: info.size as u64,
             mtime: info.modified,
@@ -2447,7 +2444,7 @@ mod tests {
         )
         .await;
         assert!(matches!(copied, Ok(Copied::Fetched)), "{copied:?}");
-        let landed = dir.join(render(layout, &name_of(&edit.path), taken.naive_local()));
+        let landed = dir.join(render(layout, &edit.name, taken.naive_local()));
         eprintln!("{} edited, landed at {}", original.path, landed.display());
         assert_eq!(
             fs::metadata(&landed).unwrap().modified().unwrap(),
@@ -2466,6 +2463,7 @@ mod tests {
 
         let file = Media {
             path: "/DCIM/100APPLE/IMG_0001.HEIC".into(),
+            name: "IMG_0001.HEIC".into(),
             size: 42,
             mtime: when("2026-11-02 10:00:00"),
             // Before 1970: a date somebody set in Photos.
