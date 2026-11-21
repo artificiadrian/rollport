@@ -89,6 +89,7 @@ const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
         screenshots: 12,
         screenRecordings: 1,
     },
+    ranges: [fresh, Math.floor(fresh / 10), Math.floor(fresh / 3), fresh],
 })
 
 const base: Flow = {
@@ -618,6 +619,17 @@ const STATES: State[] = [
             act: async (page) => {
                 await options(page)
                 await menu(page, "Media types, saved with this folder")
+            },
+        },
+    ),
+    state(
+        "options-menu-dates",
+        "The date ranges, each with how many it would bring",
+        {},
+        {
+            act: async (page) => {
+                await options(page)
+                await menu(page, "Date taken, not saved with the folder")
             },
         },
     ),

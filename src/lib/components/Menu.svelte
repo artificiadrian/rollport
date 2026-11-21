@@ -110,7 +110,7 @@
                 >
                     {#snippet children({ selected })}
                         <!-- As tall as the label's line, so it centres on it.
-                             Ticked answers are boxes; the one answer, a tick. -->
+                             Several answers are boxes; one answer, a dot. -->
                         <span class="flex h-5 shrink-0 items-center">
                             {#if multiple}
                                 <span
@@ -130,11 +130,17 @@
                                     {/if}
                                 </span>
                             {:else}
-                                <Check
-                                    size={14}
-                                    aria-hidden="true"
-                                    class={selected ? "" : "invisible"}
-                                />
+                                <span
+                                    class={[
+                                        "flex size-4 items-center justify-center rounded-full border",
+                                        selected ? "border-ink" : "border-edge",
+                                    ]}
+                                >
+                                    {#if selected}
+                                        <span class="size-2 rounded-full bg-ink"
+                                        ></span>
+                                    {/if}
+                                </span>
                             {/if}
                         </span>
                         {#if item.icon}

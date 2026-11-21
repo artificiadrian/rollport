@@ -107,6 +107,17 @@ function demo() {
         }
     }
 
+    /** New files for each date range Options offers, as Rust counts them. */
+    function ranges(takes: Takes): number[] {
+        const presets: Range[] = [
+            { range: "everything" },
+            { range: "last", days: 7 },
+            { range: "last", days: 30 },
+            { range: "last", days: 365 },
+        ]
+        return presets.map((range) => wanted(range, takes).files)
+    }
+
     /** What is new for a range and a choice of kinds (Takes in state.rs). */
     function wanted(range: Range, takes: Takes): Batch {
         const share = reach(range)
@@ -175,6 +186,7 @@ function demo() {
             new: wanted({ range: "everything" }, EVERYTHING),
             undated: false,
             counts: counts(),
+            ranges: ranges(EVERYTHING),
         },
         run: null,
         range: { range: "everything" },
@@ -247,6 +259,11 @@ function demo() {
                 new: left(batch, imported),
                 undated: false,
                 counts: counts(),
+                ranges: ranges(
+                    flow.folder.folder === "known"
+                        ? flow.folder.takes
+                        : EVERYTHING,
+                ),
             },
             run: {
                 run: "finished",
@@ -350,6 +367,11 @@ function demo() {
                     new: current(),
                     undated: false,
                     counts: counts(),
+                    ranges: ranges(
+                        flow.folder.folder === "known"
+                            ? flow.folder.takes
+                            : EVERYTHING,
+                    ),
                 },
             })
         })

@@ -45,6 +45,8 @@ export type Roll =
           undated: boolean
           /// New files of each kind in the range, whatever the folder takes.
           counts: Counts
+          /// New files the folder takes for each of PRESETS, in its order.
+          ranges: number[]
       }
 
 /// What could not be copied. One bad file does not end a run.
@@ -236,6 +238,8 @@ export type Screen =
       }
 
 /// The answers worth one click. Anything else is two dates.
+/// The date ranges Options offers. Rust counts the same ones (PRESET_DAYS in
+/// state.rs), so the two lists change together.
 export const PRESETS: { range: Range; label: string }[] = [
     { range: { range: "everything" }, label: "Any date" },
     { range: { range: "last", days: 7 }, label: "Last 7 days" },

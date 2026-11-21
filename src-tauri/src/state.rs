@@ -804,8 +804,15 @@ pub enum RollView {
         /// New files of each kind in the range, whatever the folder takes:
         /// what each choice under Media types would add.
         counts: Counts,
+        /// New files the folder takes for each date range Options offers:
+        /// any date, then the last `PRESET_DAYS`.
+        ranges: Vec<usize>,
     },
 }
+
+/// The ranges Options offers besides any date, in days: a week, a month, a
+/// year. The window lists them in this order (PRESETS in flow.ts).
+pub const PRESET_DAYS: [u32; 3] = [7, 30, 365];
 
 /// How many files of each kind, in the order and with the names of `Takes`.
 #[derive(Serialize, Clone, Default, PartialEq, Debug)]
@@ -1507,6 +1514,10 @@ impl State {
                     new: Batch::of(new(media, takes, self.range, keys)),
                     undated: undated.is_some(),
                     counts: Counts::of(new(media, Takes::EVERYTHING, self.range, keys)),
+                    ranges: std::iter::once(Range::Everything)
+                        .chain(PRESET_DAYS.map(|days| Range::Last { days }))
+                        .map(|range| new(media, takes, range, keys).count())
+                        .collect(),
                 },
             });
 

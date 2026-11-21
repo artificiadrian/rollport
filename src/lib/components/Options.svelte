@@ -19,10 +19,10 @@
         named,
         tell,
         when,
-        type Counts,
         type Folder,
         type Kind,
         type Range,
+        type Roll,
     } from "$lib/flow"
 
     // What the popover under Options holds: which dates this run takes, and
@@ -32,12 +32,13 @@
     let {
         folder,
         range,
-        counts,
+        roll,
     }: {
         folder: Extract<Folder, { folder: "known" }>
         range: Range
-        /// New files of each kind on this iPhone, once its camera roll is read.
-        counts: Counts | null
+        /// The iPhone's camera roll once it is read: how many new files each
+        /// date range and each kind would bring.
+        roll: Extract<Roll, { roll: "done" }> | null
     } = $props()
 
     const onrange = (range: Range) => tell("set_range", { range })
@@ -151,13 +152,23 @@
     // is outside Tailwind's layers.
     const trigger = `${row} w-full text-left transition-colors -outline-offset-2! hover:bg-subtle focus-visible:bg-subtle data-[state=open]:bg-subtle`
 
-    const DATES = [
-        ...PRESETS.map((preset) => ({
+    // Each range with how many new files it would bring. Two dates of your
+    // own are only counted once they are the range.
+    const dates = $derived([
+        ...PRESETS.map((preset, at) => ({
             value: keyOf(preset.range),
             label: preset.label,
+            aside: roll ? count(roll.ranges[at] ?? 0) : undefined,
         })),
-        { value: "between", label: "Between two dates" },
-    ]
+        {
+            value: "between",
+            label: "Between two dates",
+            aside:
+                roll && range.range === "between"
+                    ? count(roll.new.files)
+                    : undefined,
+        },
+    ])
 
     // Each kind is ticked on its own, with how many new files of it the
     // iPhone holds. The last one ticked cannot be unticked: an import of
@@ -181,7 +192,7 @@
                     ? "With their videos"
                     : `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`,
             icon: ICONS[kind],
-            aside: counts ? count(counts[kind]) : undefined,
+            aside: roll ? count(roll.counts[kind]) : undefined,
             indent: kind === "liveVideos",
             disabled: kind === "liveVideos" && !folder.takes.livePhotos,
         })),
@@ -230,7 +241,7 @@
     <div>
         <Menu
             value={keyOf(range)}
-            items={DATES}
+            items={dates}
             onchoose={pickDate}
             label="Date taken, not saved with the folder"
             title="Not saved with the folder. Back to Any date when Rollport is next opened."

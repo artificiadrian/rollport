@@ -56,6 +56,7 @@ const read = (fresh: number, bytes?: number, undated = false): Roll => ({
         screenshots: 0,
         screenRecordings: 0,
     },
+    ranges: [fresh, 0, 0, 0],
 })
 const reading = (failed: string | null = null): Roll => ({
     roll: "reading",

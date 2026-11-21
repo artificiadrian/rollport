@@ -936,7 +936,7 @@
         <Options
             {folder}
             range={flow.range}
-            counts={flow.roll?.roll === "done" ? flow.roll.counts : null}
+            roll={flow.roll?.roll === "done" ? flow.roll : null}
         />
     </div>
 {/if}
