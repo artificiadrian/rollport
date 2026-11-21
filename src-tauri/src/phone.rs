@@ -131,9 +131,24 @@ pub async fn walk(
     let mut media = walked?;
 
     let mut edited = Vec::new();
+    let mut kept = Vec::new();
     let undated = match known {
         Ok(known) => {
             settle(&mut media, &known);
+            kept = known
+                .iter()
+                .filter_map(|(path, known)| match known {
+                    Known::Kept { taken, kind, name } => Some(Media {
+                        path: path.clone(),
+                        name: name.clone(),
+                        size: 0,
+                        mtime: chrono::NaiveDateTime::default(),
+                        taken: *taken,
+                        kind: kind.unwrap_or(Kind::of(name)),
+                    }),
+                    _ => None,
+                })
+                .collect();
             edited = media
                 .iter()
                 .filter(|file| {
@@ -166,7 +181,35 @@ pub async fn walk(
         }
     }
 
+    if !kept.is_empty() {
+        match on_phone(udid, kept).await {
+            Ok(kept) => media.extend(kept),
+            Err(reason) => crate::note(app, &format!("cannot read iCloud's originals: {reason}")),
+        }
+    }
+
     Ok((media, undated))
+}
+
+/// The originals iCloud keeps on the phone, as far as they are there: Photos
+/// can list one whose file is still on its way. Each gets its size and mtime,
+/// which with its path are what the folder knows it by.
+async fn on_phone(udid: &str, kept: Vec<Media>) -> Result<Vec<Media>, String> {
+    let mut afc = files_of(udid).await?;
+    let mut found = Vec::new();
+
+    for file in kept {
+        let Ok(info) = within("", afc.get_file_info(&file.path)).await else {
+            continue;
+        };
+        found.push(Media {
+            size: info.size as u64,
+            mtime: info.modified,
+            ..file
+        });
+    }
+
+    Ok(found)
 }
 
 /// Photos' render of each edited file: FullSizeRender.jpg, .heic or .mov,
@@ -298,6 +341,14 @@ pub enum Known {
         kind: Option<Kind>,
         /// Edited in Photos: its render sits under /PhotoData/Mutations.
         edited: bool,
+    },
+    /// An original iCloud Photos keeps on the phone outside /DCIM: taken on
+    /// another device, or shared to this one. Photos names its file by an
+    /// id, so it carries the name it had where it was taken.
+    Kept {
+        taken: chrono::DateTime<chrono::FixedOffset>,
+        kind: Option<Kind>,
+        name: String,
     },
     /// Photos does not show it: it is in Recently Deleted, where it stays in
     /// /DCIM for 30 days, or it is a frame of a burst that was not picked.
@@ -485,9 +536,12 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
 
     let mut rows = db.prepare(&format!(
         "SELECT a.ZDIRECTORY, a.ZFILENAME, {}, {}, {}, {} IS NOT NULL AND {} != 0, {},
-                COALESCE({}, 0) > 0 OR COALESCE({}, 0) = 1
+                COALESCE({}, 0) > 0 OR COALESCE({}, 0) = 1, {}
          FROM {table} a {join}
-         WHERE a.ZDIRECTORY LIKE 'DCIM/%' AND a.ZFILENAME IS NOT NULL",
+         WHERE (a.ZDIRECTORY LIKE 'DCIM/%'
+                OR ({} = 1 AND (a.ZDIRECTORY LIKE 'PhotoData/CPLAssets%'
+                                OR a.ZDIRECTORY LIKE 'CPLAssets%')))
+           AND a.ZFILENAME IS NOT NULL",
         a("ZDATECREATED"),
         a("ZTRASHEDSTATE"),
         x("ZTIMEZONEOFFSET"),
@@ -496,10 +550,19 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
         a("ZKINDSUBTYPE"),
         a("ZADJUSTMENTSSTATE"),
         a("ZHASADJUSTMENTS"),
+        x("ZORIGINALFILENAME"),
+        a("ZCLOUDLOCALSTATE"),
     ))?;
 
     rows.query_map([], |row| {
-        let path = format!("/{}/{}", row.get::<_, String>(0)?, row.get::<_, String>(1)?);
+        let folder: String = row.get(0)?;
+        let file: String = row.get(1)?;
+        // iCloud's store sits under /PhotoData, which some versions leave out.
+        let folder = match folder.starts_with("CPLAssets") {
+            true => format!("PhotoData/{folder}"),
+            false => folder,
+        };
+        let path = format!("/{folder}/{file}");
         let created: Option<f64> = row.get(2)?;
         let trashed: Option<i64> = row.get(3)?;
         let offset: Option<i64> = row.get(4)?;
@@ -513,6 +576,7 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
             _ => None,
         };
         let edited: Option<bool> = row.get(7)?;
+        let original: Option<String> = row.get(8)?;
 
         if trashed.unwrap_or(0) != 0 || unpicked.unwrap_or(false) {
             return Ok(Some((path, Known::Hidden)));
@@ -532,6 +596,11 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
             .and_then(|seconds| i32::try_from(seconds).ok())
             .and_then(chrono::FixedOffset::east_opt)
             .map_or_else(|| here(utc), |zone| utc.and_utc().with_timezone(&zone));
+
+        if !path.starts_with("/DCIM/") {
+            let name = original.filter(|name| !name.is_empty()).unwrap_or(file);
+            return Ok(Some((path, Known::Kept { taken, kind, name })));
+        }
 
         let edited = edited.unwrap_or(false);
         Ok(Some((
@@ -2191,6 +2260,44 @@ mod tests {
         assert_eq!(taken.timestamp(), 810_000_000 + APPLE_EPOCH);
         assert_eq!(kind, Some(Kind::Screenshot));
         assert!(edited);
+    }
+
+    /// With iCloud Photos, the originals of photos from other devices that
+    /// the phone keeps sit in iCloud's store, named by an id.
+    #[test]
+    fn icloud_originals_kept_on_the_phone_are_read_with_their_names() {
+        let dir = std::env::temp_dir().join(format!("rollport-cpl-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("Photos.sqlite");
+        rusqlite::Connection::open(&path)
+            .unwrap()
+            .execute_batch(
+                "CREATE TABLE ZASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
+                     ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZCLOUDLOCALSTATE INTEGER);
+                 CREATE TABLE ZADDITIONALASSETATTRIBUTES (Z_PK INTEGER PRIMARY KEY,
+                     ZASSET INTEGER, ZORIGINALFILENAME VARCHAR);
+                 INSERT INTO ZASSET VALUES
+                     (1, 'PhotoData/CPLAssets/group7', 'A1B2.JPG', 810000000, 1),
+                     (2, 'CPLAssets/group3', 'C3D4.HEIC', 810000000, 1),
+                     (3, 'PhotoData/CPLAssets/group7', 'E5F6.JPG', 810000000, 0),
+                     (4, 'PhotoData/Sync/100SYNCD', 'IMG_0001.JPG', 810000000, 1);
+                 INSERT INTO ZADDITIONALASSETATTRIBUTES VALUES
+                     (1, 1, 'IMG_1234.JPG'), (2, 2, NULL);",
+            )
+            .unwrap();
+
+        let known = read_photos(&path).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        let name = |path: &str| match &known[path] {
+            Known::Kept { name, .. } => name.clone(),
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(name("/PhotoData/CPLAssets/group7/A1B2.JPG"), "IMG_1234.JPG");
+        assert_eq!(name("/PhotoData/CPLAssets/group3/C3D4.HEIC"), "C3D4.HEIC");
+        // One only in iCloud, and photos synced from a computer, stay out.
+        assert_eq!(known.len(), 2);
     }
 
     #[test]
