@@ -253,25 +253,25 @@ export const KINDS: { kind: Kind; noun: string }[] = [
     { kind: "screenRecordings", noun: "screen recordings" },
 ]
 
-/// What a folder takes in, as the window says it: "All media", what it leaves
-/// out when that is shorter, or else what it takes.
+/// What a folder takes in, as the window says it, short enough for one line:
+/// "All media", "No screenshots", "Videos only", or "3 of 6 kinds". A Live
+/// Photo's videos only count while the Live Photos do.
 export function named(takes: Takes) {
-    const on = KINDS.filter(({ kind }) => takes[kind]).map(({ noun }) => noun)
-    const off = KINDS.filter(({ kind }) => !takes[kind]).map(({ noun }) => noun)
+    const kinds = KINDS.filter(
+        ({ kind }) => kind !== "liveVideos" || takes.livePhotos,
+    )
+    const on = kinds.filter(({ kind }) => takes[kind])
+    const off = kinds.filter(({ kind }) => !takes[kind])
+    const [first] = on
     const words =
         off.length === 0
             ? "all media"
-            : off.length <= on.length
-              ? `no ${list(off, "or")}`
-              : list(on, "and")
+            : off.length === 1
+              ? `no ${off[0]?.noun}`
+              : on.length === 1 && first
+                ? `${first.noun} only`
+                : `${on.length} of ${kinds.length} kinds`
     return `${words.charAt(0).toUpperCase()}${words.slice(1)}`
-}
-
-/// "a", "a and b", "a, b and c".
-function list(words: string[], and: string) {
-    return words.length < 3
-        ? words.join(` ${and} `)
-        : `${words.slice(0, -1).join(", ")} ${and} ${words.at(-1)}`
 }
 
 /// The footer's summary of the Options: "Any date, all media". The media types

@@ -32,6 +32,9 @@
             icon?: typeof Check
             /// A number or a word at the row's end, such as how many.
             aside?: string | undefined
+            /// Set under the answer before it, as a part of it.
+            indent?: boolean
+            disabled?: boolean
         }[]
         /// Called with the item chosen. The menu shows `value` until the
         /// caller's answer changes it.
@@ -99,7 +102,11 @@
                 <Select.Item
                     value={item.value}
                     label={item.label}
-                    class="flex min-h-8 cursor-default items-start gap-2 rounded-md py-2 pr-4 pl-2 outline-none select-none data-highlighted:bg-element"
+                    disabled={item.disabled ?? false}
+                    class={[
+                        "flex min-h-8 cursor-default items-start gap-2 rounded-md py-2 pr-4 outline-none select-none data-disabled:opacity-50 data-highlighted:bg-element",
+                        item.indent ? "pl-8" : "pl-2",
+                    ]}
                 >
                     {#snippet children({ selected })}
                         <!-- As tall as the label's line, so it centres on it.

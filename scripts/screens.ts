@@ -608,8 +608,12 @@ const STATES: State[] = [
     state("options", "The Options popover", {}, { act: options }),
     state(
         "options-menu-kinds",
-        "The Media types menu open, with its second lines",
-        {},
+        "The Media types checklist: no Live Photos, so their videos wait; no screenshots",
+        {
+            folder: folder({
+                takes: { ...EVERYTHING, livePhotos: false, screenshots: false },
+            }),
+        },
         {
             act: async (page) => {
                 await options(page)

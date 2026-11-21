@@ -174,9 +174,16 @@
     const kinds = $derived(
         KINDS.map(({ kind, noun }) => ({
             value: kind,
-            label: `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`,
+            // A Live Photo's videos are part of it: ticked under it, and only
+            // while it is.
+            label:
+                kind === "liveVideos"
+                    ? "With their videos"
+                    : `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`,
             icon: ICONS[kind],
             aside: counts ? count(counts[kind]) : undefined,
+            indent: kind === "liveVideos",
+            disabled: kind === "liveVideos" && !folder.takes.livePhotos,
         })),
     )
     const ticked = $derived(
@@ -229,7 +236,9 @@
             title="Not saved with the folder. Back to Any date when Rollport is next opened."
             class={trigger}
         >
-            <span class="text-muted" aria-hidden="true">Date taken</span>
+            <span class="shrink-0 text-muted" aria-hidden="true"
+                >Date taken</span
+            >
             <!-- "Between two dates" is how you ask for two dates; it is not what
                  the answer says once you have. -->
             {@render answer(when(range))}
@@ -267,7 +276,7 @@
         title="Saved with this folder."
         class={trigger}
     >
-        <span class="text-muted" aria-hidden="true">Media types</span>
+        <span class="shrink-0 text-muted" aria-hidden="true">Media types</span>
         {@render answer(named(folder.takes))}
     </Menu>
 
@@ -278,7 +287,7 @@
             class={row}
             title="Set at the first import and cannot change now, so every file here is named the same way."
         >
-            <span class="text-muted">File names</span>
+            <span class="shrink-0 text-muted">File names</span>
             <span class="ml-auto flex min-w-0 items-center gap-2">
                 <!-- A pattern of its own has no name, so it shows itself. -->
                 {#if preset}
@@ -309,7 +318,9 @@
                 title="Saved with this folder. Set for good at the first import."
                 class={trigger}
             >
-                <span class="text-muted" aria-hidden="true">File names</span>
+                <span class="shrink-0 text-muted" aria-hidden="true"
+                    >File names</span
+                >
                 {@render answer(
                     own ? "A pattern of your own" : (preset?.name ?? ""),
                 )}

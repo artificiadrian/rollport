@@ -345,29 +345,35 @@ describe("the report's title, badge and words", () => {
 })
 
 describe("the media types in words", () => {
-    test("all, what is left out, or what is taken", () => {
+    test("short enough for one line", () => {
         assert.equal(named(EVERYTHING), "All media")
         assert.equal(
             named({ ...EVERYTHING, liveVideos: false }),
             "No Live Photo videos",
         )
+        // Without the Live Photos, their videos are not a kind of their own.
         assert.equal(
-            named({
-                ...EVERYTHING,
-                screenshots: false,
-                screenRecordings: false,
-            }),
-            "No screenshots or screen recordings",
+            named({ ...EVERYTHING, livePhotos: false }),
+            "No Live Photos",
         )
         assert.equal(
             named({
                 ...EVERYTHING,
-                livePhotos: false,
-                liveVideos: false,
                 screenshots: false,
                 screenRecordings: false,
             }),
-            "Photos and videos",
+            "4 of 6 kinds",
+        )
+        assert.equal(
+            named({
+                photos: false,
+                livePhotos: false,
+                liveVideos: true,
+                videos: true,
+                screenshots: false,
+                screenRecordings: false,
+            }),
+            "Videos only",
         )
     })
 })

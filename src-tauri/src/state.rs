@@ -368,7 +368,8 @@ pub struct Takes {
     pub photos: bool,
     pub live_photos: bool,
     /// The short clip with each Live Photo: part of a picture rather than a
-    /// film of its own, and most of what a camera roll weighs.
+    /// film of its own, and most of what a camera roll weighs. Taken only
+    /// with the Live Photos themselves.
     pub live_videos: bool,
     pub videos: bool,
     pub screenshots: bool,
@@ -400,7 +401,7 @@ impl Takes {
         match file.kind {
             Kind::Photo => self.photos,
             Kind::LivePhoto => self.live_photos,
-            Kind::LiveVideo => self.live_videos,
+            Kind::LiveVideo => self.live_photos && self.live_videos,
             Kind::Video => self.videos,
             Kind::Screenshot => self.screenshots,
             Kind::ScreenRecording => self.screen_recordings,
@@ -409,7 +410,7 @@ impl Takes {
 
     /// One that takes nothing is no answer: an import of it would do nothing.
     pub fn any(&self) -> bool {
-        self.flags().contains(&true)
+        self.photos || self.live_photos || self.videos || self.screenshots || self.screen_recordings
     }
 
     fn flags(&self) -> [bool; 6] {
