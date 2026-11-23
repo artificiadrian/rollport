@@ -231,12 +231,11 @@ export type Screen =
           /// The one button: go on with what is left, or look again once
           /// nothing is left. "later" is Continue, shown but not yet usable:
           /// what is left is being counted, or the phone must be connected,
-          /// trusted or unlocked first.
-          next: "continue" | "later" | "rescan" | null
+          /// trusted or unlocked first. "reading" is no button while the
+          /// camera roll is read: the line under them turns a spinner.
+          next: "continue" | "later" | "rescan" | "reading" | null
           /// What to do now, under the buttons.
           after: string
-          /// The camera roll is being read now: the line turns a spinner.
-          reading: boolean
       }
 
 /// The answers worth one click. Anything else is two dates.
@@ -566,7 +565,7 @@ export function screen(flow: Flow): Screen {
     // so unlocking it is the whole of what to do: the calm lock screen, not a
     // failure. Any other reason the roll will not open is one.
     if (roll?.roll === "reading" && roll.failed !== null) {
-        if (/locked|passwordprotected/i.test(roll.failed))
+        if (locked(roll.failed))
             return {
                 screen: "prompt",
                 said: {
@@ -656,6 +655,12 @@ function folderStep(
     }
 }
 
+/// A camera roll that will not open because the phone is locked, as Rust's
+/// reason says it (idevice's PasswordProtected, or AFC's own words).
+function locked(failed: string) {
+    return /locked|passwordprotected/i.test(failed)
+}
+
 /// What a report's phone needs before Continue, while it is connected.
 const GO_ON: Record<Need["need"], string> = {
     trust: "Tap Trust on the iPhone to continue.",
@@ -678,6 +683,8 @@ function report(
     const ready = chosen?.state === "ready"
     // A locked phone answers, but not with its files.
     const unreadable = roll?.roll === "reading" && roll.failed !== null
+    const unlock =
+        roll?.roll === "reading" && roll.failed !== null && locked(roll.failed)
     // After a run that copied nothing, the Import button says it all.
     const goOn = imported > 0 ? "Continue imports what is left." : ""
     // A run that did not do all of it goes on once its phone can be read.
@@ -686,54 +693,49 @@ function report(
 
     const next: Pick<
         Extract<Screen, { screen: "done" }>,
-        "next" | "after" | "reading"
+        "next" | "after"
     > = ready && left === null
         ? {
               // A run that did not do all of it most likely leaves some.
-              next: unfinished ? "later" : null,
-              after: unreadable
+              next: unfinished ? "later" : unreadable ? null : "reading",
+              after: unlock
                   ? unfinished
                       ? "Unlock the iPhone to continue."
                       : "Unlock the iPhone to look for new photos."
-                  : unfinished
-                    ? goOn
-                    : "Looking through the camera roll…",
-              reading: !unreadable && !unfinished,
+                  : unreadable
+                    ? "Cannot read the camera roll. Rollport keeps trying."
+                    : unfinished
+                      ? goOn
+                      : "Looking through the camera roll…",
           }
         : ready && left
           ? {
                 next: "continue",
                 after: goOn,
-                reading: false,
             }
           : ready
             ? {
                   next: "rescan",
                   after: "You can unplug the iPhone.",
-                  reading: false,
               }
             : chosen?.state === "waiting" && unfinished
               ? {
                     next: "later",
                     after: GO_ON[chosen.need.need],
-                    reading: false,
                 }
               : unfinished
                 ? {
                       next: "later",
                       after: "Connect the iPhone again to continue.",
-                      reading: false,
                   }
                 : chosen
                   ? {
                         next: null,
                         after: "You can unplug the iPhone.",
-                        reading: false,
                     }
                   : {
                         next: null,
                         after: "Connect the iPhone to look for new photos.",
-                        reading: false,
                     }
 
     // Another import holds the folder (phone.rs, lock_folder): nothing went

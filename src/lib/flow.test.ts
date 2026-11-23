@@ -118,7 +118,7 @@ describe("the report's button and the line under it", () => {
         [
             "a run that did all of it shows no button while it counts",
             flow({ run: finished(), roll: null }),
-            { next: null, after: "Looking through the camera roll…" },
+            { next: "reading", after: "Looking through the camera roll…" },
         ],
         [
             "files left: Continue",
@@ -191,6 +191,14 @@ describe("the report's button and the line under it", () => {
             { next: null, after: "Unlock the iPhone to look for new photos." },
         ],
         [
+            "a camera roll that fails for another reason is not a lock",
+            flow({ run: finished(), roll: reading("timed out") }),
+            {
+                next: null,
+                after: "Cannot read the camera roll. Rollport keeps trying.",
+            },
+        ],
+        [
             "a run that did all of it needs nothing from a locked phone",
             flow({ run: finished(), source: waiting("unlock") }),
             { next: null, after: "You can unplug the iPhone." },
@@ -202,15 +210,6 @@ describe("the report's button and the line under it", () => {
             const { next, after } = done(of)
             assert.deepEqual({ next, after }, expected)
         })
-
-    test("only a phone being read turns the spinner", () => {
-        const reading = cases
-            .filter(([, of]) => done(of).reading)
-            .map(([name]) => name)
-        assert.deepEqual(reading, [
-            "a run that did all of it shows no button while it counts",
-        ])
-    })
 })
 
 describe("the report's title, badge and words", () => {

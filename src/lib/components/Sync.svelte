@@ -867,7 +867,7 @@
         <span
             class="flex grow items-center justify-center gap-2 pl-7 text-center"
         >
-            {#if view.reading}
+            {#if view.next === "reading"}
                 <!-- The prompts' spinner: the phone is being read. -->
                 <LoaderCircle
                     size={12}
