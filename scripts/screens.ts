@@ -134,10 +134,11 @@ const base: Flow = {
     run: null,
     range: { range: "everything" },
     presets: [
-        { range: { range: "everything" }, items: 312 },
-        { range: { range: "last", days: 7 }, items: 31 },
-        { range: { range: "last", days: 30 }, items: 104 },
-        { range: { range: "last", days: 365 }, items: 312 },
+        // As many as done(4210, 312) counts new, and fewer in fewer days.
+        { range: { range: "everything" }, items: 224 },
+        { range: { range: "last", days: 7 }, items: 22 },
+        { range: { range: "last", days: 30 }, items: 75 },
+        { range: { range: "last", days: 365 }, items: 224 },
     ],
 }
 const finished = (
