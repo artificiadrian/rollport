@@ -13,7 +13,7 @@ use std::{
 
 use idevice::{
     IdeviceError, IdeviceService,
-    afc::{AfcClient, opcode::AfcFopenMode},
+    afc::{AfcClient, errors::AfcError, opcode::AfcFopenMode},
     lockdown::LockdownClient,
     pairing_file::PairingFile,
     provider::IdeviceProvider,
@@ -130,7 +130,7 @@ pub async fn walk(
     );
     let mut media = walked?;
 
-    let mut edited = Vec::new();
+    let mut edited = HashSet::new();
     let mut kept = Vec::new();
     let undated = match known {
         Ok(known) => {
@@ -172,36 +172,65 @@ pub async fn walk(
 
     mark_live_videos(&mut media);
 
-    // An edit made in Photos is a file of its own beside the original, which
-    // /DCIM keeps as it was taken. Without them the import still stands.
-    if !edited.is_empty() {
-        match edits(udid, &media, &edited).await {
-            Ok(edits) => media.extend(edits),
-            Err(reason) => crate::note(app, &format!("cannot read the edits: {reason}")),
-        }
-    }
-
-    if !kept.is_empty() {
-        match on_phone(udid, kept).await {
-            Ok(kept) => media.extend(kept),
-            Err(reason) => crate::note(app, &format!("cannot read iCloud's originals: {reason}")),
+    // Edits and iCloud's originals are files of their own outside /DCIM.
+    // Without them the import still stands, and a later one takes them.
+    if !edited.is_empty() || !kept.is_empty() {
+        match beside(udid, &media, &edited, kept, &wanted).await {
+            Ok(found) => media.extend(found),
+            Err(reason) => crate::note(
+                app,
+                &format!("cannot read the edits or iCloud's originals: {reason}"),
+            ),
         }
     }
 
     Ok((media, undated))
 }
 
-/// The originals iCloud keeps on the phone, as far as they are there: Photos
-/// can list one whose file is still on its way. Each gets its size and mtime,
-/// which with its path are what the folder knows it by.
-async fn on_phone(udid: &str, kept: Vec<Media>) -> Result<Vec<Media>, String> {
+/// What `call` answers, or None when the file or folder is not on the phone.
+/// Any other error, such as a locked phone, is an error.
+async fn if_there<T>(
+    what: &str,
+    call: impl Future<Output = Result<T, IdeviceError>>,
+) -> Result<Option<T>, String> {
+    within(what, async {
+        match call.await {
+            Err(IdeviceError::Afc(AfcError::ObjectNotFound)) => Ok(None),
+            answered => answered.map(Some),
+        }
+    })
+    .await
+}
+
+/// Photos' render of each edited file, and the originals iCloud keeps on the
+/// phone, as far as they are there yet: Photos lists an edit before it is
+/// rendered, and an original before its file has arrived.
+async fn beside(
+    udid: &str,
+    media: &[Media],
+    edited: &HashSet<String>,
+    kept: Vec<Media>,
+    wanted: &impl Fn() -> bool,
+) -> Result<Vec<Media>, String> {
     let mut afc = files_of(udid).await?;
     let mut found = Vec::new();
 
+    for original in media.iter().filter(|file| edited.contains(&file.path)) {
+        if !wanted() {
+            return Ok(Vec::new());
+        }
+        found.extend(edits(&mut afc, original).await?);
+    }
+
     for file in kept {
-        let Ok(info) = within("", afc.get_file_info(&file.path)).await else {
+        if !wanted() {
+            return Ok(Vec::new());
+        }
+        let Some(info) = if_there("cannot read an original", afc.get_file_info(&file.path)).await?
+        else {
             continue;
         };
+        // Its path, size and mtime are what the folder knows it by.
         found.push(Media {
             size: info.size as u64,
             mtime: info.modified,
@@ -212,46 +241,42 @@ async fn on_phone(udid: &str, kept: Vec<Media>) -> Result<Vec<Media>, String> {
     Ok(found)
 }
 
-/// Photos' render of each edited file: FullSizeRender.jpg, .heic or .mov,
+/// Photos' render of one edited file: FullSizeRender.jpg, .heic or .mov,
 /// beside the recipe of the edit. It is dated and sorted with its original;
 /// the clip of an edited Live Photo is that Live Photo's clip.
-async fn edits(udid: &str, media: &[Media], edited: &[String]) -> Result<Vec<Media>, String> {
-    let mut afc = files_of(udid).await?;
+async fn edits(afc: &mut AfcClient, original: &Media) -> Result<Vec<Media>, String> {
+    let Some((folder, name)) = original.path.rsplit_once('/') else {
+        return Ok(Vec::new());
+    };
+    let stem = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
+    let adjustments = format!("{MUTATIONS}{folder}/{stem}/Adjustments");
+
+    let Some(names) = if_there("cannot read an edit", afc.list_dir(&adjustments)).await? else {
+        return Ok(Vec::new());
+    };
+
     let mut found = Vec::new();
-
-    for original in media.iter().filter(|file| edited.contains(&file.path)) {
-        let Some((folder, name)) = original.path.rsplit_once('/') else {
+    for name in names
+        .iter()
+        .filter(|name| name.starts_with("FullSizeRender."))
+    {
+        let path = format!("{adjustments}/{name}");
+        let Some(info) = if_there("cannot read an edit", afc.get_file_info(&path)).await? else {
             continue;
         };
-        let stem = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
-        let adjustments = format!("{MUTATIONS}{folder}/{stem}/Adjustments");
-
-        // Photos says it was edited; an edit it has not rendered yet has no
-        // file to copy, and comes with a later import.
-        let Ok(names) = within("", afc.list_dir(&adjustments)).await else {
-            continue;
+        let kind = match (original.kind, Kind::of(&path)) {
+            (Kind::LivePhoto, Kind::Video) => Kind::LiveVideo,
+            (kind, _) => kind,
         };
 
-        for name in names
-            .iter()
-            .filter(|name| name.starts_with("FullSizeRender."))
-        {
-            let path = format!("{adjustments}/{name}");
-            let info = within("cannot read an edit", afc.get_file_info(&path)).await?;
-            let kind = match (original.kind, Kind::of(&path)) {
-                (Kind::LivePhoto, Kind::Video) => Kind::LiveVideo,
-                (kind, _) => kind,
-            };
-
-            found.push(Media {
-                name: edited_name(&original.name, &path),
-                path,
-                size: info.size as u64,
-                mtime: info.modified,
-                taken: original.taken,
-                kind,
-            });
-        }
+        found.push(Media {
+            name: edited_name(&original.name, &path),
+            path,
+            size: info.size as u64,
+            mtime: info.modified,
+            taken: original.taken,
+            kind,
+        });
     }
 
     Ok(found)
@@ -652,28 +677,37 @@ pub fn settle(media: &mut Vec<Media>, known: &HashMap<String, Known>) {
 }
 
 /// A .mov beside an image of the same name is the video half of a Live Photo,
-/// and carries the image's time.
+/// and carries the image's time. The image is a Live Photo, also where Photos
+/// does not say so, as on older iOS.
 pub fn mark_live_videos(media: &mut [Media]) {
+    let still = |file: &Media| {
+        matches!(
+            extension(&file.path).as_deref(),
+            Some("heic" | "heif" | "jpg" | "jpeg" | "dng")
+        )
+    };
+    let movie = |file: &Media| extension(&file.path).as_deref() == Some("mov");
+
     let images: HashMap<String, chrono::DateTime<chrono::FixedOffset>> = media
         .iter()
-        .filter(|file| {
-            matches!(
-                extension(&file.path).as_deref(),
-                Some("heic" | "heif" | "jpg" | "jpeg" | "dng")
-            )
-        })
+        .filter(|file| still(file))
         .map(|file| (stem(&file.path), file.taken))
+        .collect();
+    let clips: HashSet<String> = media
+        .iter()
+        .filter(|file| movie(file) && images.contains_key(&stem(&file.path)))
+        .map(|file| stem(&file.path))
         .collect();
 
     for file in media.iter_mut() {
-        let still = match extension(&file.path).as_deref() {
-            Some("mov") => images.get(&stem(&file.path)),
-            _ => None,
-        };
-
-        if let Some(still) = still {
+        if !clips.contains(&stem(&file.path)) {
+            continue;
+        }
+        if movie(file) {
             file.kind = Kind::LiveVideo;
-            file.taken = *still;
+            file.taken = images[&stem(&file.path)];
+        } else if still(file) && file.kind == Kind::Photo {
+            file.kind = Kind::LivePhoto;
         }
     }
 }
@@ -2121,9 +2155,20 @@ mod tests {
 
         mark_live_videos(&mut media);
 
-        let marked: Vec<bool> = media.iter().map(|file| file.is_live_video()).collect();
-        // Only the .mov sharing a name with an image in its own folder.
-        assert_eq!(marked, vec![false, true, false, false, false, true]);
+        let kinds: Vec<Kind> = media.iter().map(|file| file.kind).collect();
+        // Only the .mov sharing a name with an image in its own folder, and
+        // that image, even where Photos gave no kind.
+        assert_eq!(
+            kinds,
+            [
+                Kind::LivePhoto,
+                Kind::LiveVideo,
+                Kind::Photo,
+                Kind::Photo,
+                Kind::LivePhoto,
+                Kind::LiveVideo
+            ]
+        );
     }
 
     /// The clip is written a second or more after its still. Named with its
@@ -2539,13 +2584,7 @@ mod tests {
             mtime: info.modified,
             taken,
         };
-        let found = edits(
-            &udid,
-            std::slice::from_ref(&original),
-            std::slice::from_ref(&original.path),
-        )
-        .await
-        .unwrap();
+        let found = edits(&mut afc, &original).await.unwrap();
         let edit = found.first().expect("its render");
         let copied = copy(
             &mut afc,
