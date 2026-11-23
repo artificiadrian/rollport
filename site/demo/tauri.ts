@@ -530,6 +530,8 @@ function demo() {
     function jump() {
         jumps[still ?? ""]?.()
         // scripts/demo.ts waits for this, past the app's own screen change.
-        later(700, () => Object.assign(window, { __settled: true }))
+        // Its own timer: `later` keeps one, which a command the app sends
+        // meanwhile would cancel, and the build then waits in vain.
+        setTimeout(() => Object.assign(window, { __settled: true }), 700)
     }
 }
