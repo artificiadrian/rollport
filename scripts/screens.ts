@@ -11,6 +11,8 @@ import { fileURLToPath } from "node:url"
 import { webkit, type Page } from "playwright"
 import {
     EVERYTHING,
+    type Batch,
+    type Counts,
     type Device,
     type Flow,
     type Folder,
@@ -59,15 +61,31 @@ const NEWEST = [
     "/DCIM/100APPLE/IMG_4820.HEIC",
     "/DCIM/100APPLE/IMG_4819.MOV",
 ]
+const kinds = (photos: number, videos = 0, liveVideos = 0): Counts => ({
+    photos,
+    livePhotos: 0,
+    liveVideos,
+    videos,
+    screenshots: 0,
+    screenRecordings: 0,
+})
+// A twentieth are videos, a quarter come with a Live Photo video, and of the
+// new ones a thirtieth also come as an edit.
+const batch = (files: number, edits = 0): Omit<Batch, "newest"> => {
+    const videos = Math.floor(files / 20)
+    const clips = Math.floor(files / 4)
+    const photos = files - videos - clips - edits
+    return {
+        files,
+        bytes: files * 3.2e6,
+        kinds: kinds(photos, videos, clips),
+        items: photos + videos,
+    }
+}
 const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
     roll: "done",
     all: {
-        files,
-        bytes: files * 3.2e6,
-        videos: Math.floor(files / 20),
-        clips: Math.floor(files / 4),
-        edits: 0,
-        items: files - Math.floor(files / 4),
+        ...batch(files),
         newest: [
             "/DCIM/100APPLE/IMG_4700.HEIC",
             "/DCIM/100APPLE/IMG_4699.HEIC",
@@ -75,12 +93,7 @@ const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
         ],
     },
     new: {
-        files: fresh,
-        bytes: fresh * 3.2e6,
-        videos: Math.floor(fresh / 20),
-        clips: Math.floor(fresh / 4),
-        edits: Math.floor(fresh / 30),
-        items: fresh - Math.floor(fresh / 4) - Math.floor(fresh / 30),
+        ...batch(fresh, Math.floor(fresh / 30)),
         newest: fresh ? newest : [],
     },
     undated: false,
@@ -339,12 +352,7 @@ const STATES: State[] = [
         {
             range: { range: "between", from: "2026-06-01", to: "2026-08-31" },
             folder: folder({
-                takes: {
-                    ...EVERYTHING,
-                    liveVideos: false,
-                    videos: false,
-                    screenRecordings: false,
-                },
+                takes: ["photos", "livePhotos", "screenshots"],
             }),
             // What Rust counts with them: photos only, from those days.
             roll: {
@@ -352,9 +360,7 @@ const STATES: State[] = [
                 new: {
                     files: 86,
                     bytes: 86 * 3.2e6,
-                    videos: 0,
-                    clips: 0,
-                    edits: 0,
+                    kinds: kinds(86),
                     items: 86,
                     newest: NEWEST.slice(0, 2),
                 },
@@ -617,7 +623,9 @@ const STATES: State[] = [
         "The Media types checklist: no Live Photos, so their videos wait; no screenshots",
         {
             folder: folder({
-                takes: { ...EVERYTHING, livePhotos: false, screenshots: false },
+                takes: EVERYTHING.filter(
+                    (kind) => kind !== "livePhotos" && kind !== "screenshots",
+                ),
             }),
         },
         {

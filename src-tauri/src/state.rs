@@ -70,11 +70,11 @@ pub enum Devices {
 }
 
 /// Files to import, and what they are, so the window can say photos and
-/// videos rather than files. A Live Photo's clip is neither: it is counted
-/// apart, so the three add up to the files that will be copied.
+/// videos rather than files.
 #[derive(Serialize, Clone, PartialEq, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Batch {
+    /// Every file the folder gets, each Live Photo's clip and each edit too.
     pub files: usize,
     /// Photos and videos as the Photos app counts them: a Live Photo with
     /// its clip is one, and an edit is part of its photo. When there is
@@ -83,11 +83,9 @@ pub struct Batch {
     /// What they weigh, so the room left on the disk is answered against what
     /// will actually be fetched.
     pub bytes: u64,
-    pub videos: usize,
-    pub clips: usize,
-    pub edits: usize,
+    pub kinds: Counts,
     /// The newest few, by path on the phone, newest first: what the window
-    /// shows as prints. A Live Photo's clip is never one; its still is.
+    /// shows as prints. Never a file that rides along; its photo stands for it.
     pub newest: Vec<String>,
 }
 
@@ -96,29 +94,28 @@ const PRINTS: usize = 3;
 
 impl Batch {
     pub fn of<'a>(media: impl IntoIterator<Item = &'a Media>) -> Batch {
-        let mut batch = Batch::default();
-        let mut newest: Vec<&Media> = Vec::new();
+        let media: Vec<&Media> = media.into_iter().collect();
+        let kinds = counts(media.iter().copied());
 
-        for file in media {
-            batch.files += 1;
-            batch.bytes += file.size;
-            batch.videos += usize::from(file.is_video() && !file.rides_along());
-            batch.clips += usize::from(file.is_live_video() && !file.is_edit());
-            batch.edits += usize::from(file.is_edit());
+        let mut newest: Vec<&Media> = media
+            .iter()
+            .copied()
+            .filter(|file| !file.rides_along())
+            .collect();
+        newest.sort_by_key(|file| std::cmp::Reverse(file.taken));
 
-            if !file.rides_along() {
-                newest.push(file);
-                newest.sort_by_key(|file| std::cmp::Reverse(file.taken));
-                newest.truncate(PRINTS);
-            }
+        let items = kinds.values().sum::<usize>() - kinds[&Kind::LiveVideo];
+        Batch {
+            files: media.len(),
+            items: if items == 0 { media.len() } else { items },
+            bytes: media.iter().map(|file| file.size).sum(),
+            kinds,
+            newest: newest
+                .iter()
+                .take(PRINTS)
+                .map(|file| file.path.clone())
+                .collect(),
         }
-
-        batch.newest = newest.into_iter().map(|file| file.path.clone()).collect();
-        batch.items = match batch.files - batch.clips - batch.edits {
-            0 => batch.files,
-            items => items,
-        };
-        batch
     }
 }
 
@@ -146,7 +143,7 @@ pub struct Media {
 
 /// What a file is, as Photos files it. Without Photos' record a file is a
 /// photo or a video by its extension, and a Live Photo's clip by its name.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Kind {
     Photo,
     /// The still of a Live Photo.
@@ -161,6 +158,32 @@ pub enum Kind {
 }
 
 impl Kind {
+    pub const ALL: [Kind; 6] = [
+        Kind::Photo,
+        Kind::LivePhoto,
+        Kind::LiveVideo,
+        Kind::Video,
+        Kind::Screenshot,
+        Kind::ScreenRecording,
+    ];
+
+    /// What the window and the folder call it. Written in folders: never
+    /// change one.
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Photo => "photos",
+            Kind::LivePhoto => "livePhotos",
+            Kind::LiveVideo => "liveVideos",
+            Kind::Video => "videos",
+            Kind::Screenshot => "screenshots",
+            Kind::ScreenRecording => "screenRecordings",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<Kind> {
+        Kind::ALL.into_iter().find(|kind| kind.name() == name)
+    }
+
     /// What a file is when only its name says.
     pub fn of(path: &str) -> Kind {
         if matches!(extension(path).as_deref(), Some("mov" | "mp4" | "m4v")) {
@@ -174,6 +197,19 @@ impl Kind {
 /// Where Photos keeps its render of an edited file, under the original's
 /// path: /PhotoData/Mutations/DCIM/122APPLE/IMG_2739/Adjustments/.
 pub const MUTATIONS: &str = "/PhotoData/Mutations";
+
+impl Serialize for Kind {
+    fn serialize<S: serde::Serializer>(&self, to: S) -> Result<S::Ok, S::Error> {
+        to.serialize_str(self.name())
+    }
+}
+
+impl<'de> Deserialize<'de> for Kind {
+    fn deserialize<D: serde::Deserializer<'de>>(from: D) -> Result<Self, D::Error> {
+        let name = String::deserialize(from)?;
+        Kind::named(&name).ok_or_else(|| serde::de::Error::custom(format!("no kind {name}")))
+    }
+}
 
 impl Media {
     pub fn is_live_video(&self) -> bool {
@@ -191,14 +227,6 @@ impl Media {
     /// no thumbnail of its own, so it is never one of the prints.
     pub fn is_edit(&self) -> bool {
         self.path.starts_with(MUTATIONS)
-    }
-
-    /// A film, or a Live Photo's clip.
-    pub fn is_video(&self) -> bool {
-        matches!(
-            extension(&self.path).as_deref(),
-            Some("mov" | "mp4" | "m4v")
-        )
     }
 }
 
@@ -378,103 +406,57 @@ impl Range {
     }
 }
 
-/// What a folder takes in: one answer for each kind of file. A file Photos
-/// does not describe is a photo or a video.
+/// The kinds of file a folder takes in. A file Photos does not describe is a
+/// photo or a video.
 ///
 /// It travels with the folder, because it decides what ends up in there and it
 /// means the same thing every time it is read. A date range does not: "the last
 /// seven days" is a different week tomorrow, which is why that one is never
 /// written down.
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Takes {
-    pub photos: bool,
-    pub live_photos: bool,
-    /// The short clip with each Live Photo: part of a picture rather than a
-    /// film of its own, and most of what a camera roll weighs. Taken only
-    /// with the Live Photos themselves.
-    pub live_videos: bool,
-    pub videos: bool,
-    pub screenshots: bool,
-    pub screen_recordings: bool,
-}
-
-/// How the folder writes each answer down, in the order of `Takes::flags`.
-const KINDS: [&str; 6] = [
-    "photos",
-    "livePhotos",
-    "liveVideos",
-    "videos",
-    "screenshots",
-    "screenRecordings",
-];
+///
+/// The short clip with each Live Photo is part of a picture rather than a
+/// film of its own, and most of what a camera roll weighs. It is taken only
+/// with the Live Photos themselves.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Takes(u8);
 
 impl Takes {
     /// What a new folder takes, and one that has never said.
-    pub const EVERYTHING: Takes = Takes {
-        photos: true,
-        live_photos: true,
-        live_videos: true,
-        videos: true,
-        screenshots: true,
-        screen_recordings: true,
-    };
+    pub const EVERYTHING: Takes = Takes((1 << Kind::ALL.len()) - 1);
+
+    pub fn of(kinds: impl IntoIterator<Item = Kind>) -> Takes {
+        Takes(
+            kinds
+                .into_iter()
+                .fold(0, |bits, kind| bits | 1 << kind as u8),
+        )
+    }
+
+    pub fn kinds(self) -> impl Iterator<Item = Kind> {
+        Kind::ALL
+            .into_iter()
+            .filter(move |kind| self.0 & 1 << *kind as u8 != 0)
+    }
 
     pub fn takes(&self, file: &Media) -> bool {
-        match file.kind {
-            Kind::Photo => self.photos,
-            Kind::LivePhoto => self.live_photos,
-            Kind::LiveVideo => self.live_photos && self.live_videos,
-            Kind::Video => self.videos,
-            Kind::Screenshot => self.screenshots,
-            Kind::ScreenRecording => self.screen_recordings,
-        }
+        let has = |kind| self.kinds().any(|taken| taken == kind);
+        has(file.kind) && (file.kind != Kind::LiveVideo || has(Kind::LivePhoto))
     }
 
     /// One that takes nothing is no answer: an import of it would do nothing.
     pub fn any(&self) -> bool {
-        self.photos || self.live_photos || self.videos || self.screenshots || self.screen_recordings
-    }
-
-    fn flags(&self) -> [bool; 6] {
-        [
-            self.photos,
-            self.live_photos,
-            self.live_videos,
-            self.videos,
-            self.screenshots,
-            self.screen_recordings,
-        ]
+        self.kinds().any(|kind| kind != Kind::LiveVideo)
     }
 
     /// How the folder writes it down: the kinds it takes.
     pub fn stored(&self) -> String {
-        KINDS
-            .iter()
-            .zip(self.flags())
-            .filter(|(_, on)| *on)
-            .map(|(name, _)| *name)
-            .collect::<Vec<_>>()
-            .join(",")
+        self.kinds().map(Kind::name).collect::<Vec<_>>().join(",")
     }
 
     /// How it reads it back, from the folder's `kinds`. One that names
     /// nothing we know takes everything, as a new folder does.
     pub fn read(stored: &str) -> Takes {
-        let has = |names: &[&str]| {
-            let on = |name| names.contains(&name);
-            Takes {
-                photos: on("photos"),
-                live_photos: on("livePhotos"),
-                live_videos: on("liveVideos"),
-                videos: on("videos"),
-                screenshots: on("screenshots"),
-                screen_recordings: on("screenRecordings"),
-            }
-        };
-
-        let takes = has(&stored.split(',').collect::<Vec<_>>());
-
+        let takes = Takes::of(stored.split(',').filter_map(Kind::named));
         if takes.any() {
             takes
         } else {
@@ -489,14 +471,24 @@ impl Takes {
     /// still reads its own answer.
     pub fn read_0_1_0(stored: &str) -> Takes {
         match stored {
-            "noLiveVideos" => Takes {
-                live_videos: false,
-                ..Takes::EVERYTHING
-            },
+            "noLiveVideos" => Takes::read("photos,livePhotos,videos,screenshots,screenRecordings"),
             "photos" => Takes::read("photos,livePhotos,screenshots"),
             "videos" => Takes::read("videos,screenRecordings"),
             _ => Takes::read(stored),
         }
+    }
+}
+
+/// The window gets the kinds a folder takes as a list, and answers with one.
+impl Serialize for Takes {
+    fn serialize<S: serde::Serializer>(&self, to: S) -> Result<S::Ok, S::Error> {
+        to.collect_seq(self.kinds())
+    }
+}
+
+impl<'de> Deserialize<'de> for Takes {
+    fn deserialize<D: serde::Deserializer<'de>>(from: D) -> Result<Self, D::Error> {
+        Ok(Takes::of(Vec::<Kind>::deserialize(from)?))
     }
 }
 
@@ -838,34 +830,16 @@ pub enum RollView {
 /// year. The window lists them in this order (PRESETS in flow.ts).
 pub const PRESET_DAYS: [u32; 3] = [7, 30, 365];
 
-/// How many files of each kind, in the order and with the names of `Takes`.
-#[derive(Serialize, Clone, Default, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Counts {
-    pub photos: usize,
-    pub live_photos: usize,
-    pub live_videos: usize,
-    pub videos: usize,
-    pub screenshots: usize,
-    pub screen_recordings: usize,
-}
+/// How many files of each kind; every kind is there, also at zero.
+pub type Counts = std::collections::BTreeMap<Kind, usize>;
 
-impl Counts {
-    pub fn of<'a>(media: impl IntoIterator<Item = &'a Media>) -> Counts {
-        let mut counts = Counts::default();
-        // An edit comes with its photo, under the photo's kind.
-        for file in media.into_iter().filter(|file| !file.is_edit()) {
-            *match file.kind {
-                Kind::Photo => &mut counts.photos,
-                Kind::LivePhoto => &mut counts.live_photos,
-                Kind::LiveVideo => &mut counts.live_videos,
-                Kind::Video => &mut counts.videos,
-                Kind::Screenshot => &mut counts.screenshots,
-                Kind::ScreenRecording => &mut counts.screen_recordings,
-            } += 1;
-        }
-        counts
+/// An edit comes with its photo, under the photo's kind.
+pub fn counts<'a>(media: impl IntoIterator<Item = &'a Media>) -> Counts {
+    let mut counts: Counts = Kind::ALL.into_iter().map(|kind| (kind, 0)).collect();
+    for file in media.into_iter().filter(|file| !file.is_edit()) {
+        *counts.entry(file.kind).or_default() += 1;
     }
+    counts
 }
 
 /// Where the photos come from. It changes on its own — phones attach while you
@@ -1538,7 +1512,7 @@ impl State {
                     all: Batch::of(new(media, takes, self.range, &HashSet::new())),
                     new: Batch::of(new(media, takes, self.range, keys)),
                     undated: undated.is_some(),
-                    counts: Counts::of(new(media, Takes::EVERYTHING, self.range, keys)),
+                    counts: counts(new(media, Takes::EVERYTHING, self.range, keys)),
                     ranges: std::iter::once(Range::Everything)
                         .chain(PRESET_DAYS.map(|days| Range::Last { days }))
                         .map(|range| Batch::of(new(media, takes, range, keys)).items)
@@ -1644,9 +1618,14 @@ mod tests {
                 // As Photos counts them: the clip and the edit ride along.
                 items: 4,
                 bytes: 60,
-                videos: 1,
-                clips: 1,
-                edits: 1,
+                kinds: Counts::from([
+                    (Kind::Photo, 3),
+                    (Kind::LivePhoto, 0),
+                    (Kind::LiveVideo, 1),
+                    (Kind::Video, 1),
+                    (Kind::Screenshot, 0),
+                    (Kind::ScreenRecording, 0),
+                ]),
                 // The clip and the edit are newest, and are not prints.
                 newest: vec![
                     "/DCIM/100APPLE/IMG_0003.JPG".into(),
@@ -1875,12 +1854,17 @@ mod tests {
             Takes::read_0_1_0("videos").stored(),
             "videos,screenRecordings"
         );
-        // And what this version writes reads back the same, a lone kind too.
-        for stored in ["photos", "videos", "livePhotos,screenshots"] {
-            let some = Takes::read(stored);
-            assert_eq!(some.stored(), stored);
-            assert_eq!(Takes::read(&some.stored()), some);
+        // And every answer this version writes reads back the same, in the
+        // folder and from the window.
+        for bits in 0..=Takes::EVERYTHING.0 {
+            let some = Takes(bits);
+            if some.any() {
+                assert_eq!(Takes::read(&some.stored()), some);
+                let sent = serde_json::to_string(&some).unwrap();
+                assert_eq!(serde_json::from_str::<Takes>(&sent).unwrap(), some);
+            }
         }
+        assert_eq!(Takes::read("photos").stored(), "photos");
     }
 
     /// Two days typed as a range are both in it.

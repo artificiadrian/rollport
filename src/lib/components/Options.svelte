@@ -11,6 +11,7 @@
     import Video from "@lucide/svelte/icons/video"
     import Menu from "$lib/components/Menu.svelte"
     import {
+        EVERYTHING,
         KINDS,
         LAYOUTS,
         PRESETS,
@@ -194,19 +195,16 @@
             icon: ICONS[kind],
             aside: roll ? count(roll.counts[kind]) : undefined,
             indent: kind === "liveVideos",
-            disabled: kind === "liveVideos" && !folder.takes.livePhotos,
+            disabled:
+                kind === "liveVideos" && !folder.takes.includes("livePhotos"),
         })),
     )
-    const ticked = $derived(
-        KINDS.map(({ kind }) => kind).filter((kind) => folder.takes[kind]),
-    )
 
+    // Rust refuses a list that takes nothing, and the menu shows its answer.
     function tickKinds(values: string[]) {
-        if (values.length === 0) return
-        const takes = Object.fromEntries(
-            KINDS.map(({ kind }) => [kind, values.includes(kind)]),
-        ) as Record<Kind, boolean>
-        tell("set_takes", { takes })
+        tell("set_takes", {
+            takes: EVERYTHING.filter((kind) => values.includes(kind)),
+        })
     }
 
     const NAMES = [
@@ -278,7 +276,7 @@
     </div>
 
     <Menu
-        multiple={ticked}
+        multiple={folder.takes}
         ontick={tickKinds}
         items={kinds}
         label="Media types, saved with this folder"

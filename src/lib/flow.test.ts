@@ -14,6 +14,8 @@ import {
     since,
     size,
     type Batch,
+    type Counts,
+    type Kind,
     type Device,
     type Flow,
     type Report,
@@ -36,12 +38,18 @@ const waiting = (need: "trust" | "unlock"): Source => ({
 const ready: Source = { source: "listed", devices: [phone], chosen: phone }
 const missing: Source = { source: "missing" }
 
+const kinds = (photos: number, videos = 0, liveVideos = 0): Counts => ({
+    photos,
+    livePhotos: 0,
+    liveVideos,
+    videos,
+    screenshots: 0,
+    screenRecordings: 0,
+})
 const batch = (files: number, bytes = files * 1e6): Batch => ({
     files,
     bytes,
-    videos: 0,
-    clips: 0,
-    edits: 0,
+    kinds: kinds(files),
     items: files,
     newest: [],
 })
@@ -50,14 +58,7 @@ const read = (fresh: number, bytes?: number, undated = false): Roll => ({
     all: batch(fresh + 100),
     new: batch(fresh, bytes),
     undated,
-    counts: {
-        photos: fresh,
-        livePhotos: 0,
-        liveVideos: 0,
-        videos: 0,
-        screenshots: 0,
-        screenRecordings: 0,
-    },
+    counts: kinds(fresh),
     ranges: [fresh, 0, 0, 0],
 })
 const reading = (failed: string | null = null): Roll => ({
@@ -354,9 +355,8 @@ describe("the ready screen counts as the Photos app does", () => {
             files: 324,
             items: 234,
             bytes: 1e9,
-            videos: 15,
-            clips: 78,
-            edits: 12,
+            // 12 of the 219 photos also come as an edit.
+            kinds: kinds(219, 15, 78),
             newest: [],
         }
         const shown = screen(flow({ roll }))
@@ -369,34 +369,13 @@ describe("the ready screen counts as the Photos app does", () => {
 describe("the media types in words", () => {
     test("short enough for one line", () => {
         assert.equal(named(EVERYTHING), "All media")
-        assert.equal(
-            named({ ...EVERYTHING, liveVideos: false }),
-            "No Live Photo videos",
-        )
+        const without = (...off: Kind[]) =>
+            named(EVERYTHING.filter((kind) => !off.includes(kind)))
+        assert.equal(without("liveVideos"), "No Live Photo videos")
         // Without the Live Photos, their videos are not a kind of their own.
-        assert.equal(
-            named({ ...EVERYTHING, livePhotos: false }),
-            "No Live Photos",
-        )
-        assert.equal(
-            named({
-                ...EVERYTHING,
-                screenshots: false,
-                screenRecordings: false,
-            }),
-            "4 of 6 kinds",
-        )
-        assert.equal(
-            named({
-                photos: false,
-                livePhotos: false,
-                liveVideos: true,
-                videos: true,
-                screenshots: false,
-                screenRecordings: false,
-            }),
-            "Videos only",
-        )
+        assert.equal(without("livePhotos"), "No Live Photos")
+        assert.equal(without("screenshots", "screenRecordings"), "4 of 6 kinds")
+        assert.equal(named(["liveVideos", "videos"]), "Videos only")
     })
 })
 

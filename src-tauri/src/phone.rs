@@ -335,7 +335,7 @@ async fn walk_dcim(app: &AppHandle, udid: &str, ticket: u64) -> Result<Vec<Media
                 taken: here(info.modified),
             };
 
-            if !file.is_video() {
+            if file.kind != Kind::Video {
                 latest = Some(file.path.clone());
             }
 

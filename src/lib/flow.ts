@@ -110,19 +110,19 @@ export type Folder =
           takes: Takes
       }
 
-/// Files to import, and what they are. A Live Photo's clip is neither a photo
-/// nor a video, so the three kinds add up to the files.
+/// Files to import, and what they are.
 export type Batch = {
+    /// Every file the folder gets, each Live Photo's clip and each edit too.
     files: number
     /// Photos and videos as the Photos app counts them: a Live Photo with its
-    /// clip is one, an edit is part of its photo.
+    /// clip is one, an edit is part of its photo. When there is nothing else,
+    /// the files.
     items: number
     bytes: number
-    videos: number
-    clips: number
-    edits: number
-    /// The newest few, by path on the phone, newest first. Never a Live
-    /// Photo's clip.
+    /// Edits are counted with their photo.
+    kinds: Counts
+    /// The newest few, by path on the phone, newest first. Never a file that
+    /// rides along.
     newest: string[]
 }
 
@@ -133,24 +133,21 @@ export type Range =
     | { range: "last"; days: number }
     | { range: "between"; from: string; to: string }
 
-/// The kinds of file a folder can take in, as Rust names them.
-export type Kind =
-    | "photos"
-    | "livePhotos"
-    | "liveVideos"
-    | "videos"
-    | "screenshots"
-    | "screenRecordings"
-export type Takes = Record<Kind, boolean>
+/// Each kind of file, as Rust names it (Kind::name) and the window says it, in
+/// the order Options lists them.
+export const KINDS = [
+    { kind: "photos", noun: "photos" },
+    { kind: "livePhotos", noun: "Live Photos" },
+    { kind: "liveVideos", noun: "Live Photo videos" },
+    { kind: "videos", noun: "videos" },
+    { kind: "screenshots", noun: "screenshots" },
+    { kind: "screenRecordings", noun: "screen recordings" },
+] as const
+export type Kind = (typeof KINDS)[number]["kind"]
+/// The kinds a folder takes in.
+export type Takes = Kind[]
 /// What a new folder takes: everything.
-export const EVERYTHING: Takes = {
-    photos: true,
-    livePhotos: true,
-    liveVideos: true,
-    videos: true,
-    screenshots: true,
-    screenRecordings: true,
-}
+export const EVERYTHING: Takes = KINDS.map(({ kind }) => kind)
 export type Counts = Record<Kind, number>
 
 /// The facts Rust holds, side by side. What to show is worked out from them
@@ -250,25 +247,15 @@ export const PRESETS: { range: Range; label: string }[] = [
     { range: { range: "last", days: 365 }, label: "Last 12 months" },
 ]
 
-/// Each kind as the window names it, in the order Options lists them.
-export const KINDS: { kind: Kind; noun: string }[] = [
-    { kind: "photos", noun: "photos" },
-    { kind: "livePhotos", noun: "Live Photos" },
-    { kind: "liveVideos", noun: "Live Photo videos" },
-    { kind: "videos", noun: "videos" },
-    { kind: "screenshots", noun: "screenshots" },
-    { kind: "screenRecordings", noun: "screen recordings" },
-]
-
 /// What a folder takes in, as the window says it, short enough for one line:
 /// "All media", "No screenshots", "Videos only", or "3 of 6 kinds". A Live
 /// Photo's videos only count while the Live Photos do.
 export function named(takes: Takes) {
     const kinds = KINDS.filter(
-        ({ kind }) => kind !== "liveVideos" || takes.livePhotos,
+        ({ kind }) => kind !== "liveVideos" || takes.includes("livePhotos"),
     )
-    const on = kinds.filter(({ kind }) => takes[kind])
-    const off = kinds.filter(({ kind }) => !takes[kind])
+    const on = kinds.filter(({ kind }) => takes.includes(kind))
+    const off = kinds.filter(({ kind }) => !takes.includes(kind))
     const [first] = on
     const words =
         off.length === 0
@@ -618,7 +605,7 @@ export function screen(flow: Flow): Screen {
         screen: "ready",
         items: roll.new.items,
         bytes: roll.new.bytes,
-        details: kinds(roll.new),
+        details: breakdown(roll.new),
         warning:
             roll.new.bytes > folder.free
                 ? {
@@ -877,14 +864,16 @@ function report(
 /// the files, with each Live Photo's video and each edit, are what the folder
 /// gets and what Finder counts. One line, so the warning under the button
 /// keeps its room.
-function kinds(batch: Batch) {
-    const photos = batch.files - batch.videos - batch.clips - batch.edits
+function breakdown(batch: Batch) {
+    const { kinds } = batch
+    const photos = kinds.photos + kinds.livePhotos + kinds.screenshots
+    const videos = kinds.videos + kinds.screenRecordings
     const said = (n: number, one: string, many: string) =>
         n > 0 ? `${count(n)} ${n === 1 ? one : many}` : ""
 
     const shown = [
         said(photos, "photo", "photos"),
-        said(batch.videos, "video", "videos"),
+        said(videos, "video", "videos"),
     ]
         .filter(Boolean)
         .join(" and ")

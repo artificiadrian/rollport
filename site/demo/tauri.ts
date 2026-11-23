@@ -7,13 +7,25 @@
 import type { Batch, Counts, Flow, Range, Run, Takes } from "../../src/lib/flow"
 
 /** What a new folder takes, as EVERYTHING in flow.ts: this file runs without imports. */
-const EVERYTHING: Takes = {
-    photos: true,
-    livePhotos: true,
-    liveVideos: true,
-    videos: true,
-    screenshots: true,
-    screenRecordings: true,
+const EVERYTHING: Takes = [
+    "photos",
+    "livePhotos",
+    "liveVideos",
+    "videos",
+    "screenshots",
+    "screenRecordings",
+]
+
+/** The demo's camera roll holds photos and videos only. */
+function kinds(photos: number, videos: number): Counts {
+    return {
+        photos,
+        livePhotos: 0,
+        liveVideos: 0,
+        videos,
+        screenshots: 0,
+        screenRecordings: 0,
+    }
 }
 
 /** What the demo tells the page around it. */
@@ -91,22 +103,8 @@ function demo() {
         files: 4522,
         items: 4522,
         bytes: 15.8e9,
-        videos: 190,
-        clips: 0,
-        edits: 0,
+        kinds: kinds(4522 - 190, 190),
         newest: ["sunset", "lake", "city"].map(photo),
-    }
-
-    /** The demo's camera roll by kind: photos and videos only. */
-    function counts(): Counts {
-        return {
-            photos: PHOTOS,
-            livePhotos: 0,
-            liveVideos: 0,
-            videos: VIDEOS,
-            screenshots: 0,
-            screenRecordings: 0,
-        }
     }
 
     /** New files for each date range Options offers, as Rust counts them. */
@@ -117,14 +115,14 @@ function demo() {
             { range: "last", days: 30 },
             { range: "last", days: 365 },
         ]
-        return presets.map((range) => wanted(range, takes).files)
+        return presets.map((range) => wanted(range, takes).items)
     }
 
     /** What is new for a range and a choice of kinds (Takes in state.rs). */
     function wanted(range: Range, takes: Takes): Batch {
         const share = reach(range)
-        const photos = takes.photos ? Math.round(PHOTOS * share) : 0
-        const videos = takes.videos ? Math.round(VIDEOS * share) : 0
+        const photos = takes.includes("photos") ? Math.round(PHOTOS * share) : 0
+        const videos = takes.includes("videos") ? Math.round(VIDEOS * share) : 0
         const files = photos + videos
         // The newest prints are the latest days' photos; an older range, older ones.
         const recent =
@@ -134,9 +132,7 @@ function demo() {
             files,
             items: files,
             bytes: (BYTES * files) / TOTAL,
-            videos,
-            clips: 0,
-            edits: 0,
+            kinds: kinds(photos, videos),
             newest:
                 files === 0
                     ? []
@@ -150,12 +146,14 @@ function demo() {
     /** What is still new after `imported` of a batch landed. */
     function left(batch: Batch, imported: number): Batch {
         const share = batch.files > 0 ? 1 - imported / batch.files : 0
+        const files = batch.files - imported
+        const videos = Math.round(batch.kinds.videos * share)
         return {
             ...batch,
-            files: batch.files - imported,
-            items: batch.files - imported,
+            files,
+            items: files,
             bytes: batch.bytes * share,
-            videos: Math.round(batch.videos * share),
+            kinds: kinds(files - videos, videos),
             newest: batch.files > imported ? batch.newest : [],
         }
     }
@@ -189,7 +187,7 @@ function demo() {
             all: ALL,
             new: wanted({ range: "everything" }, EVERYTHING),
             undated: false,
-            counts: counts(),
+            counts: kinds(PHOTOS, VIDEOS),
             ranges: ranges(EVERYTHING),
         },
         run: null,
@@ -262,7 +260,7 @@ function demo() {
                 all: ALL,
                 new: left(batch, imported),
                 undated: false,
-                counts: counts(),
+                counts: kinds(PHOTOS, VIDEOS),
                 ranges: ranges(
                     flow.folder.folder === "known"
                         ? flow.folder.takes
@@ -370,7 +368,7 @@ function demo() {
                     all: ALL,
                     new: current(),
                     undated: false,
-                    counts: counts(),
+                    counts: kinds(PHOTOS, VIDEOS),
                     ranges: ranges(
                         flow.folder.folder === "known"
                             ? flow.folder.takes
