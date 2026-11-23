@@ -862,7 +862,7 @@ await mkdir(out, { recursive: true })
 
 const browser = await webkit.launch()
 const results: { state: State; problems: string[] }[] = []
-/// Where each screen's art starts: it should not move between screens.
+/// Where each screen's art starts, to see which screens move it.
 const arts: [string, number | null][] = []
 
 for (const s of states) {

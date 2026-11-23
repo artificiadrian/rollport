@@ -11,9 +11,8 @@
     let { view }: { view: Extract<Screen, { screen: "setup" }> } = $props()
 </script>
 
-<!-- The art starts 72 px from the top, where Sync has it, so going from
-     setup to the phone's screens does not move it; only a screen too tall for
-     that takes room from above. -->
+<!-- The art starts 72 px from the top; only a screen too tall for that
+     takes room from above. -->
 <div
     data-stage
     tabindex="-1"
