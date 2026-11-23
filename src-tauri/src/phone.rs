@@ -1161,34 +1161,6 @@ fn worth_again(outcome: &Result<Copied, Failed>) -> bool {
     matches!(outcome, Err(Failed::File(_)))
 }
 
-/// A size as a person reads it, for the one sentence Rust writes with one.
-fn bytes(n: u64) -> String {
-    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
-
-    // One decimal below 10 of a unit, as it rounds: 9.96 MB is "10 MB".
-    let shown = |size: f64, unit: usize| {
-        let places = usize::from(size < 9.95 && unit > 0);
-        format!("{size:.places$}")
-    };
-
-    let mut size = n as f64;
-    let mut unit = 0;
-
-    // The next unit once the number would show as 1000: "1.0 MB", not
-    // "1000 KB". The window says sizes the same way (`size` in flow.ts).
-    while shown(size, unit)
-        .parse::<f64>()
-        .is_ok_and(|shown| shown >= 1000.0)
-        && unit < UNITS.len() - 1
-    {
-        size /= 1000.0;
-        unit += 1;
-    }
-
-    // A no-break space: the number and its unit never land on two lines.
-    format!("{}\u{a0}{}", shown(size, unit), UNITS[unit])
-}
-
 /// The name a file is copied under until it is whole: where it lives on the
 /// phone, which no other file shares, and this process, because another copy
 /// of the app may be fetching the same photo into the same folder.
@@ -1437,9 +1409,8 @@ pub async fn copy(
     // here than to leave a half file behind under a name that says it is whole.
     if written != file.size {
         return Err(Failed::File(format!(
-            "only {} of {} arrived",
-            bytes(written),
-            bytes(file.size)
+            "only {written} of {} bytes arrived",
+            file.size
         )));
     }
 
@@ -1965,22 +1936,6 @@ mod tests {
         assert_eq!(*held.lock().unwrap(), 49);
         drop(second);
         assert_eq!(*held.lock().unwrap(), 0);
-    }
-
-    #[test]
-    fn a_size_is_said_as_it_rounds() {
-        for (n, said) in [
-            (0, "0 B"),
-            (999, "999 B"),
-            (1_000, "1.0 KB"),
-            (9_940_000, "9.9 MB"),
-            (9_960_000, "10 MB"),
-            (999_499, "999 KB"),
-            (999_950, "1.0 MB"),
-            (999_600_000, "1.0 GB"),
-        ] {
-            assert_eq!(bytes(n), said.replace(' ', "\u{a0}"));
-        }
     }
 
     #[test]

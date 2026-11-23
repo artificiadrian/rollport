@@ -75,7 +75,6 @@ const known: Extract<Flow["folder"], { folder: "known" }> = {
     free: 500e9,
     network: false,
     layout: "{name}",
-    naming: "IMG_0001.HEIC",
     takes: EVERYTHING,
 }
 

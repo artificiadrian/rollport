@@ -216,18 +216,16 @@
             detail: option.example,
             mono: true,
         })),
-        { value: OWN, label: "A pattern of your own", detail: ownDetail },
+        {
+            value: OWN,
+            label: "A pattern of your own",
+            detail: "You write it, such as {taken:%Y}/{name}",
+        },
     ]
 
     const input =
         "h-7 min-w-0 cursor-text rounded-md border border-line bg-subtle px-2 select-text transition-colors hover:border-edge"
 </script>
-
-{#snippet ownDetail()}
-    You write it, for example <span class="font-mono"
-        >{"{taken:%Y}/{name}"}</span
-    >
-{/snippet}
 
 {#snippet answer(value: string, mono = false)}
     <span class="ml-auto flex min-w-0 items-center gap-2 font-medium">

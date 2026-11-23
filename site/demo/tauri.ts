@@ -182,7 +182,6 @@ function demo() {
             network: false,
             // The default naming, as the help says a new folder starts with.
             layout: "{taken:%Y-%m-%d_%H-%M-%S}_{name}",
-            naming: "2026-09-02_15-04-11_IMG_0001.HEIC",
             takes: EVERYTHING,
         },
         roll: {

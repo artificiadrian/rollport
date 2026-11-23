@@ -49,7 +49,6 @@ const known: Folder = {
     free: 500e9,
     network: false,
     layout: "{taken:%Y}/{taken:%m}/{name}",
-    naming: "2026/09/IMG_4821.HEIC",
     takes: EVERYTHING,
 }
 const folder = (changes: Partial<Extract<Folder, { folder: "known" }>>) =>
@@ -694,7 +693,6 @@ const STATES: State[] = [
             folder: folder({
                 frozen: false,
                 layout: "{name}",
-                naming: "IMG_4821.HEIC",
             }),
         },
         {
@@ -715,7 +713,6 @@ const STATES: State[] = [
             folder: folder({
                 frozen: false,
                 layout: "{name}",
-                naming: "IMG_4821.HEIC",
             }),
         },
         {

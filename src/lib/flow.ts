@@ -106,7 +106,6 @@ export type Folder =
           free: number
           network: boolean
           layout: string
-          naming: string
           /// What it takes in: one answer for each kind.
           takes: Takes
       }

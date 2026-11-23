@@ -61,8 +61,8 @@ pub fn read_folder(path: &Path) -> Result<FolderFacts, String> {
         });
     }
 
-    let (keys, last) = keys(path)?;
     let library = Library::open(path)?;
+    let (keys, last) = keys(&library)?;
 
     Ok(FolderFacts {
         keys,
@@ -98,18 +98,11 @@ fn cli_layout(folder: &Path) -> Option<String> {
     check_layout(&layout).is_ok().then_some(layout)
 }
 
-/// What the folder has taken, and when it last took anything. A folder with no
-/// rollport-library.db has taken nothing, and reading it makes none.
+/// What the library has taken, and when it last took anything.
 ///
 /// An error is not an empty set: "not imported" would fetch every file again
 /// under a `_1` name.
-fn keys(folder: &Path) -> Result<(HashSet<Key>, Option<i64>), String> {
-    if !Library::claimed(folder)? {
-        return Ok((HashSet::new(), None));
-    }
-
-    let library = Library::open(folder)?;
-
+fn keys(library: &Library) -> Result<(HashSet<Key>, Option<i64>), String> {
     // CAST floors the CLI's float to the second, as `key` does.
     let keys = library
         .0
@@ -422,7 +415,7 @@ mod tests {
             )
             .unwrap();
 
-        let (keys, _) = keys(&dir).unwrap();
+        let (keys, _) = keys(&Library::open(&dir).unwrap()).unwrap();
         assert!(keys.contains(&key(&file)));
 
         let _ = std::fs::remove_dir_all(&dir);
@@ -460,7 +453,7 @@ mod tests {
             .record(&file("/DCIM/100APPLE/IMG_0001.HEIC"))
             .unwrap();
 
-        let (_, last) = keys(&dir).unwrap();
+        let (_, last) = keys(&Library::open(&dir).unwrap()).unwrap();
         let now = chrono::Utc::now().timestamp();
         assert!(last.is_some_and(|last| (now - last).abs() < 60));
 

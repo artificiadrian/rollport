@@ -797,9 +797,8 @@ pub enum FolderView {
         last_import: Option<i64>,
         free: u64,
         network: bool,
-        /// What it names files with, and that layout spelled against a file.
+        /// What it names files with.
         layout: String,
-        naming: String,
         takes: Takes,
     },
 }
@@ -1565,7 +1564,6 @@ impl State {
                     free: facts.free,
                     network: facts.network,
                     layout: facts.settings.layout.clone(),
-                    naming: example(&facts.settings.layout),
                     takes: facts.settings.takes,
                 },
             },

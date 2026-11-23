@@ -21,12 +21,11 @@
         /// list then stays open, and a click ticks or unticks.
         value?: string
         multiple?: string[]
-        /// `detail` is a second, quieter line: words, or a snippet when part of
-        /// it is code; `mono` sets all of it as code.
+        /// `detail` is a second, quieter line; `mono` sets it as code.
         items: {
             value: string
             label: string
-            detail?: string | Snippet | undefined
+            detail?: string | undefined
             mono?: boolean
             /// A picture of the answer, before its label.
             icon?: typeof Check
@@ -156,8 +155,7 @@
                                 <span
                                     class="truncate text-xs text-muted {item.mono
                                         ? 'font-mono'
-                                        : ''}"
-                                    >{#if typeof item.detail === "string"}{item.detail}{:else}{@render item.detail()}{/if}</span
+                                        : ''}">{item.detail}</span
                                 >
                             {/if}
                         </span>
