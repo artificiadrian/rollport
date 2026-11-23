@@ -373,7 +373,7 @@
             return
         }
         const duration = wasReady && !still ? 300 : 0
-        files.set(view.files, { duration })
+        files.set(view.items, { duration })
         bytes.set(view.bytes, { duration })
         wasReady = true
     })
@@ -717,7 +717,7 @@
                                 strokeWidth={2}
                                 aria-hidden="true"
                             />
-                            Import {count(view.files)}
+                            Import {count(view.items)}
                         </Button>
                     {:else if view.screen === "counting"}
                         <p class="{hero} text-muted">

@@ -117,7 +117,7 @@
             // alone would run into its caption.
             case "ready":
                 return sentences(
-                    `${count(view.files)} ${view.files === 1 ? "photo or video" : "photos and videos"}, ${size(view.bytes)} to import`,
+                    `${count(view.items)} ${view.items === 1 ? "photo or video" : "photos and videos"}, ${size(view.bytes)} to import`,
                     view.warning?.text,
                 )
             case "done":

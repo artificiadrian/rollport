@@ -115,9 +115,13 @@ export type Folder =
 /// nor a video, so the three kinds add up to the files.
 export type Batch = {
     files: number
+    /// Photos and videos as the Photos app counts them: a Live Photo with its
+    /// clip is one, an edit is part of its photo.
+    items: number
     bytes: number
     videos: number
     clips: number
+    edits: number
     /// The newest few, by path on the phone, newest first. Never a Live
     /// Photo's clip.
     newest: string[]
@@ -204,7 +208,7 @@ export type Screen =
           screen: "ready"
           /// Numbers, not words: the window counts from one to the next when
           /// Options change them.
-          files: number
+          items: number
           bytes: number
           details: string
           /// Worth saying before Import, but not worth refusing over. Short:
@@ -605,7 +609,7 @@ export function screen(flow: Flow): Screen {
 
         return {
             screen: "current",
-            detail: `${here(roll.all.files)}${last === null ? "" : ` Last import ${since(last)}.`}`,
+            detail: `${here(roll.all.items)}${last === null ? "" : ` Last import ${since(last)}.`}`,
         }
     }
 
@@ -613,7 +617,7 @@ export function screen(flow: Flow): Screen {
     // and what it weighs. A full disk is said first: it will stop the run.
     return {
         screen: "ready",
-        files: roll.new.files,
+        items: roll.new.items,
         bytes: roll.new.bytes,
         details: kinds(roll.new),
         warning:
@@ -869,18 +873,25 @@ function report(
     }
 }
 
-/// What is new, by kind: "298 photos, 14 videos". Its weight is in the
-/// caption above, so this line stays one line.
+/// What is new, by kind, and how many files that is: "219 photos and 15
+/// videos · 324 files". The big number above counts as the Photos app does;
+/// the files, with each Live Photo's video and each edit, are what the folder
+/// gets and what Finder counts. One line, so the warning under the button
+/// keeps its room.
 function kinds(batch: Batch) {
-    const photos = batch.files - batch.videos - batch.clips
+    const photos = batch.files - batch.videos - batch.clips - batch.edits
     const said = (n: number, one: string, many: string) =>
         n > 0 ? `${count(n)} ${n === 1 ? one : many}` : ""
 
-    return [
+    const shown = [
         said(photos, "photo", "photos"),
         said(batch.videos, "video", "videos"),
-        said(batch.clips, "Live Photo video", "Live Photo videos"),
     ]
         .filter(Boolean)
-        .join(", ")
+        .join(" and ")
+    const files = said(batch.files, "file", "files")
+
+    return batch.files > batch.items && shown
+        ? `${shown} · ${files}`
+        : shown || files
 }

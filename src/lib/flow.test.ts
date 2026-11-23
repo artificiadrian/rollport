@@ -41,6 +41,8 @@ const batch = (files: number, bytes = files * 1e6): Batch => ({
     bytes,
     videos: 0,
     clips: 0,
+    edits: 0,
+    items: files,
     newest: [],
 })
 const read = (fresh: number, bytes?: number, undated = false): Roll => ({
@@ -342,6 +344,26 @@ describe("the report's title, badge and words", () => {
         const shown = done(flow({ run: finished({ end: "unplugged" }) }))
         assert.equal(shown.title, "Disconnected after 140")
         assert.equal(shown.badge, "unplugged")
+    })
+})
+
+describe("the ready screen counts as the Photos app does", () => {
+    test("a Live Photo's clip and an edit ride along", () => {
+        const roll = read(0)
+        assert.ok(roll.roll === "done")
+        roll.new = {
+            files: 324,
+            items: 234,
+            bytes: 1e9,
+            videos: 15,
+            clips: 78,
+            edits: 12,
+            newest: [],
+        }
+        const shown = screen(flow({ roll }))
+        assert.ok(shown.screen === "ready")
+        assert.equal(shown.items, 234)
+        assert.equal(shown.details, "219 photos and 15 videos · 324 files")
     })
 })
 

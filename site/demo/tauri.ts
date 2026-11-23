@@ -89,9 +89,11 @@ function demo() {
     /** Everything the folder takes in: what the camera roll holds. */
     const ALL: Batch = {
         files: 4522,
+        items: 4522,
         bytes: 15.8e9,
         videos: 190,
         clips: 0,
+        edits: 0,
         newest: ["sunset", "lake", "city"].map(photo),
     }
 
@@ -130,9 +132,11 @@ function demo() {
             Date.parse(range.to) > Date.now() - 30 * DAY
         return {
             files,
+            items: files,
             bytes: (BYTES * files) / TOTAL,
             videos,
             clips: 0,
+            edits: 0,
             newest:
                 files === 0
                     ? []
@@ -149,6 +153,7 @@ function demo() {
         return {
             ...batch,
             files: batch.files - imported,
+            items: batch.files - imported,
             bytes: batch.bytes * share,
             videos: Math.round(batch.videos * share),
             newest: batch.files > imported ? batch.newest : [],

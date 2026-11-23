@@ -165,7 +165,7 @@
             label: "Between two dates",
             aside:
                 roll && range.range === "between"
-                    ? count(roll.new.files)
+                    ? count(roll.new.items)
                     : undefined,
         },
     ])

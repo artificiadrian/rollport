@@ -800,6 +800,12 @@ pub async fn copy_all(
     let fetch = Arc::new(media);
 
     let total = fetch.len();
+    // What the window counts as done and imported: photos and videos as
+    // Batch counts them, or every file when they all ride along.
+    let shown_total = Batch::of(fetch.iter()).items;
+    let all_ride_along = fetch.iter().all(Media::rides_along);
+    let counts = |file: &Media| all_ride_along || !file.rides_along();
+    let mut shown_done = 0;
     let total_bytes = fetch.iter().map(|file| file.size).sum::<u64>();
     let started = Instant::now();
     let mut announced = Instant::now();
@@ -920,11 +926,12 @@ pub async fn copy_all(
         let file = &fetch[index];
 
         done += 1;
+        shown_done += usize::from(counts(file));
         bytes += file.size;
 
         let recorded = match outcome {
             Ok(Copied::Fetched) => {
-                imported += 1;
+                imported += usize::from(counts(file));
                 landed.push(file);
                 copied_bytes += file.size;
 
@@ -999,8 +1006,8 @@ pub async fn copy_all(
 
             with(app, |state| {
                 state.progress(Progress {
-                    done,
-                    total,
+                    done: shown_done,
+                    total: shown_total,
                     bytes,
                     total_bytes,
                     eta: quote.map(|(left, at)| (left - (now - at)).max(0.0) as u64),
