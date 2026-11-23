@@ -766,6 +766,45 @@ fn requote(quote: Option<(f64, f64)>, fresh: Option<f64>, now: f64) -> Option<(f
     }
 }
 
+/// The time left, from bytes as they stream rather than as files finish: the
+/// workers finishing a big video in one sample would read as a burst of speed.
+#[derive(Default)]
+struct TimeLeft {
+    /// Bytes a second, discounting the past.
+    rate: f64,
+    /// The last sample, in seconds since the run began, and the bytes then.
+    sampled: (f64, u64),
+    quote: Option<(f64, f64)>,
+}
+
+impl TimeLeft {
+    /// Seconds left at `now`, in seconds since the run began, with `arrived`
+    /// bytes streamed so far and `left` still to fetch.
+    fn at(&mut self, now: f64, arrived: u64, left: u64) -> Option<u64> {
+        // Weighted by how long the sample took, so the smoothing does not
+        // change meaning when the announcements bunch up or spread out.
+        let (then, before) = self.sampled;
+        let over = now - then;
+
+        if over > 0.0 {
+            let just_now = arrived.saturating_sub(before) as f64 / over;
+            let weight = 1.0 - (-over / SETTLE).exp();
+
+            self.rate = if self.rate == 0.0 {
+                just_now
+            } else {
+                self.rate + (just_now - self.rate) * weight
+            };
+            self.sampled = (now, arrived);
+        }
+
+        let fresh = (self.rate > 1.0).then(|| left as f64 / self.rate);
+        self.quote = requote(self.quote, fresh, now);
+        self.quote
+            .map(|(left, at)| (left - (now - at)).max(0.0) as u64)
+    }
+}
+
 /// Apple's name for an edited copy: IMG_E2739.JPG for IMG_2739.PNG's render
 /// in JPEG.
 pub fn edited_name(original: &str, render: &str) -> String {
@@ -843,17 +882,11 @@ pub async fn copy_all(
     let total_bytes = fetch.iter().map(|file| file.size).sum::<u64>();
     let started = Instant::now();
 
-    // A rate that discounts the past, and the sample it is measured against.
-    // Measured on bytes as they stream, not as files finish: the workers
-    // finishing a big video in one sample read as a burst of speed.
     let streamed = Arc::new(AtomicU64::new(0));
     // What the files being copied right now have still to write: the disk
     // does not yet show it.
     let held = Arc::new(Mutex::new(0u64));
-    let mut rate = 0f64;
-    let mut sampled = Instant::now();
-    let mut sampled_bytes = 0u64;
-    let mut quote = None;
+    let mut time_left = TimeLeft::default();
 
     let mut files_done = 0;
     let mut lost = Lost::default();
@@ -1030,31 +1063,13 @@ pub async fn copy_all(
             }
         }
 
-        // Weighted by how long the sample took, so the smoothing does not
-        // change meaning when the announcements bunch up or spread out.
-        let over = sampled.elapsed().as_secs_f64();
-
         let arrived = streamed.load(Ordering::Relaxed);
-
-        if over > 0.0 {
-            let just_now = arrived.saturating_sub(sampled_bytes) as f64 / over;
-            let weight = 1.0 - (-over / SETTLE).exp();
-
-            rate = if rate == 0.0 {
-                just_now
-            } else {
-                rate + (just_now - rate) * weight
-            };
-
-            sampled = Instant::now();
-            sampled_bytes = arrived;
-        }
-
-        // What is still to fetch, over the speed it is being fetched at.
         let gone = arrived + skipped;
-        let fresh = (rate > 1.0).then(|| total_bytes.saturating_sub(gone) as f64 / rate);
-        let now = started.elapsed().as_secs_f64();
-        quote = requote(quote, fresh, now);
+        let eta = time_left.at(
+            started.elapsed().as_secs_f64(),
+            arrived,
+            total_bytes.saturating_sub(gone),
+        );
 
         with(app, |state| {
             state.progress(Progress {
@@ -1063,7 +1078,7 @@ pub async fn copy_all(
                 // A retried file streams twice; a failed one may never stream.
                 bytes: bytes.max(gone).min(total_bytes),
                 total_bytes,
-                eta: quote.map(|(left, at)| (left - (now - at)).max(0.0) as u64),
+                eta,
                 latest: latest.clone(),
             })
         });
@@ -2062,6 +2077,25 @@ mod tests {
 
         // No rate to judge by leaves the quote as it was.
         assert_eq!(requote(first, None, 20.0), first);
+    }
+
+    /// 500 MB at a steady 10 MB a second: after 20 s, 30 s are left. A phone
+    /// that then slows to half that is believed within a few seconds: 200 MB
+    /// at 5 MB a second is 40 s.
+    #[test]
+    fn the_time_left_follows_the_speed() {
+        const MB: u64 = 1_000_000;
+        let mut time_left = TimeLeft::default();
+        let mut arrived = 0;
+        let mut eta = None;
+        for tick in 1..=40u64 {
+            arrived += if tick <= 20 { 10 * MB } else { 5 * MB };
+            eta = time_left.at(tick as f64, arrived, 500 * MB - arrived);
+            if tick == 20 {
+                assert!(eta.is_some_and(|eta| (29..=30).contains(&eta)), "{eta:?}");
+            }
+        }
+        assert!(eta.is_some_and(|eta| (34..=40).contains(&eta)), "{eta:?}");
     }
 
     fn when(text: &str) -> chrono::NaiveDateTime {
