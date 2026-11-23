@@ -1,8 +1,11 @@
-// Every outside link and version string on the site. Change them here.
+import app from "../../package.json" with { type: "json" }
+
+// Every outside link on the site. Change them here.
 const repo = "https://github.com/artificiadrian/rollport"
 
 export const site = {
-    version: "0.1.0",
+    /** The app's own version, so the site never names an old one. */
+    version: app.version,
     repo,
     author: "https://artificiadrian.com",
     /** Every release, for the version history. */
