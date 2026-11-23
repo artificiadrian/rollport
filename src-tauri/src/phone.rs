@@ -833,13 +833,13 @@ pub async fn copy_all(
     let (library, layout, _lock) = opened?;
     let fetch = Arc::new(media);
 
-    let total = fetch.len();
-    // What the window counts as done and imported: photos and videos as
-    // Batch counts them, or every file when they all ride along.
-    let shown_total = Batch::of(fetch.iter()).items;
+    let files = fetch.len();
+    // What the window counts: photos and videos as Batch counts them, or
+    // every file when they all ride along.
+    let items = Batch::of(fetch.iter()).items;
     let all_ride_along = fetch.iter().all(Media::rides_along);
-    let counts = |file: &Media| all_ride_along || !file.rides_along();
-    let mut shown_done = 0;
+    let is_item = |file: &Media| all_ride_along || !file.rides_along();
+    let mut items_done = 0;
     let total_bytes = fetch.iter().map(|file| file.size).sum::<u64>();
     let started = Instant::now();
 
@@ -855,7 +855,7 @@ pub async fn copy_all(
     let mut sampled_bytes = 0u64;
     let mut quote = None;
 
-    let mut done = 0;
+    let mut files_done = 0;
     let mut lost = Lost::default();
     let mut bytes = 0;
     // What was on disk already, and so never streams.
@@ -914,7 +914,9 @@ pub async fn copy_all(
                             Ok(open) => afc.insert(open),
                             Err(reason) => {
                                 outcome = Err(Failed::File(reason));
-                                tokio::time::sleep(BACKOFF).await;
+                                if attempt + 1 < ATTEMPTS {
+                                    tokio::time::sleep(BACKOFF).await;
+                                }
                                 continue;
                             }
                         },
@@ -971,8 +973,8 @@ pub async fn copy_all(
         if let Some((index, outcome)) = finished {
             let file = &fetch[index];
 
-            done += 1;
-            shown_done += usize::from(counts(file));
+            files_done += 1;
+            items_done += usize::from(is_item(file));
             bytes += file.size;
 
             let recorded = match outcome {
@@ -1023,7 +1025,7 @@ pub async fn copy_all(
             }
 
             // The last announcement waits for no clock.
-            if done < total {
+            if files_done < files {
                 continue;
             }
         }
@@ -1056,8 +1058,8 @@ pub async fn copy_all(
 
         with(app, |state| {
             state.progress(Progress {
-                done: shown_done,
-                total: shown_total,
+                done: items_done,
+                total: items,
                 // A retried file streams twice; a failed one may never stream.
                 bytes: bytes.max(gone).min(total_bytes),
                 total_bytes,
