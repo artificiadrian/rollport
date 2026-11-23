@@ -146,18 +146,17 @@ fn said(panic: Box<dyn std::any::Any + Send>) -> String {
 /// Open a folder the person chose: say so at once, remember it, and read it
 /// without the lock.
 fn choose_folder(app: &AppHandle, path: PathBuf) {
-    let next = with(app, |state| {
+    let (next, folders) = with(app, |state| {
         let opening = state.choose_destination(path);
+        ((state.reading_needed(), opening), state.folders.clone())
+    });
 
-        // The phone's folder changes even when it is the one already open.
-        Remembered::change(app, |remembered| {
-            if let Some(path) = &opening {
-                remembered.destination = Some(path.clone());
-            }
-            remembered.folders = state.folders.clone();
-        });
-
-        (state.reading_needed(), opening)
+    // The phone's folder changes even when it is the one already open.
+    Remembered::change(app, |remembered| {
+        if let Some(path) = &next.1 {
+            remembered.destination = Some(path.clone());
+        }
+        remembered.folders = folders;
     });
 
     follow(app, next)
@@ -249,18 +248,14 @@ async fn start_import(app: AppHandle) {
         media,
         cancel,
         about,
-    }) = with(&app, |state| {
-        let import = state.start_import()?;
-
-        Remembered::change(&app, |remembered| {
-            remembered.folders = state.folders.clone()
-        });
-
-        Some(import)
-    })
+    }) = with(&app, |state| state.start_import())
     else {
         return;
     };
+
+    // The phone imports into this folder from now on.
+    let folders = lock(&app).folders.clone();
+    Remembered::change(&app, |remembered| remembered.folders = folders);
 
     note(
         &app,
@@ -833,11 +828,12 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             menu(&handle)?;
 
+            let remembered = Remembered::load(&handle);
+
             // Hidden until it has its size, so it does not open small and then
             // jump.
             if let Some(window) = handle.get_webview_window("main") {
-                let zoom = Remembered::load(&handle).zoom.unwrap_or(1.0);
-                zoom_to(&handle, &window, zoom);
+                zoom_to(&handle, &window, remembered.zoom.unwrap_or(1.0));
                 window.show()?;
             }
 
@@ -849,17 +845,14 @@ pub fn run() {
                         .picture_dir()
                         .ok()
                         .map(|pictures| pictures.join("iPhone")),
-                }
-            });
-
-            with(&handle, |state| {
-                state.folders = Remembered::load(&handle).folders;
+                };
+                state.folders = remembered.folders;
             });
 
             // Opening where you left off is the same answer as choosing it.
             // The one write back it costs is the path we just read, put back
             // exactly as it was.
-            if let Some(folder) = Remembered::load(&handle).destination {
+            if let Some(folder) = remembered.destination {
                 choose_folder(&handle, folder)
             }
 
