@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { tick } from "svelte"
     import { convertFileSrc } from "@tauri-apps/api/core"
     import { cubicOut, linear } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
@@ -123,31 +124,37 @@
     /// Options is open. How the window looks, so it is this screen's to keep.
     let options = $state(false)
 
-    /// The button that opens Options. Closed with Esc or a click outside, the
-    /// popover takes the focus with it; it comes back here, not to the top.
+    /// The button that opens Options.
     let opener = $state<HTMLButtonElement>()
-    let wasOpen = false
 
-    $effect(() => {
-        const open = options
-        if (wasOpen && !open && opener?.isConnected) {
+    /// Closed, the popover takes the focus with it; it comes back to the
+    /// button that opened it, not to the top.
+    function close() {
+        if (!options) return
+        options = false
+        void tick().then(() => {
             const lost = document.activeElement
-            if (!lost || lost === document.body || !lost.isConnected)
+            if (
+                opener?.isConnected &&
+                (!lost || lost === document.body || !lost.isConnected)
+            )
                 opener.focus()
-        }
-        wasOpen = open
-    })
+        })
+    }
 
     /// Start the import. Options close, so they do not come back by
-    /// themselves when the run is over.
+    /// themselves when the run is over. The prints start as the ready
+    /// screen's.
     function start() {
-        options = false
+        close()
+        dealt = newest
+        oldest = 2
         tell("start_import")
     }
 
     function shortcut(event: KeyboardEvent) {
         // An open menu takes Esc first and marks it handled; it closes alone.
-        if (event.key === "Escape" && !event.defaultPrevented) options = false
+        if (event.key === "Escape" && !event.defaultPrevented) close()
 
         // A pattern being typed has not been given to Rust yet, and ⌘⏎ would
         // start the import with the layout the field is about to replace.
@@ -194,21 +201,16 @@
 
     const resting = $derived(view.screen === "ready")
 
-    $effect(() => {
-        if (resting) {
-            dealt = newest
-            oldest = 2
-        }
-    })
-
     /// The prints' photos, by path and by place: front, left, right. A print
     /// without one, or whose thumbnail will not load, is drawn as paper.
-    /// A screen the window dealt nothing on keeps what it shows to hand: a
-    /// report, the newest photos its run copied; otherwise, and when it copied
-    /// none, the newest photos the folder already has.
+    /// The import and its report show what was dealt. Any other screen keeps
+    /// what it shows to hand: a report, the newest photos its run copied;
+    /// otherwise, and when it copied none, the newest photos the folder
+    /// already has.
     const pictures = $derived.by(() => {
         if (resting) return newest
-        if (dealt.some(Boolean)) return dealt
+        const run = view.screen === "importing" || view.screen === "done"
+        if (run && dealt.some(Boolean)) return dealt
         if (flow.run?.run === "finished" && flow.run.newest.length)
             return flow.run.newest.map(of(flow.run.udid))
         return flow.roll?.roll === "done"
@@ -882,7 +884,7 @@
         <button
             bind:this={opener}
             type="button"
-            onclick={() => (options = !options)}
+            onclick={() => (options ? close() : (options = true))}
             aria-expanded={options}
             aria-controls="{id}-options"
             class="-ml-2 flex h-6 items-center gap-2 rounded-md px-2 font-medium text-ink transition-colors hover:bg-element active:bg-fill"
@@ -909,7 +911,7 @@
         type="button"
         aria-label="Close options"
         tabindex="-1"
-        onclick={() => (options = false)}
+        onclick={close}
         transition:fade={{ duration: still ? 0 : 150 }}
         class="fixed inset-0 z-40 cursor-default bg-canvas/70"
     ></button>
