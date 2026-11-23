@@ -19,6 +19,13 @@ const config: Config = {
         // and the site's demo serves this page from /demo/index.html. It also
         // turns off server rendering, which Tauri has no server for.
         router: { type: "hash" },
+        // The screenshot fixtures are typed with the app's own flow, so the
+        // type check covers them too.
+        typescript: {
+            config: (tsconfig) => {
+                tsconfig["include"].push("../scripts/**/*.ts")
+            },
+        },
     },
 }
 

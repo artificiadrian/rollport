@@ -82,7 +82,11 @@ const batch = (files: number, edits = 0): Omit<Batch, "newest"> => {
         items: photos + videos,
     }
 }
-const done = (files: number, fresh: number, newest = NEWEST): Roll => ({
+const done = (
+    files: number,
+    fresh: number,
+    newest = NEWEST,
+): Extract<Roll, { roll: "done" }> => ({
     roll: "done",
     all: {
         ...batch(files),
@@ -302,7 +306,7 @@ const STATES: State[] = [
             roll: {
                 roll: "reading",
                 seen: 1284,
-                latest: NEWEST[0],
+                latest: NEWEST[0] ?? null,
                 failed: null,
             },
         },
@@ -404,7 +408,7 @@ const STATES: State[] = [
             bytes: 451e6,
             totalBytes: 998e6,
             eta: 118,
-            latest: NEWEST[1],
+            latest: NEWEST[1] ?? null,
         },
     }),
 
