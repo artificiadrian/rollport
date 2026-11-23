@@ -363,7 +363,7 @@ describe("the ready screen counts as the Photos app does", () => {
         const shown = screen(flow({ roll }))
         assert.ok(shown.screen === "ready")
         assert.equal(shown.items, 234)
-        assert.equal(shown.details, "219 photos and 15 videos · 324 files")
+        assert.equal(shown.details, "219 photos and 15 videos (324 files)")
     })
 
     test("Live Photo videos taken later are counted as files", () => {

@@ -2027,9 +2027,19 @@ mod tests {
         };
         assert_eq!(items(&state), [None; 4]);
 
-        read(&mut state, vec![media("/DCIM/100APPLE/IMG_0001.HEIC", 1)]);
-        assert!(items(&state).iter().all(Option::is_some));
-        assert_eq!(items(&state)[0], Some(1));
+        // Taken today, 20 days ago and 200 days ago, and one three years ago.
+        let ago = |days: i64| {
+            let day = chrono::Local::now().naive_local() - chrono::Duration::days(days);
+            day.format("%Y-%m-%d %H:%M:%S").to_string()
+        };
+        read(
+            &mut state,
+            [0, 20, 200, 1100]
+                .iter()
+                .map(|days| Media::at(&format!("/DCIM/100APPLE/IMG_{days}.HEIC"), &ago(*days)))
+                .collect(),
+        );
+        assert_eq!(items(&state), [Some(4), Some(1), Some(2), Some(3)]);
     }
 
     /// What the window is told is new.

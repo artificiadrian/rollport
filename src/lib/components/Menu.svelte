@@ -175,7 +175,7 @@
                             </span>
                             {#if item.aside}
                                 <span
-                                    class="ml-auto pl-6 text-xs leading-5 text-muted tabular-nums"
+                                    class="ml-auto pl-6 text-xs leading-5 text-faint tabular-nums"
                                     >{item.aside}</span
                                 >
                             {/if}

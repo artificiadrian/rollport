@@ -165,14 +165,17 @@
         ...presets.map((preset) => ({
             value: keyOf(preset.range),
             label: when(preset.range),
-            aside: preset.items === null ? undefined : count(preset.items),
+            aside:
+                preset.items === null
+                    ? undefined
+                    : `${count(preset.items)} new`,
         })),
         {
             value: "between",
             label: "Between two dates",
             aside:
                 roll && range.range === "between"
-                    ? count(roll.new.items)
+                    ? `${count(roll.new.items)} new`
                     : undefined,
         },
     ])
@@ -199,7 +202,7 @@
                     ? "With their videos"
                     : `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`,
             icon: ICONS[kind],
-            aside: roll ? count(roll.counts[kind]) : undefined,
+            aside: roll ? `${count(roll.counts[kind])} new` : undefined,
             indent: kind === "liveVideos",
             disabled:
                 kind === "liveVideos" && !folder.takes.includes("livePhotos"),

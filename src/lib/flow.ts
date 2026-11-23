@@ -891,7 +891,7 @@ function report(
 }
 
 /// What is new, by kind, and how many files that is: "219 photos and 15
-/// videos · 324 files". The big number above counts as the Photos app does;
+/// videos (324 files)". The big number above counts as the Photos app does;
 /// the files, with each Live Photo's video and each edit, are what the folder
 /// gets and what Finder counts. One line, so the warning under the button
 /// keeps its room.
@@ -911,6 +911,6 @@ function breakdown(batch: Batch) {
     const files = said(batch.files, "file", "files")
 
     return batch.files > batch.items && shown
-        ? `${shown} · ${files}`
+        ? `${shown} (${files})`
         : shown || files
 }
