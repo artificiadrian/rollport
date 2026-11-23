@@ -83,8 +83,12 @@
     /// A day this many days back, as the calendar here reads it. toISOString()
     /// is UTC, which east of Greenwich hands back yesterday all evening.
     function daysAgo(days: number) {
-        const day = new Date()
-        day.setDate(day.getDate() - days)
+        const now = new Date()
+        const day = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() - days,
+        )
 
         return [
             day.getFullYear(),

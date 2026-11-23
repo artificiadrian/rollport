@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { tick } from "svelte"
     import { convertFileSrc } from "@tauri-apps/api/core"
     import { cubicOut, linear } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
@@ -132,14 +131,14 @@
     function close() {
         if (!options) return
         options = false
-        void tick().then(() => {
-            const lost = document.activeElement
-            if (
-                opener?.isConnected &&
-                (!lost || lost === document.body || !lost.isConnected)
-            )
-                opener.focus()
-        })
+        // Still in the popover as it fades out, or already nowhere.
+        const focused = document.activeElement
+        if (
+            !focused ||
+            focused === document.body ||
+            focused.closest("[data-popover]")
+        )
+            opener?.focus()
     }
 
     /// Start the import. Options close, so they do not come back by
@@ -388,22 +387,24 @@
     // view transition's picture of it is taken where it will stay; and again
     // when the stage or the screen change size on their own (fonts, zoom).
     // Placed before it may glide, so the window does not open with a slide.
-    let stageEl: HTMLElement
-    let screenEl: HTMLElement
     let stage = $state(0)
     let block = $state(0)
-    let lift = $state(0)
     let placed = $state(false)
-    $effect(() => {
-        void view
-        void stage
-        void block
-        lift = Math.max(
-            0,
-            (stageEl.clientHeight - 28 - screenEl.offsetHeight) / 2,
-        )
-        if (!placed) requestAnimationFrame(() => (placed = true))
-    })
+
+    function center(screen: HTMLElement) {
+        const frame = requestAnimationFrame(() => (placed = true))
+
+        $effect(() => {
+            void view
+            void stage
+            void block
+            const room = (screen.parentElement?.clientHeight ?? 0) - 28
+            const lift = Math.max(0, (room - screen.offsetHeight) / 2)
+            screen.style.transform = `translateY(${lift}px)`
+        })
+
+        return () => cancelAnimationFrame(frame)
+    }
 
     /// The last run copied nothing, so its button starts it again rather than
     /// going on.
@@ -539,16 +540,14 @@
     <div
         data-stage
         tabindex="-1"
-        bind:this={stageEl}
         bind:clientHeight={stage}
         class="relative flex grow flex-col items-center px-8 text-center outline-none"
     >
         <div class="min-h-6 shrink-1 grow-0 basis-[28px]"></div>
         <div
-            bind:this={screenEl}
+            {@attach center}
             bind:clientHeight={block}
             data-screen
-            style:transform="translateY({lift}px)"
             class={[
                 "flex w-full shrink-0 flex-col items-center [view-transition-name:screen]",
                 placed &&
@@ -910,6 +909,7 @@
     <button
         type="button"
         aria-label="Close options"
+        data-popover
         tabindex="-1"
         onclick={close}
         transition:fade={{ duration: still ? 0 : 150 }}
@@ -920,6 +920,7 @@
         role="dialog"
         id="{id}-options"
         aria-label="Options"
+        data-popover
         transition:fly={{ y: 8, duration: still ? 0 : 150 }}
         class="fixed right-3 bottom-14 left-3 z-50 max-h-[calc(100vh-var(--spacing)*17)] overflow-y-auto rounded-xl border border-line bg-canvas shadow-xl"
     >
