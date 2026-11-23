@@ -364,6 +364,21 @@ describe("the ready screen counts as the Photos app does", () => {
         assert.equal(shown.items, 234)
         assert.equal(shown.details, "219 photos and 15 videos · 324 files")
     })
+
+    test("Live Photo videos taken later are counted as files", () => {
+        const roll = read(0)
+        assert.ok(roll.roll === "done")
+        roll.new = {
+            files: 78,
+            items: 78,
+            bytes: 1e8,
+            kinds: kinds(0, 0, 78),
+            newest: [],
+        }
+        const shown = screen(flow({ roll }))
+        assert.ok(shown.screen === "ready")
+        assert.equal(shown.details, "78 files")
+    })
 })
 
 describe("the media types in words", () => {
