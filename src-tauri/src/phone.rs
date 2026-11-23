@@ -2195,25 +2195,28 @@ mod tests {
     }
 
     /// The tables and columns as iOS 27 has them, with the rows a camera roll
-    /// gives: a shot from a trip, a photo saved from a chat years after it was
-    /// taken, one with no zone, one in Recently Deleted, and a burst.
+    /// gives: a Live Photo from a trip, an edited photo saved from a chat years
+    /// after it was taken, a screenshot with no zone, one in Recently Deleted,
+    /// a burst, and a screen recording.
     fn photos_sqlite(dir: &Path) -> PathBuf {
         let path = dir.join("Photos.sqlite");
         let db = rusqlite::Connection::open(&path).unwrap();
         db.execute_batch(
             "CREATE TABLE ZASSET (Z_PK INTEGER PRIMARY KEY, ZDIRECTORY VARCHAR,
                  ZFILENAME VARCHAR, ZDATECREATED TIMESTAMP, ZTRASHEDSTATE INTEGER,
-                 ZAVALANCHEUUID VARCHAR, ZVISIBILITYSTATE INTEGER);
+                 ZAVALANCHEUUID VARCHAR, ZVISIBILITYSTATE INTEGER, ZKINDSUBTYPE INTEGER,
+                 ZADJUSTMENTSSTATE INTEGER);
              CREATE TABLE ZADDITIONALASSETATTRIBUTES (Z_PK INTEGER PRIMARY KEY,
                  ZASSET INTEGER, ZTIMEZONEOFFSET INTEGER);
              INSERT INTO ZASSET VALUES
-                 (1, 'DCIM/100APPLE', 'IMG_0001.HEIC', 810000000.25, 0, NULL, 0),
-                 (2, 'DCIM/100APPLE', 'IMG_0002.JPG', 560000000, 0, NULL, 0),
-                 (3, 'DCIM/100APPLE', 'IMG_0003.PNG', 810000000, NULL, NULL, 0),
-                 (4, 'DCIM/100APPLE', 'IMG_0004.HEIC', 810000000, 1, NULL, 0),
-                 (5, 'PhotoData/CPLAssets', 'IMG_0005.HEIC', 810000000, 0, NULL, 0),
-                 (6, 'DCIM/100APPLE', 'IMG_0006.HEIC', 810000000, 0, 'b', 0),
-                 (7, 'DCIM/100APPLE', 'IMG_0007.HEIC', 810000000, 0, 'b', 2);
+                 (1, 'DCIM/100APPLE', 'IMG_0001.HEIC', 810000000.25, 0, NULL, 0, 2, 0),
+                 (2, 'DCIM/100APPLE', 'IMG_0002.JPG', 560000000, 0, NULL, 0, 0, 3),
+                 (3, 'DCIM/100APPLE', 'IMG_0003.PNG', 810000000, NULL, NULL, 0, 10, NULL),
+                 (4, 'DCIM/100APPLE', 'IMG_0004.HEIC', 810000000, 1, NULL, 0, 0, 0),
+                 (5, 'PhotoData/CPLAssets', 'IMG_0005.HEIC', 810000000, 0, NULL, 0, 0, 0),
+                 (6, 'DCIM/100APPLE', 'IMG_0006.HEIC', 810000000, 0, 'b', 0, 0, 0),
+                 (7, 'DCIM/100APPLE', 'IMG_0007.HEIC', 810000000, 0, 'b', 2, 0, 0),
+                 (8, 'DCIM/100APPLE', 'IMG_0008.MP4', 810000000, 0, NULL, 0, 103, 0);
              INSERT INTO ZADDITIONALASSETATTRIBUTES VALUES
                  (1, 1, 32400), (2, 2, 3600), (3, 3, NULL), (4, 4, 3600);",
         )
@@ -2230,21 +2233,35 @@ mod tests {
         let known = read_photos(&photos_sqlite(&dir)).unwrap();
         let _ = fs::remove_dir_all(&dir);
 
-        let at = |text: &str| Known::Taken {
+        let at = |text: &str, kind, edited| Known::Taken {
             taken: chrono::DateTime::parse_from_rfc3339(text).unwrap(),
-            kind: None,
-            edited: false,
+            kind,
+            edited,
         };
 
         // 810000000 seconds after 2001-01-01 is 2026-09-02 00:00:00 UTC.
         assert_eq!(
             known["/DCIM/100APPLE/IMG_0001.HEIC"],
-            at("2026-09-02T09:00:00+09:00")
+            at("2026-09-02T09:00:00+09:00", Some(Kind::LivePhoto), false)
         );
         assert_eq!(
             known["/DCIM/100APPLE/IMG_0002.JPG"],
-            at("2018-09-30T12:33:20+01:00")
+            at("2018-09-30T12:33:20+01:00", None, true)
         );
+        assert!(matches!(
+            known["/DCIM/100APPLE/IMG_0003.PNG"],
+            Known::Taken {
+                kind: Some(Kind::Screenshot),
+                ..
+            }
+        ));
+        assert!(matches!(
+            known["/DCIM/100APPLE/IMG_0008.MP4"],
+            Known::Taken {
+                kind: Some(Kind::ScreenRecording),
+                ..
+            }
+        ));
         assert_eq!(known["/DCIM/100APPLE/IMG_0004.HEIC"], Known::Hidden);
         // A burst: the picked frame, and one that was not.
         assert!(matches!(
@@ -2258,7 +2275,7 @@ mod tests {
         };
         assert_eq!(no_zone.timestamp(), 810_000_000 + APPLE_EPOCH);
         // Only what is in /DCIM.
-        assert_eq!(known.len(), 6);
+        assert_eq!(known.len(), 7);
     }
 
     /// Before iOS 14 the table was ZGENERICASSET, and an old database lacks
