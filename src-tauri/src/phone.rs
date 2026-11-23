@@ -1918,6 +1918,14 @@ mod tests {
             denied.on_disk("cannot write the file"),
             Err(Failed::Folder(_))
         ));
+
+        // A FAT32 drive refuses a file over 4 GB: that file, not the run.
+        let fat32: Result<(), std::io::Error> =
+            Err(std::io::Error::from(std::io::ErrorKind::FileTooLarge));
+        assert!(matches!(
+            fat32.on_disk("cannot write the file"),
+            Err(Failed::TooLarge)
+        ));
     }
 
     #[test]
@@ -2641,6 +2649,8 @@ mod tests {
     }
 
     #[test]
+    // Windows opens a folder as a file only with a flag std does not set.
+    #[cfg_attr(windows, ignore)]
     fn an_abandoned_copy_of_photos_goes_and_one_being_made_stays() {
         let dir = |age| {
             let dir = std::env::temp_dir()
