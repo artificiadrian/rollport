@@ -7,6 +7,7 @@ import {
     EVERYTHING,
     QUIET,
     named,
+    prints,
     screen,
     when,
     duration,
@@ -378,6 +379,46 @@ describe("the ready screen counts as the Photos app does", () => {
         const shown = screen(flow({ roll }))
         assert.ok(shown.screen === "ready")
         assert.equal(shown.details, "78 files")
+    })
+})
+
+describe("the prints", () => {
+    const roll: Roll = {
+        ...read(3),
+        all: { ...batch(103), newest: ["/DCIM/a.HEIC"] },
+        new: { ...batch(3), newest: ["/DCIM/new.HEIC"] },
+    } as Roll
+    const at = (path: string) => `${phone.udid}${path}`
+
+    test("ready shows what is new, of this phone", () => {
+        const of = flow({ roll })
+        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/new.HEIC")])
+    })
+
+    test("a report shows what its run copied", () => {
+        const of = flow({ roll, run: finished({ newest: ["/DCIM/run.HEIC"] }) })
+        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/run.HEIC")])
+    })
+
+    test("a report that copied nothing shows what the folder has", () => {
+        const of = flow({ roll, run: finished({ imported: 0 }) })
+        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/a.HEIC")])
+    })
+
+    test("a copy deals the photo that landed last", () => {
+        const of = flow({
+            roll,
+            run: {
+                run: "copying",
+                done: 1,
+                total: 3,
+                bytes: 1,
+                totalBytes: 3,
+                eta: null,
+                latest: "/DCIM/landed.HEIC",
+            },
+        })
+        assert.equal(prints(of, screen(of)).latest, at("/DCIM/landed.HEIC"))
     })
 })
 

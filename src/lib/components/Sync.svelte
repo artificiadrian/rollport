@@ -33,6 +33,7 @@
         places,
         size,
         summary,
+        prints,
         tell,
         type Device,
         type Flow,
@@ -95,30 +96,7 @@
         flow.source.source === "listed" ? flow.source.devices : [],
     )
 
-    /// A picture is its phone and its path there: two phones each have an
-    /// IMG_0001, and the window must not take one for the other.
-    const of = (udid: string | undefined) => (path: string) =>
-        `${udid ?? ""}${path}`
-
-    /// The newest of what is to import, front first.
-    const newest = $derived(
-        flow.roll?.roll === "done"
-            ? flow.roll.new.newest.map(of(shown?.udid))
-            : [],
-    )
-
-    /// The photo that arrived last, while files are being copied or the
-    /// camera roll is being counted. Null otherwise: a report read again
-    /// under keeps the prints of its run.
-    const latest = $derived.by(() => {
-        const path =
-            flow.run?.run === "copying"
-                ? flow.run.latest
-                : view.screen === "counting" && flow.roll?.roll === "reading"
-                  ? flow.roll.latest
-                  : null
-        return path && shown ? of(shown.udid)(path) : null
-    })
+    const photos = $derived(prints(flow, view))
 
     /// Options is open. How the window looks, so it is this screen's to keep.
     let options = $state(false)
@@ -146,7 +124,7 @@
     /// screen's.
     function start() {
         close()
-        dealt = newest
+        dealt = photos.still
         oldest = 2
         tell("start_import")
     }
@@ -198,23 +176,12 @@
     /// rest about two thirds of it (a deal takes 350 ms).
     const DEAL = 1000
 
-    const resting = $derived(view.screen === "ready")
-
-    /// The prints' photos, by path and by place: front, left, right. A print
-    /// without one, or whose thumbnail will not load, is drawn as paper.
-    /// The import and its report show what was dealt. Any other screen keeps
-    /// what it shows to hand: a report, the newest photos its run copied;
-    /// otherwise, and when it copied none, the newest photos the folder
-    /// already has.
+    /// The prints' photos, by place: front, left, right. A print without
+    /// one, or whose thumbnail will not load, is drawn as paper. The import
+    /// and its report show what was dealt; any other screen, its own.
     const pictures = $derived.by(() => {
-        if (resting) return newest
         const run = view.screen === "importing" || view.screen === "done"
-        if (run && dealt.some(Boolean)) return dealt
-        if (flow.run?.run === "finished" && flow.run.newest.length)
-            return flow.run.newest.map(of(flow.run.udid))
-        return flow.roll?.roll === "done"
-            ? flow.roll.all.newest.map(of(shown?.udid))
-            : []
+        return run && dealt.some(Boolean) ? dealt : photos.still
     })
 
     /// Each picture's width over its height once it has loaded, or "broken"
@@ -319,11 +286,11 @@
     /// the phone for the same thumbnail twice, and prints land in order.
     let dealing = false
 
-    // `latest` is read inside the callback, so the timer is not restarted
+    // The latest photo is read inside the callback, so the timer is not restarted
     // each time it changes; it is null while nothing is moving.
     $effect(() => {
         const timer = setInterval(() => {
-            const picture = latest
+            const picture = photos.latest
 
             if (!picture || dealing || dealt.includes(picture)) return
 

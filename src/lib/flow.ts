@@ -523,6 +523,35 @@ export function needs(source: Source): Said | null {
 }
 
 /// What the window shows, worked out from the facts. The first match wins.
+/// The photos a screen shows on its prints, front first, each as its phone and
+/// its path there: two phones each have an IMG_0001. On ready, the newest of
+/// what is new; on a report, the newest its run copied; otherwise the newest
+/// the folder has. And the photo that arrived last while a copy runs or the
+/// roll is counted, which the window deals onto them.
+export function prints(flow: Flow, shown: Screen) {
+    const { roll, run, source } = flow
+    const udid = source.source === "listed" ? source.chosen?.udid : undefined
+    const on = (phone: string | undefined) => (path: string) =>
+        `${phone ?? ""}${path}`
+
+    const still =
+        shown.screen === "ready" && roll?.roll === "done"
+            ? roll.new.newest.map(on(udid))
+            : run?.run === "finished" && run.newest.length
+              ? run.newest.map(on(run.udid))
+              : roll?.roll === "done"
+                ? roll.all.newest.map(on(udid))
+                : []
+    const latest =
+        run?.run === "copying"
+            ? run.latest
+            : shown.screen === "counting" && roll?.roll === "reading"
+              ? roll.latest
+              : null
+
+    return { still, latest: latest && udid ? on(udid)(latest) : null }
+}
+
 export function screen(flow: Flow): Screen {
     const { folder, roll, run } = flow
     const need = needs(flow.source)
