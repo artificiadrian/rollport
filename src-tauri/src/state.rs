@@ -1025,7 +1025,8 @@ impl State {
             return Err("Files here are already named this way.");
         }
 
-        facts.settings.layout = layout;
+        // Typed with {mtime:, a preset is still that preset.
+        facts.settings.layout = shown(&layout);
         Ok(Some(path.clone()))
     }
 
@@ -2631,6 +2632,11 @@ mod tests {
             state.set_layout("{mtime:%Y}/{name}".into()),
             Ok(Some("/tmp/x".into()))
         );
+        // Spelled as the window shows it, so a preset reads as that preset.
+        assert!(matches!(
+            state.view().folder,
+            FolderView::Known { layout, .. } if layout == "{taken:%Y}/{name}"
+        ));
 
         let mut state = State::new();
         open(
