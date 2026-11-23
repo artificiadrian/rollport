@@ -458,9 +458,8 @@ impl Takes {
             .join(",")
     }
 
-    /// How it reads it back. The four answers 0.1.0 wrote take what they took
-    /// then; a folder that has never said, and one that says nothing we know,
-    /// take everything, as a new folder does.
+    /// How it reads it back, from the folder's `kinds`. One that names
+    /// nothing we know takes everything, as a new folder does.
     pub fn read(stored: &str) -> Takes {
         let has = |names: &[&str]| {
             let on = |name| names.contains(&name);
@@ -474,20 +473,27 @@ impl Takes {
             }
         };
 
-        let takes = match stored {
-            "noLiveVideos" => Takes {
-                live_videos: false,
-                ..Takes::EVERYTHING
-            },
-            "photos" => has(&["photos", "livePhotos", "screenshots"]),
-            "videos" => has(&["videos", "screenRecordings"]),
-            _ => has(&stored.split(',').collect::<Vec<_>>()),
-        };
+        let takes = has(&stored.split(',').collect::<Vec<_>>());
 
         if takes.any() {
             takes
         } else {
             Takes::EVERYTHING
+        }
+    }
+
+    /// What a folder 0.1.0 last wrote, under `takes`, takes now: the same
+    /// files. It is kept apart from `kinds`, where a lone `photos` means only
+    /// photos, and left as it was, so 0.1.0 still reads its own answer.
+    pub fn read_0_1_0(stored: &str) -> Takes {
+        match stored {
+            "noLiveVideos" => Takes {
+                live_videos: false,
+                ..Takes::EVERYTHING
+            },
+            "photos" => Takes::read("photos,livePhotos,screenshots"),
+            "videos" => Takes::read("videos,screenRecordings"),
+            _ => Takes::EVERYTHING,
         }
     }
 }
@@ -1834,9 +1840,9 @@ mod tests {
 
         for (takes, files) in [
             (Takes::EVERYTHING, 4),
-            (Takes::read("noLiveVideos"), 3),
-            (Takes::read("photos"), 2),
-            (Takes::read("videos"), 1),
+            (Takes::read_0_1_0("noLiveVideos"), 3),
+            (Takes::read_0_1_0("photos"), 2),
+            (Takes::read_0_1_0("videos"), 1),
         ] {
             state.set_takes(takes);
             assert_eq!(fresh(&state).files, files);
@@ -1850,19 +1856,26 @@ mod tests {
     fn a_folder_that_has_never_said_takes_everything() {
         assert_eq!(Takes::read(""), Takes::EVERYTHING);
         assert_eq!(Takes::read("nonsense"), Takes::EVERYTHING);
+        assert_eq!(Takes::read_0_1_0(""), Takes::EVERYTHING);
         // What 0.1.0 wrote takes what it took then.
         assert_eq!(
-            Takes::read("noLiveVideos").stored(),
+            Takes::read_0_1_0("noLiveVideos").stored(),
             "photos,livePhotos,videos,screenshots,screenRecordings"
         );
         assert_eq!(
-            Takes::read("photos").stored(),
+            Takes::read_0_1_0("photos").stored(),
             "photos,livePhotos,screenshots"
         );
-        assert_eq!(Takes::read("videos").stored(), "videos,screenRecordings");
-        // And what this version writes reads back the same.
-        let some = Takes::read("livePhotos,screenshots");
-        assert_eq!(Takes::read(&some.stored()), some);
+        assert_eq!(
+            Takes::read_0_1_0("videos").stored(),
+            "videos,screenRecordings"
+        );
+        // And what this version writes reads back the same, a lone kind too.
+        for stored in ["photos", "videos", "livePhotos,screenshots"] {
+            let some = Takes::read(stored);
+            assert_eq!(some.stored(), stored);
+            assert_eq!(Takes::read(&some.stored()), some);
+        }
     }
 
     /// Two days typed as a range are both in it.
@@ -1912,13 +1925,13 @@ mod tests {
     fn checking_again_keeps_the_settings_the_person_set() {
         let mut state = state(vec![phone("a")]);
         open(&mut state, folder(HashSet::new()));
-        state.set_takes(Takes::read("photos"));
+        state.set_takes(Takes::read_0_1_0("photos"));
 
         state.rescan();
         state.reread(Path::new("/tmp/x"), Ok(folder(HashSet::new())));
         assert!(matches!(
             state.view().folder,
-            FolderView::Known { takes, .. } if takes == Takes::read("photos")
+            FolderView::Known { takes, .. } if takes == Takes::read_0_1_0("photos")
         ));
     }
 
@@ -2088,7 +2101,7 @@ mod tests {
         assert_eq!(state.rescan(), (None, None));
         assert_eq!(state.choose_destination("/tmp/y".into()), None);
         state.set_range(Range::Last { days: 7 });
-        assert_eq!(state.set_takes(Takes::read("photos")), None);
+        assert_eq!(state.set_takes(Takes::read_0_1_0("photos")), None);
         assert_eq!(state.set_layout("{name}".into()), Ok(None));
 
         // Every one of those used to drop the job, and with it the only handle
@@ -2444,12 +2457,12 @@ mod tests {
     fn a_second_read_of_the_open_folder_keeps_what_changed_since() {
         let mut state = state(vec![phone("a")]);
         open(&mut state, folder(HashSet::new()));
-        state.set_takes(Takes::read("photos"));
+        state.set_takes(Takes::read_0_1_0("photos"));
 
         state.opened(Path::new("/tmp/x"), Ok(folder(HashSet::new())));
         assert_eq!(
             state.folder.facts().map(|facts| facts.settings.takes),
-            Some(Takes::read("photos"))
+            Some(Takes::read_0_1_0("photos"))
         );
     }
 

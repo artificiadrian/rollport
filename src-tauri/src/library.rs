@@ -62,7 +62,10 @@ pub fn read_folder(path: &Path) -> Result<FolderFacts, String> {
             layout: library
                 .setting("layout")?
                 .map_or_else(default_layout, |layout| shown(&layout)),
-            takes: Takes::read(&library.setting("takes")?.unwrap_or_default()),
+            takes: match library.setting("kinds")? {
+                Some(kinds) => Takes::read(&kinds),
+                None => Takes::read_0_1_0(&library.setting("takes")?.unwrap_or_default()),
+            },
         },
         ..plain
     })
@@ -322,7 +325,7 @@ impl Library {
     /// Write the folder's settings down. The layout only while no file has been
     /// named with it: the count is asked here, not of keys that may be old.
     pub fn write_settings(&self, settings: &Settings) -> Result<(), String> {
-        self.set("takes", &settings.takes.stored())?;
+        self.set("kinds", &settings.takes.stored())?;
 
         if self.imported()? == 0 {
             self.set("layout", &stored(&settings.layout))?;
@@ -501,7 +504,7 @@ mod tests {
         let library = Library::create(&dir).unwrap();
         let first = Settings {
             layout: "{taken:%Y}/{name}".into(),
-            takes: Takes::read("photos"),
+            takes: Takes::read_0_1_0("photos"),
         };
 
         library.write_settings(&first).unwrap();
@@ -511,7 +514,9 @@ mod tests {
         library
             .write_settings(&Settings {
                 layout: default_layout(),
-                takes: Takes::read("videos"),
+                // Photos only: a lone word 0.1.0 also wrote, with another
+                // meaning there.
+                takes: Takes::read("photos"),
             })
             .unwrap();
 
@@ -522,7 +527,7 @@ mod tests {
             library.setting("layout").unwrap().as_deref(),
             Some("{mtime:%Y}/{name}")
         );
-        assert!(settings.takes == Takes::read("videos"));
+        assert_eq!(settings.takes, Takes::read("photos"));
 
         let _ = std::fs::remove_dir_all(&dir);
     }
