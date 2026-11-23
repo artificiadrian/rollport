@@ -175,7 +175,7 @@ fn follow(app: &AppHandle, (reading, folder): Next) {
 
 /// Read a folder, and land what it says if we are still on it.
 async fn read(app: AppHandle, path: PathBuf) {
-    let read = facts(&path).await;
+    let read = facts(&app, &path).await;
     with(&app, |state| state.opened(&path, read))
 }
 
@@ -183,14 +183,20 @@ async fn read(app: AppHandle, path: PathBuf) {
 /// not one that stays "Opening" for ever; so is a network folder whose server
 /// has gone, which would otherwise hold a finished copy in Copying, refusing
 /// everything.
-async fn facts(path: &Path) -> Result<FolderFacts, String> {
-    let path = path.to_path_buf();
-    tokio::time::timeout(
-        FOLDER_ANSWERS,
-        guarded(spawn_blocking(move || read_folder(&path))),
-    )
-    .await
-    .unwrap_or_else(|_| Err("the folder stopped responding".into()))
+async fn facts(app: &AppHandle, path: &Path) -> Result<FolderFacts, String> {
+    let read = {
+        let path = path.to_path_buf();
+        tokio::time::timeout(
+            FOLDER_ANSWERS,
+            guarded(spawn_blocking(move || read_folder(&path))),
+        )
+        .await
+        .unwrap_or_else(|_| Err("the folder stopped responding".into()))
+    };
+    if let Err(reason) = &read {
+        note(app, &format!("cannot read {}: {reason}", path.display()));
+    }
+    read
 }
 
 /// Ample for a library on a slow network drive.
@@ -207,10 +213,6 @@ fn read_roll(app: &AppHandle, reading: Option<Reading>) {
     let app = app.clone();
 
     spawn(async move {
-        // A locked phone fails every few seconds for as long as it stays
-        // locked; the log hears each reason once.
-        let mut said = None;
-
         loop {
             let walked = guarded(spawn({
                 let (app, udid) = (app.clone(), udid.clone());
@@ -218,15 +220,12 @@ fn read_roll(app: &AppHandle, reading: Option<Reading>) {
             }))
             .await;
 
-            if let Err(reason) = &walked
-                && said.as_ref() != Some(reason)
-            {
-                note(&app, &format!("cannot read the camera roll: {reason}"));
-                said = Some(reason.clone());
-            }
-
+            let failed = walked.as_ref().err().cloned();
             if !with(&app, |state| state.roll_read(ticket, walked)) {
                 return;
+            }
+            if let Some(reason) = failed {
+                note(&app, &format!("cannot read the camera roll: {reason}"));
             }
 
             tokio::time::sleep(LOOK_AGAIN).await;
@@ -293,7 +292,7 @@ async fn start_import(app: AppHandle) {
     // The folder is a library now, or holds more than it did, and it is the
     // one that knows how much room is left. Landed with the report, so the
     // report never shows beside the old count.
-    let read = facts(&path).await;
+    let read = facts(&app, &path).await;
     note(&app, &format!("import finished\n{}", report.details));
     let next = with(&app, |state| state.copied(report, &path, read));
 
@@ -303,8 +302,18 @@ async fn start_import(app: AppHandle) {
 /// One line in the log, for whoever looks into a problem later: the window
 /// shows what matters now, and the Windows build has no console. Kept small:
 /// past a megabyte the log starts again and the last one is kept beside it.
+/// A line that repeats the one before is said once: a locked phone fails
+/// every few seconds for as long as it stays locked.
 fn note(app: &AppHandle, line: &str) {
     use std::io::Write;
+
+    // One writer at a time, so two never rotate at once or mix their lines.
+    static LAST: Mutex<String> = Mutex::new(String::new());
+    let mut last = LAST.lock().unwrap_or_else(PoisonError::into_inner);
+    if *last == line {
+        return;
+    }
+    line.clone_into(&mut last);
 
     let Ok(dir) = app.path().app_log_dir() else {
         return;
@@ -318,7 +327,7 @@ fn note(app: &AppHandle, line: &str) {
 
     if let Ok(mut log) = fs::OpenOptions::new().create(true).append(true).open(&path) {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-        let _ = writeln!(log, "{now} {line}");
+        let _ = log.write_all(format!("{now} {line}\n").as_bytes());
     }
 }
 
@@ -618,7 +627,7 @@ async fn rescan(app: AppHandle) {
     read_roll(&app, reading);
 
     if let Some(path) = folder {
-        let read = facts(&path).await;
+        let read = facts(&app, &path).await;
         with(&app, |state| state.reread(&path, read))
     }
 }
@@ -809,6 +818,16 @@ pub fn run() {
         })
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // A panic outside a guarded task would leave no trace on Windows.
+            let previous = std::panic::take_hook();
+            std::panic::set_hook(Box::new({
+                let handle = handle.clone();
+                move |panic| {
+                    note(&handle, &format!("panic: {panic}"));
+                    previous(panic)
+                }
+            }));
 
             #[cfg(target_os = "macos")]
             menu(&handle)?;

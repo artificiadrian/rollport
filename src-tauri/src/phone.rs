@@ -1549,7 +1549,7 @@ pub fn claim(target: PathBuf) -> Result<PathBuf, Failed> {
         {
             Ok(_) => return Ok(candidate),
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(Failed::Folder(format!("cannot write the file: {e}"))),
+            Err(e) => return Err(e).on_disk("cannot write the file"),
         }
     }
 
@@ -1683,6 +1683,9 @@ async fn watch_once(app: &AppHandle) -> Result<(), String> {
                 let Some(entry) = roster.iter_mut().find(|(attached, ..)| *attached == id) else {
                     continue;
                 };
+                if let Device::Waiting { need: Need::Failed { reason }, .. } = &status {
+                    crate::note(app, &format!("cannot connect to the iPhone: {reason}"));
+                }
                 entry.1 = Some(status);
             }
         }
@@ -1704,6 +1707,9 @@ async fn watch_once(app: &AppHandle) -> Result<(), String> {
 
 /// Land what usbmuxd said, and read the phone it made ready.
 fn heard(app: &AppHandle, devices: Devices) {
+    if let Devices::Unavailable { reason } = &devices {
+        crate::note(app, &format!("cannot see iPhones: {reason}"));
+    }
     follow(app, with(app, |state| state.devices(devices)))
 }
 
