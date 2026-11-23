@@ -97,7 +97,7 @@
             collisionPadding={8}
             class="z-60 max-h-(--bits-select-content-available-height) w-max max-w-(--bits-select-content-available-width) min-w-(--bits-select-anchor-width) overflow-y-auto rounded-lg border border-line bg-canvas p-1 text-sm shadow-lg transition-[opacity,translate] duration-150 ease-out outline-none data-ending-style:translate-y-2 data-ending-style:opacity-0 data-starting-style:translate-y-2 data-starting-style:opacity-0 motion-reduce:transition-none"
         >
-            {#each items as item (item.value)}
+            {#each items as item, at (item.value)}
                 <Select.Item
                     value={item.value}
                     label={item.label}
@@ -107,64 +107,79 @@
                         item.indent ? "pl-8" : "pl-2",
                     ]}
                 >
-                    {#snippet children({ selected })}
-                        <!-- As tall as the label's line, so it centres on it.
+                    <!-- Said in full to a screen reader, which bits-ui leaves
+                         without "not selected", "dimmed", or the answer an
+                         indented one belongs to. -->
+                    {#snippet child({ props, selected })}
+                        <div
+                            {...props}
+                            aria-selected={selected ? "true" : "false"}
+                            aria-disabled={item.disabled || undefined}
+                            aria-label={item.indent
+                                ? `${items.findLast((other, i) => i < at && !other.indent)?.label ?? ""}: ${item.label}`
+                                : undefined}
+                        >
+                            <!-- As tall as the label's line, so it centres on it.
                              Several answers are boxes; one answer, a dot. -->
-                        <span class="flex h-5 shrink-0 items-center">
-                            {#if multiple}
-                                <span
-                                    class={[
-                                        "flex size-4 items-center justify-center rounded-sm border",
-                                        selected
-                                            ? "border-ink bg-ink text-canvas"
-                                            : "border-edge",
-                                    ]}
-                                >
-                                    {#if selected}
-                                        <Check
-                                            size={12}
-                                            strokeWidth={3}
-                                            aria-hidden="true"
-                                        />
-                                    {/if}
-                                </span>
-                            {:else}
-                                <span
-                                    class={[
-                                        "flex size-4 items-center justify-center rounded-full border",
-                                        selected ? "border-ink" : "border-edge",
-                                    ]}
-                                >
-                                    {#if selected}
-                                        <span class="size-2 rounded-full bg-ink"
-                                        ></span>
-                                    {/if}
-                                </span>
-                            {/if}
-                        </span>
-                        {#if item.icon}
-                            <span
-                                class="flex h-5 shrink-0 items-center text-muted"
-                            >
-                                <item.icon size={14} />
+                            <span class="flex h-5 shrink-0 items-center">
+                                {#if multiple}
+                                    <span
+                                        class={[
+                                            "flex size-4 items-center justify-center rounded-sm border",
+                                            selected
+                                                ? "border-ink bg-ink text-canvas"
+                                                : "border-edge",
+                                        ]}
+                                    >
+                                        {#if selected}
+                                            <Check
+                                                size={12}
+                                                strokeWidth={3}
+                                                aria-hidden="true"
+                                            />
+                                        {/if}
+                                    </span>
+                                {:else}
+                                    <span
+                                        class={[
+                                            "flex size-4 items-center justify-center rounded-full border",
+                                            selected
+                                                ? "border-ink"
+                                                : "border-edge",
+                                        ]}
+                                    >
+                                        {#if selected}
+                                            <span
+                                                class="size-2 rounded-full bg-ink"
+                                            ></span>
+                                        {/if}
+                                    </span>
+                                {/if}
                             </span>
-                        {/if}
-                        <span class="flex min-w-0 flex-col">
-                            <span class="truncate">{item.label}</span>
-                            {#if item.detail}
+                            {#if item.icon}
                                 <span
-                                    class="truncate text-xs text-muted {item.mono
-                                        ? 'font-mono'
-                                        : ''}">{item.detail}</span
+                                    class="flex h-5 shrink-0 items-center text-muted"
+                                >
+                                    <item.icon size={14} />
+                                </span>
+                            {/if}
+                            <span class="flex min-w-0 flex-col">
+                                <span class="truncate">{item.label}</span>
+                                {#if item.detail}
+                                    <span
+                                        class="truncate text-xs text-muted {item.mono
+                                            ? 'font-mono'
+                                            : ''}">{item.detail}</span
+                                    >
+                                {/if}
+                            </span>
+                            {#if item.aside}
+                                <span
+                                    class="ml-auto pl-6 text-xs leading-5 text-muted tabular-nums"
+                                    >{item.aside}</span
                                 >
                             {/if}
-                        </span>
-                        {#if item.aside}
-                            <span
-                                class="ml-auto pl-6 text-xs leading-5 text-muted tabular-nums"
-                                >{item.aside}</span
-                            >
-                        {/if}
+                        </div>
                     {/snippet}
                 </Select.Item>
             {/each}
