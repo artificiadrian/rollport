@@ -71,14 +71,28 @@ const heights: Record<string, number> = {}
 for (const os of SYSTEMS)
     for (const still of STILLS) {
         const tab = await context.newPage()
+        // Which page failed, and what it said: this has failed now and then,
+        // and the app's own code is minified past reading.
+        const said: string[] = []
+        const where = `the demo's ${still} screen on ${os}`
+        tab.on("console", (message) => {
+            if (message.type() === "error") said.push(message.text())
+        })
         tab.on("pageerror", (error) => {
-            throw error
+            throw new Error(`${where}: ${error.stack ?? error.message}`)
         })
         const state = still === "options" ? "ready" : still
         await tab.goto(
             `http://site.local${url("/demo/index.html")}?state=${state}&os=${os}`,
         )
-        await tab.waitForFunction(() => "__settled" in window)
+        await tab
+            .waitForFunction(() => "__settled" in window)
+            .catch((error: unknown) => {
+                throw new Error(
+                    `${where} never settled${said.length > 0 ? `: ${said.join(" | ")}` : ""}`,
+                    { cause: error },
+                )
+            })
         if (still === "options") {
             await tab.getByRole("button", { name: "Options" }).click()
             await tab.waitForTimeout(500)

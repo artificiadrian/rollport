@@ -161,13 +161,30 @@ import { site } from "../../site"
         </p>
     </HelpSection>
 
+    <HelpSection question id="counts">
+        <p>
+            Before an import, Rollport counts photos and videos as the Photos
+            app does: a Live Photo with its video is one, and an edit belongs to
+            its photo. In the folder, each of these is a file of its own, so
+            Finder or Explorer counts more files. The line under the number says
+            how many files the folder gets.
+        </p>
+        <p>
+            With <b>Optimize iPhone Storage</b> on, the iPhone also moves
+            originals to iCloud and back over time, so the number Rollport sees
+            can change from one day to the next. See{" "}
+            <a href="#icloud">Photos kept in iCloud are missing</a>.
+        </p>
+    </HelpSection>
+
     <HelpSection question id="icloud">
         <p>
             With <b>Optimize iPhone Storage</b> on, the iPhone keeps only a
             small copy of many photos and videos, and the original is in iCloud.
             Rollport imports what is on the iPhone, so it does not see these
             originals. It can say that all photos are already here while some
-            are missing.
+            are missing. Originals that the iPhone does keep, such as photos
+            from your other devices, are imported under the name they had there.
         </p>
         <p>
             To import them, open <b>Settings</b> on the iPhone, tap your name,
@@ -271,10 +288,10 @@ import { site } from "../../site"
     <HelpSection question id="something-else">
         <p>
             Tell us what happened, which system you use (Mac, Windows, or
-            Linux), and your iPhone model. If an import left files on the
-            iPhone, click <b>Copy details</b> under the message and paste the
-            text too. Rollport also keeps a log, <code>rollport.log</code>, in
-            this folder:
+            Linux), and your iPhone model. After an import, click{" "}
+            <b>Copy details</b> under the report and paste the text too.
+            Rollport also keeps a log, <code>rollport.log</code>, in this
+            folder:
         </p>
         <CommandList
             items={[

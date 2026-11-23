@@ -73,6 +73,10 @@ export const help = [
                 id: "not-copied",
                 title: "Some files could not be copied",
             },
+            {
+                id: "counts",
+                title: "The numbers differ from the iPhone",
+            },
             { id: "icloud", title: "Photos kept in iCloud are missing" },
             {
                 id: "folder-busy",

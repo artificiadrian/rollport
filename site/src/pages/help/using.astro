@@ -38,25 +38,27 @@ const shortcuts = [
     >
         <p>
             Open <b>Options</b> at the bottom of the window. Each choice takes
-            effect at once, and the number of files to import changes with it.
-            Press <Kbd>Esc</Kbd> or click outside to close Options.
+            effect at once, and the number to import changes with it. Press{" "}
+            <Kbd>Esc</Kbd> or click outside to close Options.
         </p>
         <ul>
             <li>
                 <b>Date taken</b>: <b>Any date</b>, <b>Last 7 days</b>,{" "}
                 <b>Last 30 days</b>, <b>Last 12 months</b>, or{" "}
-                <b>Between two dates</b>. "Last 7 days" is today and the six
-                days before it, and both dates of "Between two dates" are
-                included. The date range is not saved: Rollport starts at Any
-                date each time you open it, so a forgotten range never leaves
-                photos behind.
+                <b>Between two dates</b>, each with the number of new files it
+                brings. <b>Last 7 days</b> is today and the six days before it,
+                and both dates of <b>Between two dates</b> are included. The
+                date range is not saved: Rollport starts at <b>Any date</b> each
+                time you open it, so a forgotten range never leaves photos
+                behind.
             </li>
             <li>
-                <b>Media types</b>: tick the kinds to import: photos, Live
-                Photos, Live Photo videos (the short clip that goes with each
-                Live Photo), videos, screenshots and screen recordings. Each
-                shows how many new ones the iPhone has. This choice is saved
-                with the folder, and you can change it at any time.
+                <b>Media types</b>: tick the kinds to import: <b>Photos</b>,{" "}
+                <b>Live Photos</b>, <b>Videos</b>, <b>Screenshots</b> and{" "}
+                <b>Screen recordings</b>, each with the number of new files of
+                that kind. <b>With their videos</b>, under <b>Live Photos</b>,
+                also imports the short video of each Live Photo. This choice is
+                saved with the folder, and you can change it at any time.
             </li>
             <li>
                 <b>File names</b>: saved with the folder, and set for good at
@@ -98,13 +100,19 @@ const shortcuts = [
         </p>
         <p>
             The date in a name is the date the Photos app shows for the photo,
-            in the time zone where it was taken. The file's modified date is set
-            to it too. A photo you edited in Photos comes twice: the original,
-            and the edit with an E in its name, such as{" "}
-            <code>IMG_E2739.JPG</code>. Photos in <b>Recently Deleted</b>, and
-            the frames of a burst you did not keep, are not imported. If two
-            files would get the same name, the second gets <code>_1</code>{" "}
-            before its extension, the next <code>_2</code>, and so on.
+            in the time zone where it was taken. The file's modified date, and
+            its created date on a Mac or Windows, are set to it too. If Rollport
+            cannot read the dates from Photos, it says so before the import and
+            uses the date each file was saved on the iPhone. If two files would
+            get the same name, the second gets <code>_1</code> before its
+            extension, the next <code>_2</code>, and so on.
+        </p>
+        <p>
+            A photo you edited in Photos comes twice: the original, and the edit
+            with an E in its name, such as <code>IMG_E2739.JPG</code>. Photos in{" "}
+            <b>Recently Deleted</b>, and the frames of a burst you did not keep,
+            are not imported. A photo you took a few seconds ago may not be
+            finished on the iPhone yet. It comes with the next import.
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
