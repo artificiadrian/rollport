@@ -842,7 +842,6 @@ pub async fn copy_all(
     let mut shown_done = 0;
     let total_bytes = fetch.iter().map(|file| file.size).sum::<u64>();
     let started = Instant::now();
-    let mut announced = Instant::now();
 
     // A rate that discounts the past, and the sample it is measured against.
     // Measured on bytes as they stream, not as files finish: four workers
@@ -859,6 +858,8 @@ pub async fn copy_all(
     let mut done = 0;
     let mut lost = Lost::default();
     let mut bytes = 0;
+    // What was on disk already, and so never streams.
+    let mut skipped = 0;
     let mut latest = None;
     let mut landed = Vec::new();
 
@@ -954,97 +955,116 @@ pub async fn copy_all(
     // for a sender that never sends.
     drop(tx);
 
-    while let Some((index, outcome)) = rx.recv().await {
-        let file = &fetch[index];
+    // Said on a clock, not as files finish: one big video can take minutes.
+    let mut tick = tokio::time::interval(ANNOUNCE);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-        done += 1;
-        shown_done += usize::from(counts(file));
-        bytes += file.size;
-
-        let recorded = match outcome {
-            Ok(Copied::Fetched) => {
-                landed.push(file);
-
-                // A Live Photo's clip has no thumbnail; its still stands for it.
-                if !file.is_live_video() && !file.is_edit() {
-                    latest = Some(file.path.clone());
-                }
-
-                library.record(file)
-            }
-            // It was already on disk but the folder had never been told.
-            // Recording it is what stops it being offered as new for ever.
-            Ok(Copied::Already) => library.record(file),
-            // A folder that cannot be written to is the end of the run: every
-            // file left would fail the same way, three times each, with a
-            // timeout between.
-            Err(Failed::Folder(reason)) => Err(reason),
-            // What fits is copied; the rest waits for space. Not a failure, and
-            // not the end: the files in flight finish, and a smaller one later
-            // in the list may still fit. Said once, at the end.
-            Err(Failed::Full) => {
-                full = true;
-                Ok(())
-            }
-            // A file we cannot read is one file, not the end of the run. The
-            // rest of the camera roll is still worth copying, and the folder
-            // will offer this one again next time.
-            Err(Failed::File(reason)) => {
-                lost.add(&file.name, reason, cancel.load(Ordering::Relaxed));
-                Ok(())
-            }
-            Err(Failed::TooLarge) => {
-                let reason = "too large for this drive: FAT32 drives hold files up to 4 GB";
-                lost.add(&file.name, reason.into(), cancel.load(Ordering::Relaxed));
-                Ok(())
-            }
+    loop {
+        let finished = tokio::select! {
+            finished = rx.recv() => match finished {
+                Some(finished) => Some(finished),
+                None => break,
+            },
+            _ = tick.tick() => None,
         };
 
-        if let Err(reason) = recorded {
-            cancel.store(true, Ordering::Relaxed);
-            fatal.get_or_insert(reason);
-        }
+        if let Some((index, outcome)) = finished {
+            let file = &fetch[index];
 
-        // Often enough to look alive, rarely enough not to flood the window.
-        if announced.elapsed() >= ANNOUNCE || done == total {
-            announced = Instant::now();
+            done += 1;
+            shown_done += usize::from(counts(file));
+            bytes += file.size;
 
-            // Weighted by how long the sample took, so the smoothing does not
-            // change meaning when the announcements bunch up or spread out.
-            let over = sampled.elapsed().as_secs_f64();
+            let recorded = match outcome {
+                Ok(Copied::Fetched) => {
+                    landed.push(file);
 
-            let arrived = streamed.load(Ordering::Relaxed);
+                    // A Live Photo's clip has no thumbnail; its still stands for it.
+                    if !file.is_live_video() && !file.is_edit() {
+                        latest = Some(file.path.clone());
+                    }
 
-            if over > 0.0 {
-                let just_now = arrived.saturating_sub(sampled_bytes) as f64 / over;
-                let weight = 1.0 - (-over / SETTLE).exp();
+                    library.record(file)
+                }
+                // It was already on disk but the folder had never been told.
+                // Recording it is what stops it being offered as new for ever.
+                Ok(Copied::Already) => {
+                    skipped += file.size;
+                    library.record(file)
+                }
+                // A folder that cannot be written to is the end of the run: every
+                // file left would fail the same way, three times each, with a
+                // timeout between.
+                Err(Failed::Folder(reason)) => Err(reason),
+                // What fits is copied; the rest waits for space. Not a failure, and
+                // not the end: the files in flight finish, and a smaller one later
+                // in the list may still fit. Said once, at the end.
+                Err(Failed::Full) => {
+                    full = true;
+                    Ok(())
+                }
+                // A file we cannot read is one file, not the end of the run. The
+                // rest of the camera roll is still worth copying, and the folder
+                // will offer this one again next time.
+                Err(Failed::File(reason)) => {
+                    lost.add(&file.name, reason, cancel.load(Ordering::Relaxed));
+                    Ok(())
+                }
+                Err(Failed::TooLarge) => {
+                    let reason = "too large for this drive: FAT32 drives hold files up to 4 GB";
+                    lost.add(&file.name, reason.into(), cancel.load(Ordering::Relaxed));
+                    Ok(())
+                }
+            };
 
-                rate = if rate == 0.0 {
-                    just_now
-                } else {
-                    rate + (just_now - rate) * weight
-                };
-
-                sampled = Instant::now();
-                sampled_bytes = arrived;
+            if let Err(reason) = recorded {
+                cancel.store(true, Ordering::Relaxed);
+                fatal.get_or_insert(reason);
             }
 
-            // What is still to fetch, over the speed it is being fetched at.
-            let fresh = (rate > 1.0).then(|| total_bytes.saturating_sub(arrived) as f64 / rate);
-            let now = started.elapsed().as_secs_f64();
-            quote = requote(quote, fresh, now);
-
-            with(app, |state| {
-                state.progress(Progress {
-                    done: shown_done,
-                    total: shown_total,
-                    bytes,
-                    total_bytes,
-                    eta: quote.map(|(left, at)| (left - (now - at)).max(0.0) as u64),
-                    latest: latest.clone(),
-                })
-            });
+            // The last announcement waits for no clock.
+            if done < total {
+                continue;
+            }
         }
+
+        // Weighted by how long the sample took, so the smoothing does not
+        // change meaning when the announcements bunch up or spread out.
+        let over = sampled.elapsed().as_secs_f64();
+
+        let arrived = streamed.load(Ordering::Relaxed);
+
+        if over > 0.0 {
+            let just_now = arrived.saturating_sub(sampled_bytes) as f64 / over;
+            let weight = 1.0 - (-over / SETTLE).exp();
+
+            rate = if rate == 0.0 {
+                just_now
+            } else {
+                rate + (just_now - rate) * weight
+            };
+
+            sampled = Instant::now();
+            sampled_bytes = arrived;
+        }
+
+        // What is still to fetch, over the speed it is being fetched at.
+        let gone = arrived + skipped;
+        let fresh = (rate > 1.0).then(|| total_bytes.saturating_sub(gone) as f64 / rate);
+        let now = started.elapsed().as_secs_f64();
+        quote = requote(quote, fresh, now);
+
+        with(app, |state| {
+            state.progress(Progress {
+                done: shown_done,
+                total: shown_total,
+                // A retried file streams twice; a failed one may never stream.
+                bytes: bytes.max(gone).min(total_bytes),
+                total_bytes,
+                eta: quote.map(|(left, at)| (left - (now - at)).max(0.0) as u64),
+                latest: latest.clone(),
+            })
+        });
     }
 
     // A worker that panicked never reported its file. It is one that did not
