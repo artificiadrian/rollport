@@ -275,7 +275,8 @@ async fn start_import(app: AppHandle) {
     }))
     .await;
 
-    // Before a file moved: the phone would not talk, or rollport-library.db would not open.
+    // Before a file moved: the phone would not talk, another import holds the
+    // folder, or rollport-library.db would not open.
     let report = run
         .unwrap_or_else(|reason| Report {
             imported: 0,
@@ -331,7 +332,7 @@ fn note(app: &AppHandle, line: &str) {
     }
 }
 
-/// Stop the copy after the files it is on.
+/// Stop the copy at the next chunk of each file it is on.
 #[tauri::command]
 async fn cancel_import(app: AppHandle) {
     lock(&app).stop()

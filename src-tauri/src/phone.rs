@@ -40,8 +40,7 @@ use crate::{
 
 /// What the camera roll holds: the camera's own files, and what was saved
 /// or brought in from elsewhere (GIFs, screenshots, a camera's RAW files from
-/// an SD card reader). The CLI took fewer and skipped the rest without a
-/// word. Not .aae: an edit's recipe, which only Photos can read.
+/// an SD card reader). Not .aae: an edit's recipe, which only Photos can read.
 pub const MEDIA: [&str; 20] = [
     "heic", "heif", "jpg", "jpeg", "png", "dng", "mov", "mp4", "m4v", "gif", "tif", "tiff", "webp",
     "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2",
@@ -89,9 +88,9 @@ pub async fn files_of(udid: &str) -> Result<AfcClient, String> {
     within("AFC refused the connection", AfcClient::connect(&provider)).await
 }
 
-/// The phone's own thumbnail of one camera-roll file: a JPEG iOS keeps ready,
-/// about 80 KB. On an iPhone 12 Pro Max with iOS 27, 5703 of 5770 files had
-/// one; the newest few may not yet, and a Live Photo's clip never does.
+/// The phone's own thumbnail of one camera-roll file: a small JPEG iOS keeps
+/// ready. Most files have one; the newest few may not yet, and a Live
+/// Photo's clip never does.
 pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
     let mut afc = files_of(udid).await?;
     let place = format!("/PhotoData/Thumbnails/V2{path}/5005.JPG");
@@ -106,7 +105,8 @@ pub async fn thumbnail(udid: &str, path: &str) -> Result<Vec<u8>, String> {
     read
 }
 
-/// Every photo and video in /DCIM, with what it weighs and when it was taken.
+/// Every photo and video in /DCIM, and the edits and iCloud originals Photos
+/// keeps under /PhotoData, with what each weighs and when it was taken.
 /// Photos' own record is read over a second connection while the walk runs:
 /// the walk waits on round trips, the copy of the database on bandwidth.
 /// Also why the files are undated, when Photos' record could not be read.
@@ -516,9 +516,9 @@ async fn pull(
 
 /// Photos.sqlite holds a row per photo or film, under the folder and name it
 /// has in /DCIM; a Live Photo's clip has none of its own. ZDATECREATED is
-/// the time Photos shows, and moves when somebody adjusts it there. On an
-/// iPhone with iOS 27 and 8,729 files, each file matched one row by this path,
-/// and each .MOV with no row sat beside its Live Photo's still.
+/// the time Photos shows, and moves when somebody adjusts it there. Each file
+/// matches one row by this path; a .MOV with no row is the clip beside its
+/// Live Photo's still.
 pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
     let db = rusqlite::Connection::open(path)?;
 
@@ -739,7 +739,7 @@ const WARM_UP: f64 = 3.0;
 
 /// A quoted time left counts down with the clock, and is replaced only when it
 /// has stood this long and the fresh estimate is this far from it. Quoted
-/// again on every announcement, it changed several times a second.
+/// again on every announcement, it would change several times a second.
 const REQUOTE: f64 = 5.0;
 const DRIFT: f64 = 0.1;
 
@@ -777,12 +777,12 @@ pub fn edited_name(original: &str, render: &str) -> String {
     }
 }
 
-/// Four connections at once. When the files are small most of the time goes
-/// on waiting for the phone to answer rather than on reading, so four fetches
-/// overlap — the number the CLI has always asked of real hardware.
+/// Connections at once. When the files are small most of the time goes on
+/// waiting for the phone to answer rather than on reading, so the fetches
+/// overlap; the CLI asked this many of real hardware.
 const WORKERS: usize = 4;
 
-/// A file that fails gets two more goes, a moment apart. A wobble on one file
+/// A file that fails gets more goes, a moment apart. A wobble on one file
 /// is not a reason to leave it for the next run, and a long run should not
 /// stall on one that will never arrive.
 const ATTEMPTS: u32 = 3;
@@ -796,7 +796,7 @@ pub async fn copy_all(
     settings: Settings,
     cancel: &Arc<AtomicBool>,
 ) -> Result<Report, String> {
-    // That the phone will talk to us at all, established once, before four
+    // That the phone will talk to us at all, established once, before the
     // workers each decide it for themselves, and before rollport-library.db is made: a
     // first run that cannot reach the phone writes nothing into the folder.
     let mut first = Some(files_of(udid).await?);
@@ -844,7 +844,7 @@ pub async fn copy_all(
     let started = Instant::now();
 
     // A rate that discounts the past, and the sample it is measured against.
-    // Measured on bytes as they stream, not as files finish: four workers
+    // Measured on bytes as they stream, not as files finish: the workers
     // finishing a big video in one sample read as a burst of speed.
     let streamed = Arc::new(AtomicU64::new(0));
     // What the files being copied right now have still to write: the disk
@@ -995,7 +995,7 @@ pub async fn copy_all(
                     library.record(file)
                 }
                 // A folder that cannot be written to is the end of the run: every
-                // file left would fail the same way, three times each, with a
+                // file left would fail the same way, every attempt, with a
                 // timeout between.
                 Err(Failed::Folder(reason)) => Err(reason),
                 // What fits is copied; the rest waits for space. Not a failure, and
@@ -1295,8 +1295,6 @@ pub async fn copy(
     // phone, in this computer's zone, so a folder they filled has it under
     // that name. A Live Photo's clip was named by its still's time, which is
     // not known here.
-    // The legacy CLI never made this claim at all; it suffixed and downloaded
-    // again. This is that, minus re-downloading what is demonstrably here.
     let named_before = destination.join(render(layout, name, here(file.mtime).naive_local()));
 
     if holds(&target, file) || (!file.is_live_video() && holds(&named_before, file)) {
@@ -1320,7 +1318,7 @@ pub async fn copy(
         }
     };
 
-    // One file, one scratch name. Four workers can render one final name — the
+    // One file, one scratch name. Two workers can render one final name — the
     // {name} layout gives IMG_0001.HEIC to a shot in every folder on the phone —
     // and a name that was only asked about is still free when the bytes arrive.
     // So the scratch name is where the file lives on the phone, which nothing
@@ -1353,8 +1351,7 @@ pub async fn copy(
     // Every way out of the read closes the handle. idevice asserts when a file
     // descriptor is dropped unclosed, so a `?` straight out of the loop is a
     // panicked worker in a dev build and a leaked descriptor in the one we
-    // ship — and either way a file that is never reported, which is how a run
-    // that ran out of disk finished saying nothing went wrong.
+    // ship — and either way a file that is never reported.
     let read: Result<u64, Failed> = async {
         let mut sink = tokio::fs::File::create(&partial)
             .await

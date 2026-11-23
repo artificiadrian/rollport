@@ -98,8 +98,7 @@
     <span
         class="mt-6 flex h-6 items-center gap-2 rounded-full bg-element px-3 text-xs text-muted"
     >
-        <!-- A turning spinner: a pulsing dot was too quiet to read as
-             "still at it". -->
+        <!-- A turning spinner, which reads as "still at it". -->
         <LoaderCircle
             size={12}
             strokeWidth={2.5}

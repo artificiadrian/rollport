@@ -44,8 +44,10 @@ export type Roll =
           /// Photos' record could not be read.
           undated: boolean
           /// New files of each kind in the range, whatever the folder takes.
+          /// Edits are counted with their photo.
           counts: Counts
-          /// New files the folder takes for each of PRESETS, in its order.
+          /// New photos and videos the folder takes for each of PRESETS, in
+          /// its order, counted as `items` is.
           ranges: number[]
       }
 
@@ -238,9 +240,8 @@ export type Screen =
           after: string
       }
 
-/// The answers worth one click. Anything else is two dates.
-/// The date ranges Options offers. Rust counts the same ones (PRESET_DAYS in
-/// state.rs), so the two lists change together.
+/// The date ranges worth one click; anything else is two dates. Rust counts
+/// the same ones (PRESET_DAYS in state.rs), so the two lists change together.
 export const PRESETS: { range: Range; label: string }[] = [
     { range: { range: "everything" }, label: "Any date" },
     { range: { range: "last", days: 7 }, label: "Last 7 days" },
@@ -368,8 +369,7 @@ export function since(seconds: number) {
 }
 
 /// Two days as one phrase. Intl knows how a range is said here — "4–11 Sep"
-/// in one place, "Sep 4 – 11" in another — and doing it by hand produced
-/// "4–September 11".
+/// in one place, "Sep 4 – 11" in another.
 export function span(from: string, to: string) {
     const start = new Date(`${from}T00:00:00`)
     const end = new Date(`${to}T00:00:00`)

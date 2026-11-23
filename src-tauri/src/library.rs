@@ -132,8 +132,9 @@ fn keys(library: &Library) -> Result<(HashSet<Key>, Option<i64>), String> {
     Ok((keys, last))
 }
 
-/// The files of this camera roll the folder takes and has never taken.
-pub fn new<'a>(
+/// The files of this camera roll the folder takes, in the range, and has
+/// not taken yet: with no keys, all it takes.
+pub fn wanted<'a>(
     media: &'a [Media],
     takes: Takes,
     range: Range,
@@ -593,7 +594,7 @@ mod tests {
             let day = day.parse().unwrap();
             Range::Between { from: day, to: day }
         };
-        let taken = |range| new(&photo, Takes::EVERYTHING, range, &HashSet::new()).count();
+        let taken = |range| wanted(&photo, Takes::EVERYTHING, range, &HashSet::new()).count();
 
         assert_eq!(taken(on("2026-09-04")), 1);
         assert_eq!(taken(on("2026-09-03")), 0);
@@ -608,7 +609,7 @@ mod tests {
         ];
         let keys = HashSet::from([key(&media[1])]);
 
-        let new: Vec<_> = new(&media, Takes::EVERYTHING, Range::Everything, &keys)
+        let new: Vec<_> = wanted(&media, Takes::EVERYTHING, Range::Everything, &keys)
             .map(|file| file.path.as_str())
             .collect();
         assert_eq!(

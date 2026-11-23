@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    library::{Key, new},
+    library::{Key, wanted},
     phone::extension,
 };
 
@@ -318,7 +318,7 @@ pub fn here(utc: chrono::NaiveDateTime) -> chrono::DateTime<chrono::FixedOffset>
 /// A date, printed by a format string we did not write. chrono panics rather
 /// than erring on a specifier it cannot parse, and this runs inside the lock
 /// that every other thread needs, so a bad layout would take the app with it.
-fn stamp(mtime: chrono::NaiveDateTime, format: &str) -> String {
+fn formatted(taken: chrono::NaiveDateTime, format: &str) -> String {
     use chrono::format::{Item, StrftimeItems};
     use std::fmt::Write;
 
@@ -334,13 +334,15 @@ fn stamp(mtime: chrono::NaiveDateTime, format: &str) -> String {
     // caught rather than where it can only be raised.
     let mut out = String::new();
 
-    match write!(out, "{}", mtime.format_with_items(items.into_iter())) {
+    match write!(out, "{}", taken.format_with_items(items.into_iter())) {
         Ok(()) => out,
         Err(_) => String::new(),
     }
 }
 
-pub fn render(layout: &str, name: &str, mtime: chrono::NaiveDateTime) -> String {
+/// A file's name in the folder: the layout with its name and the time it was
+/// taken filled in.
+pub fn render(layout: &str, name: &str, taken: chrono::NaiveDateTime) -> String {
     let mut out = String::new();
     let mut rest = layout;
 
@@ -352,7 +354,7 @@ pub fn render(layout: &str, name: &str, mtime: chrono::NaiveDateTime) -> String 
         };
 
         match rest[open + 1..open + close].split_once(':') {
-            Some(("taken" | "mtime", format)) => out.push_str(&stamp(mtime, format)),
+            Some(("taken" | "mtime", format)) => out.push_str(&formatted(taken, format)),
             None if &rest[open + 1..open + close] == "name" => out.push_str(name),
             _ => {}
         }
@@ -580,9 +582,9 @@ pub fn check_layout(layout: &str) -> Result<(), &'static str> {
     let dates_print = respelled.match_indices("{taken:").all(|(at, opener)| {
         let format = at + opener.len();
 
-        respelled[format..]
-            .find('}')
-            .is_some_and(|close| !stamp(specimen(), &respelled[format..format + close]).is_empty())
+        respelled[format..].find('}').is_some_and(|close| {
+            !formatted(specimen(), &respelled[format..format + close]).is_empty()
+        })
     });
 
     if !dates_print {
@@ -608,6 +610,7 @@ pub fn example(layout: &str) -> String {
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
+    /// Photos and videos, counted as `Batch::items` counts them.
     pub done: usize,
     pub total: usize,
     pub bytes: u64,
@@ -616,7 +619,7 @@ pub struct Progress {
     /// rate is worth quoting.
     pub eta: Option<u64>,
     /// The file that landed last, by path on the phone: what the window deals
-    /// onto its prints, at its own pace. Never a Live Photo's clip.
+    /// onto its prints, at its own pace. Never a file that rides along.
     pub latest: Option<String>,
 }
 
@@ -775,20 +778,13 @@ impl Default for Settings {
 pub enum Folder {
     /// The folder offered and not yet taken: `~/Pictures/iPhone`, where the
     /// system has a Pictures folder, or one picked or dropped since.
-    Unset {
-        suggested: Option<PathBuf>,
-    },
+    Unset { suggested: Option<PathBuf> },
     /// Chosen, and being read.
     Opening(PathBuf),
     /// Chosen, and unusable. We say so rather than calling it empty.
-    Broken {
-        path: PathBuf,
-        reason: String,
-    },
-    Known {
-        path: PathBuf,
-        facts: FolderFacts,
-    },
+    Broken { path: PathBuf, reason: String },
+    /// Read, with what it holds and says about itself.
+    Known { path: PathBuf, facts: FolderFacts },
 }
 
 impl Folder {
@@ -825,6 +821,7 @@ pub enum FolderView {
         path: String,
         reason: String,
     },
+    /// Read, with what it holds and says about itself.
     Known {
         path: String,
         /// Files here were named with the layout, so it cannot change.
@@ -861,10 +858,12 @@ pub enum RollView {
         /// The files are dated by when they were written on the phone.
         undated: bool,
         /// New files of each kind in the range, whatever the folder takes:
-        /// what each choice under Media types would add.
+        /// what each choice under Media types would add. Edits are counted
+        /// with their photo.
         counts: Counts,
-        /// New files the folder takes for each date range Options offers:
-        /// any date, then the last `PRESET_DAYS`.
+        /// New photos and videos the folder takes for each date range Options
+        /// offers, as `Batch::items` counts them: any date, then the last
+        /// `PRESET_DAYS`.
         ranges: Vec<usize>,
     },
 }
@@ -1060,8 +1059,8 @@ impl State {
             .as_ref()
             .is_some_and(|phone| self.listed(&phone.udid).is_none())
         {
-            // A copy is always of this phone, so it has just left with four
-            // workers still reading it. Each would spend three goes and a
+            // A copy is always of this phone, so it has just left with its
+            // workers still reading it. Each would spend every attempt and a
             // timeout on every file that is left: an hour of a progress bar
             // that cannot finish.
             self.stop();
@@ -1085,7 +1084,7 @@ impl State {
 
     /// From now on we are on this phone, and on its folder. A phone never
     /// imported is offered the folder in use, unless no phone has a folder
-    /// yet: then the folder in use is everybody's, as before phones had one.
+    /// yet: then the folder in use is everybody's.
     /// Answers the folder to read.
     fn take(&mut self, udid: String) -> Option<PathBuf> {
         let known = self.folders.get(&phone_key(&udid)).cloned();
@@ -1352,7 +1351,7 @@ impl State {
             return None;
         };
 
-        let media: Vec<Media> = new(media, facts.settings.takes, self.range, &facts.keys)
+        let media: Vec<Media> = wanted(media, facts.settings.takes, self.range, &facts.keys)
             .cloned()
             .collect();
 
@@ -1504,13 +1503,13 @@ impl State {
                     failed: failed.clone(),
                 },
                 Roll::Done { media, undated } => RollView::Done {
-                    all: Batch::of(new(media, takes, self.range, &HashSet::new())),
-                    new: Batch::of(new(media, takes, self.range, keys)),
+                    all: Batch::of(wanted(media, takes, self.range, &HashSet::new())),
+                    new: Batch::of(wanted(media, takes, self.range, keys)),
                     undated: undated.is_some(),
-                    counts: counts(new(media, Takes::EVERYTHING, self.range, keys)),
+                    counts: counts(wanted(media, Takes::EVERYTHING, self.range, keys)),
                     ranges: std::iter::once(Range::Everything)
                         .chain(PRESET_DAYS.map(|days| Range::Last { days }))
-                        .map(|range| Batch::of(new(media, takes, range, keys)).items)
+                        .map(|range| Batch::of(wanted(media, takes, range, keys)).items)
                         .collect(),
                 },
             });
@@ -2088,8 +2087,8 @@ mod tests {
         assert_eq!(state.set_takes(Takes::read_0_1_0("photos")), None);
         assert_eq!(state.set_layout("{name}".into()), Ok(None));
 
-        // Every one of those used to drop the job, and with it the only handle
-        // that can stop the four workers still reading the phone.
+        // None of those may drop the job: it holds the only handle that can
+        // stop the workers still reading the phone.
         assert!(matches!(
             &state.run,
             Some(Run::Copying {
@@ -2139,8 +2138,8 @@ mod tests {
         assert!(state.copying());
     }
 
-    /// The phone being copied has left, or usbmuxd has: four workers would
-    /// spend three goes and a timeout on every file that is left.
+    /// The phone being copied has left, or usbmuxd has: the workers would
+    /// spend every attempt and a timeout on every file that is left.
     #[test]
     fn a_copy_stops_when_its_phone_goes() {
         for gone in [
