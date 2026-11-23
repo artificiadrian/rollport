@@ -482,9 +482,11 @@ impl Takes {
         }
     }
 
-    /// What a folder 0.1.0 last wrote, under `takes`, takes now: the same
-    /// files. It is kept apart from `kinds`, where a lone `photos` means only
-    /// photos, and left as it was, so 0.1.0 still reads its own answer.
+    /// What a folder says under `takes`, the key before `kinds`: one of the
+    /// three answers 0.1.0 wrote, which take the same files now, or a list as
+    /// the first build of 0.2.0 wrote there. It is kept apart from `kinds`,
+    /// where a lone `photos` means only photos, and left as it was, so 0.1.0
+    /// still reads its own answer.
     pub fn read_0_1_0(stored: &str) -> Takes {
         match stored {
             "noLiveVideos" => Takes {
@@ -493,7 +495,7 @@ impl Takes {
             },
             "photos" => Takes::read("photos,livePhotos,screenshots"),
             "videos" => Takes::read("videos,screenRecordings"),
-            _ => Takes::EVERYTHING,
+            _ => Takes::read(stored),
         }
     }
 }
@@ -1857,6 +1859,11 @@ mod tests {
         assert_eq!(Takes::read(""), Takes::EVERYTHING);
         assert_eq!(Takes::read("nonsense"), Takes::EVERYTHING);
         assert_eq!(Takes::read_0_1_0(""), Takes::EVERYTHING);
+        // A list under `takes`, as the first build of 0.2.0 wrote it.
+        assert_eq!(
+            Takes::read_0_1_0("photos,livePhotos"),
+            Takes::read("photos,livePhotos")
+        );
         // What 0.1.0 wrote takes what it took then.
         assert_eq!(
             Takes::read_0_1_0("noLiveVideos").stored(),
