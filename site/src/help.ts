@@ -80,7 +80,7 @@ export const help = [
             { id: "icloud", title: "Photos kept in iCloud are missing" },
             {
                 id: "folder-busy",
-                title: "Another import is writing into this folder",
+                title: "Another import is running",
             },
             { id: "network-drive", title: "The folder is on a network drive" },
             { id: "linux-blank", title: "The window is empty on Linux" },

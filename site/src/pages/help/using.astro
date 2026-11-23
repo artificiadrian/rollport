@@ -45,20 +45,21 @@ const shortcuts = [
             <li>
                 <b>Date taken</b>: <b>Any date</b>, <b>Last 7 days</b>,{" "}
                 <b>Last 30 days</b>, <b>Last 12 months</b>, or{" "}
-                <b>Between two dates</b>, each with the number of new files it
-                brings. <b>Last 7 days</b> is today and the six days before it,
-                and both dates of <b>Between two dates</b> are included. The
-                date range is not saved: Rollport starts at <b>Any date</b> each
-                time you open it, so a forgotten range never leaves photos
-                behind.
+                <b>Between two dates</b>, each with the number of new photos and
+                videos it brings. <b>Last 7 days</b> is today and the six days
+                before it, and both dates of <b>Between two dates</b> are
+                included. The date range is not saved: Rollport starts at{" "}
+                <b>Any date</b> each time you open it, so a forgotten range
+                never leaves photos behind.
             </li>
             <li>
                 <b>Media types</b>: tick the kinds to import: <b>Photos</b>,{" "}
                 <b>Live Photos</b>, <b>Videos</b>, <b>Screenshots</b> and{" "}
-                <b>Screen recordings</b>, each with the number of new files of
-                that kind. <b>With their videos</b>, under <b>Live Photos</b>,
-                also imports the short video of each Live Photo. This choice is
-                saved with the folder, and you can change it at any time.
+                <b>Screen recordings</b>, each with how many new ones of that
+                kind there are. <b>With their videos</b>, under{" "}
+                <b>Live Photos</b>, also imports the short video of each Live
+                Photo. This choice is saved with the folder, and you can change
+                it at any time.
             </li>
             <li>
                 <b>File names</b>: saved with the folder, and set for good at
@@ -68,7 +69,9 @@ const shortcuts = [
         </ul>
         <p>
             A new folder starts with <b>Any date</b>, <b>All media</b>, and{" "}
-            <b>Date and time in the name</b>.
+            <b>Date and time in the name</b>. A folder that dcimport, the
+            earlier command-line tool, imported into starts with the names
+            dcimport gave, so the files already there are found.
         </p>
     </HelpSection>
 
@@ -87,7 +90,7 @@ const shortcuts = [
                 <code>2026/09/IMG_0001.HEIC</code>
             </li>
             <li>
-                <b>The phone's own name</b>: <code>IMG_0001.HEIC</code>
+                <b>The phone’s own name</b>: <code>IMG_0001.HEIC</code>
             </li>
             <li>
                 <b>A pattern of your own</b>: see below.
@@ -108,11 +111,11 @@ const shortcuts = [
             extension, the next <code>_2</code>, and so on.
         </p>
         <p>
-            A photo you edited in Photos comes twice: the original, and the edit
-            with an E in its name, such as <code>IMG_E2739.JPG</code>. Photos in{" "}
-            <b>Recently Deleted</b>, and the frames of a burst you did not keep,
-            are not imported. A photo you took a few seconds ago may not be
-            finished on the iPhone yet. It comes with the next import.
+            A photo or video you edited in Photos comes twice: the original, and
+            the edit with an E in its name, such as <code>IMG_E2739.JPG</code>.
+            Photos in <b>Recently Deleted</b>, and the frames of a burst you did
+            not keep, are not imported. A photo you took a few seconds ago may
+            not be finished on the iPhone yet. It comes with the next import.
         </p>
         <p>
             To write a pattern of your own, choose <b>A pattern of your own</b>{" "}
@@ -155,8 +158,8 @@ const shortcuts = [
         alt="Rollport is 63 percent done, with about a minute left"
     >
         <p>
-            Rollport shows each photo as it is copied, with the progress, the
-            number of files and the amount of data left, and the time left.
+            Rollport shows the photos as they are copied, how many photos and
+            videos are done, the amount of data left, and the time left.
         </p>
         <p>
             You can click <b>Stop</b> at any time: what is already copied stays
@@ -169,7 +172,7 @@ const shortcuts = [
         </p>
         <p>
             Rollport tries each file three times. A file that still cannot be
-            copied does not stop the import: Rollport lists it at the end, and
+            copied does not stop the import: Rollport names it at the end, and
             the next import tries it again.
         </p>
         <p>
