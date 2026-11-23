@@ -2,7 +2,9 @@ use std::{collections::HashSet, path::Path};
 
 use crate::{
     Context,
-    state::{FolderFacts, Media, Range, Settings, Takes, default_layout, shown, stored},
+    state::{
+        FolderFacts, Media, Range, Settings, Takes, check_layout, default_layout, shown, stored,
+    },
 };
 
 /// Identity is where it lived on the phone, its size, and the whole second it
@@ -47,9 +49,16 @@ pub fn read_folder(path: &Path) -> Result<FolderFacts, String> {
     };
 
     // Not a library. Its answers are ours to change until the first import,
-    // and nothing has been written into it.
+    // and nothing has been written into it. A folder the CLI imported into
+    // starts with the CLI's names, so the files it holds are found.
     if !Library::claimed(path)? {
-        return Ok(plain);
+        return Ok(FolderFacts {
+            settings: Settings {
+                layout: cli_layout(path).map_or_else(default_layout, |layout| shown(&layout)),
+                ..Settings::default()
+            },
+            ..plain
+        });
     }
 
     let (keys, last) = keys(path)?;
@@ -69,6 +78,24 @@ pub fn read_folder(path: &Path) -> Result<FolderFacts, String> {
         },
         ..plain
     })
+}
+
+/// The layout the CLI stored in its media.db, if it is there and fits ours.
+/// Only read: media.db stays the CLI's.
+fn cli_layout(folder: &Path) -> Option<String> {
+    let db = rusqlite::Connection::open_with_flags(
+        folder.join("media.db"),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .ok()?;
+    let layout: String = db
+        .query_row(
+            "SELECT value FROM settings WHERE key = 'layout'",
+            [],
+            |row| row.get(0),
+        )
+        .ok()?;
+    check_layout(&layout).is_ok().then_some(layout)
 }
 
 /// What the folder has taken, and when it last took anything. A folder with no
@@ -359,6 +386,24 @@ mod tests {
                 .fixed_offset(),
             kind: crate::state::Kind::Photo,
         }
+    }
+
+    /// The CLI's files are found under the names it gave them.
+    #[test]
+    fn a_cli_folder_starts_with_the_cli_layout() {
+        let dir = folder("cli");
+        let cli = rusqlite::Connection::open(dir.join("media.db")).unwrap();
+        cli.execute_batch(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+             INSERT INTO settings VALUES ('layout', '{mtime:%Y}/{mtime:%m}/{name}');",
+        )
+        .unwrap();
+
+        let facts = read_folder(&dir).unwrap();
+        assert_eq!(facts.settings.layout, "{taken:%Y}/{taken:%m}/{name}");
+        assert!(!dir.join("rollport-library.db").exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A folder the CLI filled must not look untouched. It writes that column
