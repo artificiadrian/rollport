@@ -861,16 +861,24 @@ pub enum RollView {
         /// what each choice under Media types would add. Edits are counted
         /// with their photo.
         counts: Counts,
-        /// New photos and videos the folder takes for each date range Options
-        /// offers, as `Batch::items` counts them: any date, then the last
-        /// `PRESET_DAYS`.
-        ranges: Vec<usize>,
     },
 }
 
-/// The ranges Options offers besides any date, in days: a week, a month, a
-/// year. The window lists them in this order (PRESETS in flow.ts).
-pub const PRESET_DAYS: [u32; 3] = [7, 30, 365];
+/// The date ranges Options offers, in its order: anything else is two dates.
+const PRESETS: [Range; 4] = [
+    Range::Everything,
+    Range::Last { days: 7 },
+    Range::Last { days: 30 },
+    Range::Last { days: 365 },
+];
+
+/// A range Options offers, with the new photos and videos the folder takes in
+/// it, as `Batch::items` counts them, once the camera roll is read.
+#[derive(Serialize, Clone)]
+pub struct Preset {
+    pub range: Range,
+    pub items: Option<usize>,
+}
 
 /// How many files of each kind; every kind is there, also at zero.
 pub type Counts = std::collections::BTreeMap<Kind, usize>;
@@ -917,6 +925,7 @@ pub struct Flow {
     pub run: Option<Run>,
     /// The one argument to this run, never written down.
     pub range: Range,
+    pub presets: Vec<Preset>,
 }
 
 pub struct State {
@@ -1507,12 +1516,19 @@ impl State {
                     new: Batch::of(wanted(media, takes, self.range, keys)),
                     undated: undated.is_some(),
                     counts: counts(wanted(media, Takes::EVERYTHING, self.range, keys)),
-                    ranges: std::iter::once(Range::Everything)
-                        .chain(PRESET_DAYS.map(|days| Range::Last { days }))
-                        .map(|range| Batch::of(wanted(media, takes, range, keys)).items)
-                        .collect(),
                 },
             });
+
+        let media = match self.phone.as_ref().and_then(|phone| phone.roll.as_ref()) {
+            Some(Roll::Done { media, .. }) => Some(media),
+            _ => None,
+        };
+        let presets = PRESETS
+            .map(|range| Preset {
+                range,
+                items: media.map(|media| Batch::of(wanted(media, takes, range, keys)).items),
+            })
+            .into();
 
         Flow {
             source,
@@ -1538,6 +1554,7 @@ impl State {
             roll,
             run: self.run.clone(),
             range: self.range,
+            presets,
         }
     }
 }
@@ -1980,6 +1997,27 @@ mod tests {
             udid: "a".into(),
             details: String::new(),
         }
+    }
+
+    /// Options lists its ranges before the roll is read, and counts each once
+    /// it is.
+    #[test]
+    fn each_preset_is_counted_once_the_roll_is_read() {
+        let mut state = state(vec![phone("a")]);
+        open(&mut state, folder(HashSet::new()));
+        let items = |state: &State| -> Vec<Option<usize>> {
+            state
+                .view()
+                .presets
+                .iter()
+                .map(|preset| preset.items)
+                .collect()
+        };
+        assert_eq!(items(&state), [None; 4]);
+
+        read(&mut state, vec![media("/DCIM/100APPLE/IMG_0001.HEIC", 1)]);
+        assert!(items(&state).iter().all(Option::is_some));
+        assert_eq!(items(&state)[0], Some(1));
     }
 
     /// What the window is told is new.

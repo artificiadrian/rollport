@@ -8,6 +8,7 @@ import {
     QUIET,
     named,
     screen,
+    when,
     duration,
     elapsed,
     places,
@@ -59,7 +60,6 @@ const read = (fresh: number, bytes?: number, undated = false): Roll => ({
     new: batch(fresh, bytes),
     undated,
     counts: kinds(fresh),
-    ranges: [fresh, 0, 0, 0],
 })
 const reading = (failed: string | null = null): Roll => ({
     roll: "reading",
@@ -378,6 +378,14 @@ describe("the ready screen counts as the Photos app does", () => {
         const shown = screen(flow({ roll }))
         assert.ok(shown.screen === "ready")
         assert.equal(shown.details, "78 files")
+    })
+})
+
+describe("the date ranges in words", () => {
+    test("each preset, as Options lists it", () => {
+        assert.equal(when({ range: "everything" }), "Any date")
+        assert.equal(when({ range: "last", days: 7 }), "Last 7 days")
+        assert.equal(when({ range: "last", days: 365 }), "Last 12 months")
     })
 })
 

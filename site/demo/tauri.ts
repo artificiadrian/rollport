@@ -107,15 +107,18 @@ function demo() {
         newest: ["sunset", "lake", "city"].map(photo),
     }
 
-    /** New files for each date range Options offers, as Rust counts them. */
-    function ranges(takes: Takes): number[] {
-        const presets: Range[] = [
+    /** The date ranges Options offers, with what each brings (PRESETS in state.rs). */
+    function presets(takes: Takes): Flow["presets"] {
+        const ranges: Range[] = [
             { range: "everything" },
             { range: "last", days: 7 },
             { range: "last", days: 30 },
             { range: "last", days: 365 },
         ]
-        return presets.map((range) => wanted(range, takes).items)
+        return ranges.map((range) => ({
+            range,
+            items: wanted(range, takes).items,
+        }))
     }
 
     /** What is new for a range and a choice of kinds (Takes in state.rs). */
@@ -188,10 +191,10 @@ function demo() {
             new: wanted({ range: "everything" }, EVERYTHING),
             undated: false,
             counts: kinds(PHOTOS, VIDEOS),
-            ranges: ranges(EVERYTHING),
         },
         run: null,
         range: { range: "everything" },
+        presets: presets(EVERYTHING),
     }
 
     // The stills that start somewhere other than ready.
@@ -261,12 +264,10 @@ function demo() {
                 new: left(batch, imported),
                 undated: false,
                 counts: kinds(PHOTOS, VIDEOS),
-                ranges: ranges(
-                    flow.folder.folder === "known"
-                        ? flow.folder.takes
-                        : EVERYTHING,
-                ),
             },
+            presets: presets(
+                flow.folder.folder === "known" ? flow.folder.takes : EVERYTHING,
+            ),
             run: {
                 run: "finished",
                 imported,
@@ -370,12 +371,12 @@ function demo() {
                     new: current(),
                     undated: false,
                     counts: kinds(PHOTOS, VIDEOS),
-                    ranges: ranges(
-                        flow.folder.folder === "known"
-                            ? flow.folder.takes
-                            : EVERYTHING,
-                    ),
                 },
+                presets: presets(
+                    flow.folder.folder === "known"
+                        ? flow.folder.takes
+                        : EVERYTHING,
+                ),
             })
         })
     }

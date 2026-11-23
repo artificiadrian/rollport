@@ -109,7 +109,6 @@ const done = (
         screenshots: 12,
         screenRecordings: 1,
     },
-    ranges: [fresh, Math.floor(fresh / 10), Math.floor(fresh / 3), fresh],
 })
 
 const base: Flow = {
@@ -118,6 +117,12 @@ const base: Flow = {
     roll: done(4210, 312),
     run: null,
     range: { range: "everything" },
+    presets: [
+        { range: { range: "everything" }, items: 312 },
+        { range: { range: "last", days: 7 }, items: 31 },
+        { range: { range: "last", days: 30 }, items: 104 },
+        { range: { range: "last", days: 365 }, items: 312 },
+    ],
 }
 const finished = (
     end: Report,

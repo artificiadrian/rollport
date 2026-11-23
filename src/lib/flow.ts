@@ -46,9 +46,6 @@ export type Roll =
           /// New files of each kind in the range, whatever the folder takes.
           /// Edits are counted with their photo.
           counts: Counts
-          /// New photos and videos the folder takes for each of PRESETS, in
-          /// its order, counted as `items` is.
-          ranges: number[]
       }
 
 /// What could not be copied. One bad file does not end a run.
@@ -162,6 +159,9 @@ export type Flow = {
     roll: Roll | null
     run: Run | null
     range: Range
+    /// The date ranges Options offers, in its order, each with the new
+    /// photos and videos the folder takes in it once the roll is read.
+    presets: { range: Range; items: number | null }[]
 }
 
 /// Nothing plugged in and nothing chosen: what the window shows before Rust
@@ -172,6 +172,7 @@ export const QUIET: Flow = {
     roll: null,
     run: null,
     range: { range: "everything" },
+    presets: [],
 }
 
 /// One thing the window is waiting for, said once: a drawing of what it is
@@ -240,15 +241,6 @@ export type Screen =
           after: string
       }
 
-/// The date ranges worth one click; anything else is two dates. Rust counts
-/// the same ones (PRESET_DAYS in state.rs), so the two lists change together.
-export const PRESETS: { range: Range; label: string }[] = [
-    { range: { range: "everything" }, label: "Any date" },
-    { range: { range: "last", days: 7 }, label: "Last 7 days" },
-    { range: { range: "last", days: 30 }, label: "Last 30 days" },
-    { range: { range: "last", days: 365 }, label: "Last 12 months" },
-]
-
 /// What a folder takes in, as the window says it, short enough for one line:
 /// "All media", "No screenshots", "Videos only", or "3 of 6 kinds". A Live
 /// Photo's videos only count while the Live Photos do.
@@ -284,10 +276,16 @@ export function keyOf(range: Range) {
 
 /// A range as the window says it. Two dates read as the days they are.
 export function when(range: Range) {
-    return range.range === "between"
-        ? span(range.from, range.to)
-        : (PRESETS.find((preset) => keyOf(preset.range) === keyOf(range))
-              ?.label ?? "")
+    switch (range.range) {
+        case "everything":
+            return "Any date"
+        case "last":
+            return range.days === 365
+                ? "Last 12 months"
+                : `Last ${range.days} days`
+        case "between":
+            return span(range.from, range.to)
+    }
 }
 
 /// What a file can be called. A folder keeps whichever it was created with.

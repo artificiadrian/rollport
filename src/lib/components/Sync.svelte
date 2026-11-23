@@ -927,6 +927,7 @@
         <Options
             {folder}
             range={flow.range}
+            presets={flow.presets}
             roll={flow.roll?.roll === "done" ? flow.roll : null}
         />
     </div>

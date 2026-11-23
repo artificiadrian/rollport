@@ -14,12 +14,12 @@
         EVERYTHING,
         KINDS,
         LAYOUTS,
-        PRESETS,
         count,
         keyOf,
         named,
         tell,
         when,
+        type Flow,
         type Folder,
         type Kind,
         type Range,
@@ -33,10 +33,12 @@
     let {
         folder,
         range,
+        presets,
         roll,
     }: {
         folder: Extract<Folder, { folder: "known" }>
         range: Range
+        presets: Flow["presets"]
         /// The iPhone's camera roll once it is read: how many new files each
         /// date range and each kind would bring.
         roll: Extract<Roll, { roll: "done" }> | null
@@ -64,7 +66,7 @@
             return
         }
 
-        const preset = PRESETS.find((preset) => keyOf(preset.range) === value)
+        const preset = presets.find((preset) => keyOf(preset.range) === value)
 
         if (preset) onrange(preset.range)
     }
@@ -157,13 +159,13 @@
     // is outside Tailwind's layers.
     const trigger = `${row} w-full text-left transition-colors -outline-offset-2! hover:bg-subtle focus-visible:bg-subtle data-[state=open]:bg-subtle`
 
-    // Each range with how many new files it would bring. Two dates of your
-    // own are only counted once they are the range.
+    // Each range with how many new photos and videos it would bring. Two
+    // dates of your own are only counted once they are the range.
     const dates = $derived([
-        ...PRESETS.map((preset, at) => ({
+        ...presets.map((preset) => ({
             value: keyOf(preset.range),
-            label: preset.label,
-            aside: roll ? count(roll.ranges[at] ?? 0) : undefined,
+            label: when(preset.range),
+            aside: preset.items === null ? undefined : count(preset.items),
         })),
         {
             value: "between",
