@@ -367,18 +367,14 @@ mod tests {
         dir
     }
 
+    /// With the fraction of a second the CLI keeps on its mtimes.
     fn file(path: &str) -> Media {
         Media {
-            path: path.into(),
-            name: path.rsplit('/').next().unwrap_or(path).into(),
             size: 42,
             mtime: chrono::DateTime::from_timestamp(1_700_000_000, 300_000_000)
                 .unwrap()
                 .naive_utc(),
-            taken: chrono::DateTime::from_timestamp(1_700_000_000, 0)
-                .unwrap()
-                .fixed_offset(),
-            kind: crate::state::Kind::Photo,
+            ..Media::at(path, "2023-11-14 22:13:20")
         }
     }
 

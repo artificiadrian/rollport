@@ -2157,14 +2157,7 @@ mod tests {
 
     #[test]
     fn the_video_half_of_a_live_photo_is_marked() {
-        let file = |path: &str| Media {
-            path: path.into(),
-            name: name_of(path).into(),
-            size: 1,
-            mtime: when("2026-09-02 15:04:11"),
-            taken: here(when("2026-09-02 15:04:11")),
-            kind: Kind::Photo,
-        };
+        let file = |path: &str| Media::at(path, "2026-09-02 15:04:11");
 
         let mut media = vec![
             file("/DCIM/100APPLE/IMG_0001.HEIC"),
@@ -2186,8 +2179,8 @@ mod tests {
             [
                 Kind::LivePhoto,
                 Kind::LiveVideo,
-                Kind::Photo,
-                Kind::Photo,
+                Kind::Video,
+                Kind::Video,
                 Kind::LivePhoto,
                 Kind::LiveVideo
             ]
@@ -2410,14 +2403,7 @@ mod tests {
 
     #[test]
     fn settling_dates_by_photos_and_leaves_out_recently_deleted() {
-        let file = |path: &str| Media {
-            path: path.into(),
-            name: name_of(path).into(),
-            size: 1,
-            mtime: when("2026-11-02 10:00:00"),
-            taken: here(when("2026-11-02 10:00:00")),
-            kind: Kind::Photo,
-        };
+        let file = |path: &str| Media::at(path, "2026-11-02 10:00:00");
         let mut media = vec![
             file("/DCIM/100APPLE/IMG_0001.HEIC"),
             file("/DCIM/100APPLE/IMG_0001.MOV"),

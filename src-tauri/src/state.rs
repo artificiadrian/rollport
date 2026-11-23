@@ -211,6 +211,23 @@ impl<'de> Deserialize<'de> for Kind {
     }
 }
 
+#[cfg(test)]
+impl Media {
+    /// A file at `path` of the kind its name says, written and taken at `at`
+    /// ("2026-09-02 15:04:11") in this computer's zone.
+    pub fn at(path: &str, at: &str) -> Media {
+        let when = chrono::NaiveDateTime::parse_from_str(at, "%Y-%m-%d %H:%M:%S").unwrap();
+        Media {
+            path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
+            size: 1,
+            mtime: when,
+            taken: here(when),
+            kind: Kind::of(path),
+        }
+    }
+}
+
 impl Media {
     pub fn is_live_video(&self) -> bool {
         self.kind == Kind::LiveVideo
@@ -1651,12 +1668,8 @@ mod tests {
     #[test]
     fn a_batch_of_only_clips_counts_the_clips() {
         let clip = Media {
-            path: "/DCIM/100APPLE/IMG_0001.MOV".into(),
-            name: "IMG_0001.MOV".into(),
-            size: 1,
-            mtime: chrono::NaiveDateTime::default(),
-            taken: here(chrono::NaiveDateTime::default()),
             kind: Kind::LiveVideo,
+            ..Media::at("/DCIM/100APPLE/IMG_0001.MOV", "2026-09-02 15:04:11")
         };
         assert_eq!(Batch::of([&clip, &clip]).items, 2);
     }
@@ -1804,17 +1817,16 @@ mod tests {
 
         open(&mut state, folder(HashSet::new()));
 
-        let file = |path: &str, live_video: bool| Media {
-            path: path.into(),
-            name: path.rsplit('/').next().unwrap_or(path).into(),
-            size: 1,
-            mtime: when("2026-09-02 15:04:11"),
-            taken: here(when("2026-09-02 15:04:11")),
-            kind: if live_video {
-                Kind::LiveVideo
-            } else {
-                Kind::of(path)
-            },
+        let file = |path: &str, live_video: bool| {
+            let file = Media::at(path, "2026-09-02 15:04:11");
+            Media {
+                kind: if live_video {
+                    Kind::LiveVideo
+                } else {
+                    file.kind
+                },
+                ..file
+            }
         };
 
         // A Live Photo (its still and its clip), a film, and a photo.
@@ -2728,12 +2740,9 @@ mod tests {
 
     fn media(path: &str, size: u64) -> Media {
         Media {
-            path: path.into(),
-            name: path.rsplit('/').next().unwrap_or(path).into(),
             size,
-            mtime: when("2026-09-02 15:04:11"),
-            taken: here(when("2026-09-02 15:04:11")),
             kind: Kind::Photo,
+            ..Media::at(path, "2026-09-02 15:04:11")
         }
     }
 
