@@ -685,7 +685,7 @@ function report(
     free: number,
 ): Extract<Screen, { screen: "done" }> {
     const { imported, trouble, bytes, seconds } = run
-    const left = roll?.roll === "done" ? roll.new.files : null
+    const left = roll?.roll === "done" ? roll.new.items : null
     const chosen = source.source === "listed" ? source.chosen : null
     const ready = chosen?.state === "ready"
     // A locked phone answers, but not with its files.

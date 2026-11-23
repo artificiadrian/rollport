@@ -49,10 +49,16 @@ impl Remembered {
     }
 
     fn load(app: &AppHandle) -> Remembered {
-        Remembered::file(app)
-            .and_then(|file| fs::read(file).ok())
-            .and_then(|bytes| serde_json::from_slice::<Remembered>(&bytes).ok())
-            .unwrap_or_default()
+        Remembered::read(app).unwrap_or_default()
+    }
+
+    /// Nothing remembered when there is no file yet; an error when there is
+    /// one that does not parse.
+    fn read(app: &AppHandle) -> Result<Remembered, String> {
+        let Some(bytes) = Remembered::file(app).and_then(|file| fs::read(file).ok()) else {
+            return Ok(Remembered::default());
+        };
+        serde_json::from_slice(&bytes).doing("cannot read settings.json")
     }
 
     /// Change what is remembered. One change at a time, each read fresh: a
@@ -61,9 +67,15 @@ impl Remembered {
         static CHANGING: Mutex<()> = Mutex::new(());
         let _one = CHANGING.lock().unwrap_or_else(PoisonError::into_inner);
 
-        let mut remembered = Remembered::load(app);
-        change(&mut remembered);
-        remembered.save(app);
+        // A file that does not parse may still be put right by hand; saving
+        // over it would forget every folder in it.
+        match Remembered::read(app) {
+            Ok(mut remembered) => {
+                change(&mut remembered);
+                remembered.save(app);
+            }
+            Err(reason) => note(app, &format!("{reason}; not changed")),
+        }
     }
 
     /// Written beside and renamed over, so a crash halfway leaves the old

@@ -857,10 +857,8 @@ pub async fn copy_all(
     let mut quote = None;
 
     let mut done = 0;
-    let mut imported = 0;
     let mut lost = Lost::default();
     let mut bytes = 0;
-    let mut copied_bytes = 0;
     let mut latest = None;
     let mut landed = Vec::new();
 
@@ -965,9 +963,7 @@ pub async fn copy_all(
 
         let recorded = match outcome {
             Ok(Copied::Fetched) => {
-                imported += usize::from(counts(file));
                 landed.push(file);
-                copied_bytes += file.size;
 
                 // A Live Photo's clip has no thumbnail; its still stands for it.
                 if !file.is_live_video() && !file.is_edit() {
@@ -1066,13 +1062,14 @@ pub async fn copy_all(
     }
 
     let end = ending(fatal, full, cancel.load(Ordering::Relaxed));
+    let landed = Batch::of(landed);
 
     Ok(Report {
-        imported,
-        bytes: copied_bytes,
+        imported: landed.items,
+        bytes: landed.bytes,
         seconds: started.elapsed().as_secs(),
         end,
-        newest: Batch::of(landed).newest,
+        newest: landed.newest,
         udid: udid.to_string(),
         // One unreadable file is not a reason to abandon the other nine
         // thousand, so what it was is reported at the end of the run.
@@ -1203,9 +1200,13 @@ fn sweep(destination: &Path) {
         let name = name.to_string_lossy();
 
         // Ours, and not a download of somebody else's. Asked first: with a
-        // flat layout every photo in the library is in this listing.
-        // .part from 0.1.0, which OneDrive uploaded; it skips .tmp.
-        if !(name.starts_with(".DCIM_") && (name.ends_with(".tmp") || name.ends_with(".part"))) {
+        // flat layout every photo in the library is in this listing. Edits
+        // and iCloud's originals come from /PhotoData; .part is from 0.1.0,
+        // which OneDrive uploaded, as it skips .tmp.
+        let ours = (name.starts_with(".DCIM_") || name.starts_with(".PhotoData_"))
+            && name.ends_with(".tmp")
+            || name.starts_with(".DCIM_") && name.ends_with(".part");
+        if !ours {
             continue;
         }
 
@@ -2705,7 +2706,11 @@ mod tests {
 
         let dead = scratch_name("/DCIM/100APPLE/IMG_0001.HEIC");
         let live = scratch_name("/DCIM/100APPLE/IMG_0002.HEIC");
+        let edit = scratch_name(
+            "/PhotoData/Mutations/DCIM/100APPLE/IMG_0001/Adjustments/FullSizeRender.jpg",
+        );
         make(&dead, Duration::from_secs(3600));
+        make(&edit, Duration::from_secs(3600));
         make(&live, Duration::from_secs(5));
         let from_0_1_0 = ".DCIM_100APPLE_IMG_0003.HEIC.4242.part";
         make(from_0_1_0, Duration::from_secs(3600));
@@ -2714,6 +2719,7 @@ mod tests {
         sweep(&dir);
 
         assert!(!dir.join(&dead).exists());
+        assert!(!dir.join(&edit).exists());
         assert!(!dir.join(from_0_1_0).exists());
         assert!(dir.join(&live).exists());
         assert!(dir.join(".film.mp4.part").exists());
