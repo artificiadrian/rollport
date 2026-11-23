@@ -63,6 +63,8 @@ export type Report = {
     newest: string[]
     /// The phone it copied from: the prints are that phone's.
     udid: string
+    /// What it did, as text to paste into a report of a problem.
+    details: string
 } & (
     | { end: "done" }
     | { end: "stopped" }

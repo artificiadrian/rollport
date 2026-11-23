@@ -1094,8 +1094,8 @@ pub async fn copy_all(
         // One unreadable file is not a reason to abandon the other nine
         // thousand, so what it was is reported at the end of the run.
         trouble: lost.trouble(),
-        // Known to whoever started the run.
-        undated: None,
+        // Written by whoever started the run, who knows what it ran on.
+        details: String::new(),
     })
 }
 

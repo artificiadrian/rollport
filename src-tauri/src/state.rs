@@ -268,8 +268,8 @@ pub struct Import {
     pub settings: Settings,
     pub media: Vec<Media>,
     pub cancel: Arc<AtomicBool>,
-    /// Why the files are dated by when they were written, if they are.
-    pub undated: Option<String>,
+    /// What the report's details start with: what ran, on what.
+    pub about: String,
 }
 
 /// A reading to start: which phone, and the ticket its answers carry.
@@ -669,14 +669,57 @@ pub struct Report {
     pub end: End,
     /// One bad file does not end a run; it is reported at the end of it.
     pub trouble: Option<Trouble>,
-    /// Why the files were dated by when they were written, if they were.
-    #[serde(skip)]
-    pub undated: Option<String>,
+    /// What it did, as text a person pastes into a report of a problem: on
+    /// what, how it ended, and every file it left on the phone.
+    pub details: String,
     /// The newest few it copied, by path on the phone: the report's prints.
     pub newest: Vec<String>,
     /// The phone it copied from. Its Continue is only for that phone, and its
     /// prints are that phone's.
     pub udid: String,
+}
+
+/// What a run's details start with: what ran, on what, and where the dates
+/// came from.
+fn about(ios: &str, undated: Option<&str>) -> String {
+    let dates = match undated {
+        None => "from Photos".to_string(),
+        Some(reason) => format!("from the files, as Photos could not be read: {reason}"),
+    };
+    format!(
+        "Rollport {} on {} {}, iPhone with iOS {ios}\nDates: {dates}\n",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    )
+}
+
+impl Report {
+    /// The report with its details, after `about`.
+    pub fn described(self, about: &str) -> Report {
+        use std::fmt::Write;
+
+        let ended = match &self.end {
+            End::Done => "done".to_string(),
+            End::Stopped => "stopped".to_string(),
+            End::Full => "the disk was full".to_string(),
+            End::Unplugged => "the iPhone was unplugged".to_string(),
+            End::Failed { reason } => format!("failed: {reason}"),
+        };
+        let failures = self.trouble.as_ref().map_or(&[][..], |trouble| &trouble.0);
+
+        let mut details = format!(
+            "{about}Ended: {ended}\nImported: {}\nNot copied: {}\n",
+            self.imported,
+            failures.len(),
+        );
+        for (name, reason) in failures {
+            let name = if name.is_empty() { "a file" } else { name };
+            let _ = writeln!(details, "  {name}: {reason}");
+        }
+
+        Report { details, ..self }
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -1294,7 +1337,7 @@ impl State {
         }
 
         let (
-            Some(Device::Ready { udid, .. }),
+            Some(Device::Ready { udid, version, .. }),
             Some(Roll::Done { media, undated }),
             Folder::Known { path, facts },
         ) = (
@@ -1322,7 +1365,7 @@ impl State {
             settings: facts.settings.clone(),
             cancel: Arc::new(AtomicBool::new(false)),
             media,
-            undated: undated.clone(),
+            about: about(version, undated.as_deref()),
         };
 
         // The phone imports into this folder from now on.
@@ -1342,55 +1385,6 @@ impl State {
         });
 
         Some(import)
-    }
-
-    /// What the last run did, as text a person pastes into a report of a
-    /// problem: on what, how it ended, and every file it left on the phone.
-    pub fn details(&self) -> Option<String> {
-        use std::fmt::Write;
-
-        let Some(Run::Finished(report)) = &self.run else {
-            return None;
-        };
-
-        let ios = match self.listed(&report.udid) {
-            Some(Device::Ready { version, .. }) => format!("iOS {version}"),
-            _ => "iOS not known".to_string(),
-        };
-        let dates = match &report.undated {
-            None => "from Photos".to_string(),
-            Some(reason) => format!("from the files, as Photos could not be read: {reason}"),
-        };
-        let ended = match &report.end {
-            End::Done => "done".to_string(),
-            End::Stopped => "stopped".to_string(),
-            End::Full => "the disk was full".to_string(),
-            End::Unplugged => "the iPhone was unplugged".to_string(),
-            End::Failed { reason } => format!("failed: {reason}"),
-        };
-        let failures = report
-            .trouble
-            .as_ref()
-            .map_or(&[][..], |trouble| &trouble.0);
-
-        let mut out = format!(
-            "Rollport {} on {} {}, iPhone with {ios}\n\
-             Dates: {dates}\n\
-             Ended: {ended}\n\
-             Imported: {}\n\
-             Not copied: {}\n",
-            env!("CARGO_PKG_VERSION"),
-            std::env::consts::OS,
-            std::env::consts::ARCH,
-            report.imported,
-            failures.len(),
-        );
-        for (name, reason) in failures {
-            let name = if name.is_empty() { "a file" } else { name };
-            let _ = writeln!(out, "  {name}: {reason}");
-        }
-
-        Some(out)
     }
 
     /// How far the running copy has got.
@@ -1555,19 +1549,19 @@ mod tests {
 
     #[test]
     fn details_name_every_file_left_and_why_the_dates_are_the_files() {
-        let mut state = state(vec![phone("a")]);
-        state.run = Some(Run::Finished(Report {
+        let report = Report {
             imported: 3,
             end: End::Stopped,
             trouble: Some(Trouble(vec![
                 ("IMG_0001.HEIC".into(), "timed out".into()),
                 ("".into(), "the copy stopped unexpectedly".into()),
             ])),
-            undated: Some("Photos.sqlite: cannot open it".into()),
             ..finished()
-        }));
+        }
+        .described(&about("26.0", Some("Photos.sqlite: cannot open it")));
 
-        let details = state.details().unwrap();
+        let details = report.details;
+        assert!(details.contains("iPhone with iOS 26.0\n"));
         let lines: Vec<&str> = details.lines().skip(1).collect();
         assert_eq!(
             lines,
@@ -1984,7 +1978,7 @@ mod tests {
             trouble: None,
             newest: Vec::new(),
             udid: "a".into(),
-            undated: None,
+            details: String::new(),
         }
     }
 

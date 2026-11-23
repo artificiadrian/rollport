@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { convertFileSrc, invoke } from "@tauri-apps/api/core"
+    import { convertFileSrc } from "@tauri-apps/api/core"
     import { cubicOut, linear } from "svelte/easing"
     import { Tween, prefersReducedMotion } from "svelte/motion"
     import { fade, fly } from "svelte/transition"
@@ -54,25 +54,13 @@
         folder: Extract<Folder, { folder: "known" }>
     } = $props()
 
-    /// What the last run did, as text to paste into a report of a problem;
-    /// on every report, as a run that went well can still be wrong. Asked
-    /// for when the report shows, because WebKit lets a page write the
-    /// clipboard only within the click itself.
-    let details: string | null = $state(null)
+    /// On every report, as a run that went well can still be wrong.
     let copied = $state(false)
 
-    $effect(() => {
-        if (view.screen !== "done") return
-        void flow.run
-        invoke<string | null>("run_details")
-            .then((text) => (details = text))
-            .catch((e) => console.error("run_details", e))
-    })
-
     function copyDetails() {
-        if (details === null) return
+        if (flow.run?.run !== "finished") return
         navigator.clipboard
-            .writeText(details)
+            .writeText(flow.run.details)
             .then(() => {
                 copied = true
                 setTimeout(() => (copied = false), 2000)

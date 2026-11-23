@@ -249,7 +249,7 @@ async fn start_import(app: AppHandle) {
         settings,
         media,
         cancel,
-        undated,
+        about,
     }) = with(&app, |state| {
         let import = state.start_import()?;
 
@@ -277,35 +277,27 @@ async fn start_import(app: AppHandle) {
     .await;
 
     // Before a file moved: the phone would not talk, or rollport-library.db would not open.
-    let report = run.unwrap_or_else(|reason| Report {
-        imported: 0,
-        bytes: 0,
-        seconds: 0,
-        end: End::Failed { reason },
-        trouble: None,
-        newest: Vec::new(),
-        udid,
-        undated: None,
-    });
-    let report = Report { undated, ..report };
+    let report = run
+        .unwrap_or_else(|reason| Report {
+            imported: 0,
+            bytes: 0,
+            seconds: 0,
+            end: End::Failed { reason },
+            trouble: None,
+            newest: Vec::new(),
+            udid,
+            details: String::new(),
+        })
+        .described(&about);
 
     // The folder is a library now, or holds more than it did, and it is the
     // one that knows how much room is left. Landed with the report, so the
     // report never shows beside the old count.
     let read = facts(&path).await;
+    note(&app, &format!("import finished\n{}", report.details));
     let next = with(&app, |state| state.copied(report, &path, read));
 
-    if let Some(details) = lock(&app).details() {
-        note(&app, &format!("import finished\n{details}"));
-    }
-
     follow(&app, next)
-}
-
-/// What the last run did, for the person to paste into a report of a problem.
-#[tauri::command]
-async fn run_details(app: AppHandle) -> Option<String> {
-    lock(&app).details()
 }
 
 /// One line in the log, for whoever looks into a problem later: the window
@@ -868,7 +860,6 @@ pub fn run() {
             set_layout,
             rescan,
             reveal_destination,
-            run_details,
             show_help,
             zoom
         ])

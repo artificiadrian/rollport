@@ -132,6 +132,7 @@ const report = (changes: Partial<Report> = {}): Report =>
         end: "done",
         newest: (changes.imported ?? 312) ? NEWEST.slice(0, 2) : [],
         udid: iphone.udid,
+        details: "",
         ...changes,
     }) as Report
 

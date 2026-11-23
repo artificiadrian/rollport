@@ -97,6 +97,7 @@ const finished = (changes: Partial<Report> = {}): Flow["run"] =>
         end: "done",
         newest: [],
         udid: phone.udid,
+        details: "",
         ...changes,
     }) as Flow["run"]
 

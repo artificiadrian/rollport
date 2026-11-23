@@ -278,6 +278,7 @@ function demo() {
                 trouble: null,
                 newest: imported ? batch.newest : [],
                 udid: chosen.udid,
+                details: `Rollport on the web, iPhone with iOS ${chosen.version}\nImported: ${imported}\n`,
             },
         }
     }
