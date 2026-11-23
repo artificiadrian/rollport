@@ -58,8 +58,8 @@ export type Report = {
     bytes: number
     seconds: number
     trouble: Trouble | null
-    /// The newest few it copied, by path on the phone.
-    newest: string[]
+    /// The newest few it copied.
+    newest: Print[]
     /// The phone it copied from: the prints are that phone's.
     udid: string
     /// What it did, as text to paste into a report of a problem.
@@ -120,12 +120,17 @@ export type Batch = {
     /// the files.
     items: number
     bytes: number
-    /// Edits are counted with their photo.
+    /// The items by kind: a Live Photo video is one whose still is not here.
     kinds: Counts
+    /// Edits whose original is not here, each an item of its own.
+    edits: number
     /// The newest few, by path on the phone, newest first. Never a file that
     /// rides along.
-    newest: string[]
+    newest: Print[]
 }
+
+/// A file the window shows as a print: its photo, or the icon of what it is.
+export type Print = { path: string; name: string; kind: Kind; edit: boolean }
 
 /// How far back this run reaches. `last` keeps counting from today; `between`
 /// is two fixed days.
@@ -523,16 +528,20 @@ export function needs(source: Source): Said | null {
 }
 
 /// What the window shows, worked out from the facts. The first match wins.
-/// The photos a screen shows on its prints, front first, each as its phone and
-/// its path there: two phones each have an IMG_0001. On ready, the newest of
-/// what is new; on a report, the newest its run copied; otherwise the newest
-/// the folder has. And the photo that arrived last while a copy runs or the
-/// roll is counted, which the window deals onto them.
+/// The photos a screen shows on its prints, front first, each keyed by its
+/// phone and its path there (two phones each have an IMG_0001), with what it
+/// is. On ready, the newest of what is new; on a report, the newest its run
+/// copied; otherwise the newest the folder has. And the photo that arrived
+/// last while a copy runs or the roll is counted, which the window deals onto
+/// them.
 export function prints(flow: Flow, shown: Screen) {
     const { roll, run, source } = flow
     const udid = source.source === "listed" ? source.chosen?.udid : undefined
-    const on = (phone: string | undefined) => (path: string) =>
-        `${phone ?? ""}${path}`
+    const on = (phone: string | undefined) => (print: Print) => ({
+        key: `${phone ?? ""}${print.path}`,
+        name: print.name,
+        kind: print.edit ? ("edits" as const) : print.kind,
+    })
 
     const still =
         shown.screen === "ready" && roll?.roll === "done"
@@ -549,7 +558,7 @@ export function prints(flow: Flow, shown: Screen) {
               ? roll.latest
               : null
 
-    return { still, latest: latest && udid ? on(udid)(latest) : null }
+    return { still, latest: latest && udid ? `${udid}${latest}` : null }
 }
 
 export function screen(flow: Flow): Screen {
@@ -891,10 +900,10 @@ function report(
 }
 
 /// What is new, by kind, and how many files that is: "219 photos and 15
-/// videos (324 files)". The big number above counts as the Photos app does;
-/// the files, with each Live Photo's video and each edit, are what the folder
-/// gets and what Finder counts. One line, so the warning under the button
-/// keeps its room.
+/// videos (324 files)", or "6 photos and 122 edits". The big number counts as
+/// the Photos app does, and also each edit or Live Photo video whose photo the
+/// folder already has; the files are what the folder gets and what Finder
+/// counts. One line, so the warning under the button keeps its room.
 function breakdown(batch: Batch) {
     const { kinds } = batch
     const photos = kinds.photos + kinds.livePhotos + kinds.screenshots
@@ -902,12 +911,16 @@ function breakdown(batch: Batch) {
     const said = (n: number, one: string, many: string) =>
         n > 0 ? `${count(n)} ${n === 1 ? one : many}` : ""
 
-    const shown = [
+    const parts = [
         said(photos, "photo", "photos"),
         said(videos, "video", "videos"),
-    ]
-        .filter(Boolean)
-        .join(" and ")
+        said(kinds.liveVideos, "Live Photo video", "Live Photo videos"),
+        said(batch.edits, "edit", "edits"),
+    ].filter(Boolean)
+    const last = parts.pop()
+    const shown = parts.length
+        ? `${parts.join(", ")} and ${last}`
+        : (last ?? "")
     const files = said(batch.files, "file", "files")
 
     return batch.files > batch.items && shown

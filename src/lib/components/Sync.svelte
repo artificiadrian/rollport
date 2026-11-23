@@ -11,6 +11,7 @@
     import FolderIcon from "@lucide/svelte/icons/folder"
     import FolderOpen from "@lucide/svelte/icons/folder-open"
     import ImageIcon from "@lucide/svelte/icons/image"
+    import { ICONS } from "$lib/icons"
     import RotateCw from "@lucide/svelte/icons/rotate-cw"
     import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal"
     import Smartphone from "@lucide/svelte/icons/smartphone"
@@ -124,7 +125,7 @@
     /// screen's.
     function start() {
         close()
-        dealt = photos.still
+        dealt = photos.still.map(({ key }) => key)
         oldest = 2
         tell("start_import")
     }
@@ -181,8 +182,16 @@
     /// and its report show what was dealt; any other screen, its own.
     const pictures = $derived.by(() => {
         const run = view.screen === "importing" || view.screen === "done"
-        return run && dealt.some(Boolean) ? dealt : photos.still
+        return run && dealt.some(Boolean)
+            ? dealt
+            : photos.still.map(({ key }) => key)
     })
+
+    /// What each print is and is called, for one with no photo of its own.
+    /// A photo dealt during an import is a photo, named by its path.
+    const printed = $derived(
+        new Map(photos.still.map((print) => [print.key, print])),
+    )
 
     /// Each picture's width over its height once it has loaded, or "broken"
     /// when the phone has no thumbnail for it. Missing while it is on its way.
@@ -565,18 +574,35 @@
                                         : ''}"
                                 >
                                     {#if url && seen[url] === "broken"}
+                                        {@const print = printed.get(url)}
                                         {@const name =
-                                            url.split("/").pop() ?? ""}
+                                            print?.name ??
+                                            url.split("/").pop() ??
+                                            ""}
                                         {@const dot = name.lastIndexOf(".")}
-                                        <!-- Two lines at most, broken before the extension. -->
+                                        {@const Icon =
+                                            ICONS[print?.kind ?? "photos"]}
+                                        <!-- What it is, and its name in two lines at most,
+                                             broken before the extension. -->
                                         <span
-                                            class="line-clamp-2 max-w-full px-2 text-center font-mono text-[10px] text-muted"
+                                            class="flex flex-col items-center gap-2"
                                         >
-                                            {dot > 0
-                                                ? name.slice(0, dot)
-                                                : name}<wbr />{dot > 0
-                                                ? name.slice(dot)
-                                                : ""}
+                                            <Icon
+                                                size={card.index === 0
+                                                    ? 28
+                                                    : 22}
+                                                strokeWidth={1.25}
+                                                class="text-faint"
+                                            />
+                                            <span
+                                                class="line-clamp-2 max-w-full px-2 text-center font-mono text-[10px] text-muted"
+                                            >
+                                                {dot > 0
+                                                    ? name.slice(0, dot)
+                                                    : name}<wbr />{dot > 0
+                                                    ? name.slice(dot)
+                                                    : ""}
+                                            </span>
                                         </span>
                                     {:else if card.index === 0 && !waiting(url)}
                                         <ImageIcon
@@ -679,9 +705,7 @@
                         <p class="{hero} text-muted">
                             {count(Math.round(found.current))}
                         </p>
-                        <p class="mt-2 text-lg font-medium">
-                            photos and videos found
-                        </p>
+                        <p class="mt-2 text-lg font-medium">files found</p>
                         <!-- Where the button will be, so nothing jumps when it arrives. -->
                         <div class="mt-6 h-11"></div>
                     {:else if view.screen === "importing"}

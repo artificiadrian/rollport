@@ -873,11 +873,13 @@ pub async fn copy_all(
     let fetch = Arc::new(media);
 
     let files = fetch.len();
-    // What the window counts: photos and videos as Batch counts them, or
-    // every file when they all ride along.
+    // What the window counts: items as Batch counts them, each done once
+    // its last file is.
     let items = Batch::of(fetch.iter()).items;
-    let all_ride_along = fetch.iter().all(Media::rides_along);
-    let is_item = |file: &Media| all_ride_along || !file.rides_along();
+    let mut files_left: HashMap<String, usize> = HashMap::new();
+    for file in fetch.iter() {
+        *files_left.entry(file.owner()).or_default() += 1;
+    }
     let mut items_done = 0;
     let total_bytes = fetch.iter().map(|file| file.size).sum::<u64>();
     let started = Instant::now();
@@ -1007,7 +1009,10 @@ pub async fn copy_all(
             let file = &fetch[index];
 
             files_done += 1;
-            items_done += usize::from(is_item(file));
+            if let Some(left) = files_left.get_mut(&file.owner()) {
+                *left -= 1;
+                items_done += usize::from(*left == 0);
+            }
             bytes += file.size;
 
             let recorded = match outcome {

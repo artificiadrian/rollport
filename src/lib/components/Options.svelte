@@ -3,13 +3,8 @@
     import { invoke } from "@tauri-apps/api/core"
     import ChevronDown from "@lucide/svelte/icons/chevron-down"
     import Lock from "@lucide/svelte/icons/lock"
-    import Film from "@lucide/svelte/icons/film"
-    import ImageIcon from "@lucide/svelte/icons/image"
-    import MonitorPlay from "@lucide/svelte/icons/monitor-play"
-    import Scan from "@lucide/svelte/icons/scan"
-    import Target from "@lucide/svelte/icons/target"
-    import Video from "@lucide/svelte/icons/video"
     import Menu from "$lib/components/Menu.svelte"
+    import { ICONS } from "$lib/icons"
     import {
         EVERYTHING,
         KINDS,
@@ -21,7 +16,6 @@
         when,
         type Flow,
         type Folder,
-        type Kind,
         type Range,
         type Roll,
     } from "$lib/flow"
@@ -183,15 +177,6 @@
     // Each kind is ticked on its own, with how many new files of it the
     // iPhone holds. The last one ticked cannot be unticked: an import of
     // nothing is not an answer, and Rust refuses it too.
-    const ICONS = {
-        photos: ImageIcon,
-        livePhotos: Target,
-        liveVideos: Film,
-        videos: Video,
-        screenshots: Scan,
-        screenRecordings: MonitorPlay,
-    } satisfies Record<Kind, unknown>
-
     const kinds = $derived(
         KINDS.map(({ kind, noun }) => ({
             value: kind,

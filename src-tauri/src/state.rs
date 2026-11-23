@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     library::{Key, wanted},
-    phone::extension,
+    phone::{extension, stem},
 };
 
 /// One attached device, as far as we can see it.
@@ -76,17 +76,30 @@ pub enum Devices {
 pub struct Batch {
     /// Every file the folder gets, each Live Photo's clip and each edit too.
     pub files: usize,
-    /// Photos and videos as the Photos app counts them: a Live Photo with
-    /// its clip is one, and an edit is part of its photo. When there is
-    /// nothing else, as when Live Photo videos are taken later, the files.
+    /// Photos and videos as the Photos app counts them: a photo with its
+    /// clip and its edits is one. A clip or an edit whose photo the folder
+    /// already has is one of its own.
     pub items: usize,
     /// What they weigh, so the room left on the disk is answered against what
     /// will actually be fetched.
     pub bytes: u64,
+    /// The items by kind: a Live Photo video is one whose still is not
+    /// here, and an edit whose original is not here is counted in `edits`.
     pub kinds: Counts,
-    /// The newest few, by path on the phone, newest first: what the window
-    /// shows as prints. Never a file that rides along; its photo stands for it.
-    pub newest: Vec<String>,
+    pub edits: usize,
+    /// The newest few items, newest first: what the window shows as prints.
+    pub newest: Vec<Print>,
+}
+
+/// A file the window shows as a print: its photo, or what it is.
+#[derive(Serialize, Clone, PartialEq, Debug)]
+pub struct Print {
+    pub path: String,
+    /// What it is called in the folder: an edit's file on the phone is
+    /// always FullSizeRender.
+    pub name: String,
+    pub kind: Kind,
+    pub edit: bool,
 }
 
 /// How many prints the window fans out.
@@ -95,25 +108,51 @@ const PRINTS: usize = 3;
 impl Batch {
     pub fn of<'a>(media: impl IntoIterator<Item = &'a Media>) -> Batch {
         let media: Vec<&Media> = media.into_iter().collect();
-        let kinds = counts(media.iter().copied());
 
-        let mut newest: Vec<&Media> = media
-            .iter()
-            .copied()
-            .filter(|file| !file.rides_along())
+        let mut items: HashMap<String, Vec<&Media>> = HashMap::new();
+        for &file in &media {
+            items.entry(file.owner()).or_default().push(file);
+        }
+
+        // Each item is what it holds: its photo or video, else its clip,
+        // else its edit.
+        let mut leads: Vec<&Media> = items
+            .values()
+            .map(|item| {
+                let lead =
+                    |wanted: fn(&Media) -> bool| item.iter().copied().find(|file| wanted(file));
+                lead(|file| !file.rides_along())
+                    .or_else(|| lead(|file| !file.is_edit()))
+                    .unwrap_or(item[0])
+            })
             .collect();
-        newest.sort_by_key(|file| std::cmp::Reverse(file.taken));
 
-        let items = kinds.values().sum::<usize>() - kinds[&Kind::LiveVideo];
+        let mut kinds: Counts = Kind::ALL.into_iter().map(|kind| (kind, 0)).collect();
+        let mut edits = 0;
+        for lead in &leads {
+            if lead.is_edit() {
+                edits += 1;
+            } else {
+                *kinds.entry(lead.kind).or_default() += 1;
+            }
+        }
+
+        leads.sort_by_key(|file| std::cmp::Reverse(file.taken));
         Batch {
             files: media.len(),
-            items: if items == 0 { media.len() } else { items },
+            items: items.len(),
             bytes: media.iter().map(|file| file.size).sum(),
             kinds,
-            newest: newest
+            edits,
+            newest: leads
                 .iter()
                 .take(PRINTS)
-                .map(|file| file.path.clone())
+                .map(|file| Print {
+                    path: file.path.clone(),
+                    name: file.name.clone(),
+                    kind: file.kind,
+                    edit: file.is_edit(),
+                })
                 .collect(),
         }
     }
@@ -231,6 +270,19 @@ impl Media {
 impl Media {
     pub fn is_live_video(&self) -> bool {
         self.kind == Kind::LiveVideo
+    }
+
+    /// The photo or video a file belongs to, as its path without extension:
+    /// a Live Photo's clip to its still, an edit to its original.
+    pub fn owner(&self) -> String {
+        match self
+            .path
+            .strip_prefix(MUTATIONS)
+            .and_then(|rest| rest.split_once("/Adjustments/"))
+        {
+            Some((original, _)) => original.to_lowercase(),
+            None => stem(&self.path),
+        }
     }
 
     /// A file that comes with a photo rather than being one: a Live Photo's
@@ -692,8 +744,8 @@ pub struct Report {
     /// What it did, as text a person pastes into a report of a problem: on
     /// what, how it ended, and every file it left on the phone.
     pub details: String,
-    /// The newest few it copied, by path on the phone: the report's prints.
-    pub newest: Vec<String>,
+    /// The newest few it copied: the report's prints.
+    pub newest: Vec<Print>,
     /// The phone it copied from. Its Continue is only for that phone, and its
     /// prints are that phone's.
     pub udid: String,
@@ -1637,15 +1689,29 @@ mod tests {
                 false,
                 6,
             ),
+            // An edit and a clip whose photos the folder already has.
+            file(
+                "/PhotoData/Mutations/DCIM/100APPLE/IMG_0005/Adjustments/FullSizeRender.jpg",
+                false,
+                7,
+            ),
+            file("/DCIM/100APPLE/IMG_0006.MOV", true, 0),
         ];
+        let print = |path: &str, kind, edit| Print {
+            path: path.into(),
+            name: path.rsplit('/').next().unwrap_or(path).into(),
+            kind,
+            edit,
+        };
 
         assert_eq!(
             Batch::of(&media),
             Batch {
-                files: 6,
-                // As Photos counts them: the clip and the edit ride along.
-                items: 4,
-                bytes: 60,
+                files: 8,
+                // A photo with its clip and its edit is one; an edit or a
+                // clip on its own is one too.
+                items: 6,
+                bytes: 80,
                 kinds: Counts::from([
                     (Kind::Photo, 3),
                     (Kind::LivePhoto, 0),
@@ -1654,11 +1720,17 @@ mod tests {
                     (Kind::Screenshot, 0),
                     (Kind::ScreenRecording, 0),
                 ]),
-                // The clip and the edit are newest, and are not prints.
+                edits: 1,
+                // An item is as new as its photo: IMG_0003's newer edit
+                // does not make it newer.
                 newest: vec![
-                    "/DCIM/100APPLE/IMG_0003.JPG".into(),
-                    "/DCIM/100APPLE/IMG_0002.MOV".into(),
-                    "/DCIM/100APPLE/IMG_0004.JPG".into(),
+                    print(
+                        "/PhotoData/Mutations/DCIM/100APPLE/IMG_0005/Adjustments/FullSizeRender.jpg",
+                        Kind::Photo,
+                        true
+                    ),
+                    print("/DCIM/100APPLE/IMG_0003.JPG", Kind::Photo, false),
+                    print("/DCIM/100APPLE/IMG_0002.MOV", Kind::Video, false),
                 ],
             }
         );
@@ -1667,11 +1739,15 @@ mod tests {
     /// Live Photo videos taken after their photos: then they are what counts.
     #[test]
     fn a_batch_of_only_clips_counts_the_clips() {
-        let clip = Media {
+        let clip = |path: &str| Media {
             kind: Kind::LiveVideo,
-            ..Media::at("/DCIM/100APPLE/IMG_0001.MOV", "2026-09-02 15:04:11")
+            ..Media::at(path, "2026-09-02 15:04:11")
         };
-        assert_eq!(Batch::of([&clip, &clip]).items, 2);
+        let clips = [
+            clip("/DCIM/100APPLE/IMG_0001.MOV"),
+            clip("/DCIM/100APPLE/IMG_0002.MOV"),
+        ];
+        assert_eq!(Batch::of(&clips).items, 2);
     }
 
     fn when(text: &str) -> chrono::NaiveDateTime {
@@ -1849,7 +1925,7 @@ mod tests {
             state.set_takes(takes);
             assert_eq!(fresh(&state).files, files);
         }
-        assert!(fresh(&state).newest[0].ends_with("IMG_0002.MOV"));
+        assert!(fresh(&state).newest[0].path.ends_with("IMG_0002.MOV"));
     }
 
     /// A folder that skipped Live Photo videos was answering this question

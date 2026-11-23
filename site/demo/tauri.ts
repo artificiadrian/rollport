@@ -4,7 +4,15 @@
 //
 // The flows are typed with the app's own Flow, so a change there that this
 // file does not follow fails the site's type check.
-import type { Batch, Counts, Flow, Range, Run, Takes } from "../../src/lib/flow"
+import type {
+    Batch,
+    Counts,
+    Flow,
+    Print,
+    Range,
+    Run,
+    Takes,
+} from "../../src/lib/flow"
 
 /** What a new folder takes, as EVERYTHING in flow.ts: this file runs without imports. */
 const EVERYTHING: Takes = [
@@ -63,6 +71,12 @@ function demo() {
     const REST_MS = 4000
 
     const photo = (name: string) => `/DCIM/100APPLE/${name}.svg`
+    const print = (name: string): Print => ({
+        path: photo(name),
+        name: `${name}.svg`,
+        kind: "photos",
+        edit: false,
+    })
     // The last one found is the first tint; the home page starts its glow
     // with it (firstPhoto in src/pages/index.astro).
     const found = ["lake", "city", "sunset"]
@@ -104,7 +118,8 @@ function demo() {
         items: 4522,
         bytes: 15.8e9,
         kinds: kinds(4522 - 190, 190),
-        newest: ["sunset", "lake", "city"].map(photo),
+        edits: 0,
+        newest: ["sunset", "lake", "city"].map(print),
     }
 
     /** The date ranges Options offers, with what each brings (PRESETS in state.rs). */
@@ -136,13 +151,14 @@ function demo() {
             items: files,
             bytes: (BYTES * files) / TOTAL,
             kinds: kinds(photos, videos),
+            edits: 0,
             newest:
                 files === 0
                     ? []
                     : (recent
                           ? ["sunset", "lake", "city"]
                           : ["forest", "beach", "dunes"]
-                      ).map(photo),
+                      ).map(print),
         }
     }
 

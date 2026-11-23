@@ -12,6 +12,8 @@ import { webkit, type Page } from "playwright"
 import {
     EVERYTHING,
     type Batch,
+    type Kind,
+    type Print,
     type Counts,
     type Device,
     type Flow,
@@ -56,11 +58,24 @@ const known: Folder = {
 const folder = (changes: Partial<Extract<Folder, { folder: "known" }>>) =>
     ({ ...known, ...changes }) as Folder
 
+const print = (path: string, kind: Kind = "photos", edit = false): Print => ({
+    path,
+    name: path.split("/").pop() ?? path,
+    kind,
+    edit,
+})
 const NEWEST = [
-    "/DCIM/100APPLE/IMG_4821.HEIC",
-    "/DCIM/100APPLE/IMG_4820.HEIC",
-    "/DCIM/100APPLE/IMG_4819.MOV",
+    print("/DCIM/100APPLE/IMG_4821.HEIC"),
+    print("/DCIM/100APPLE/IMG_4820.HEIC"),
+    print("/DCIM/100APPLE/IMG_4819.MOV", "videos"),
 ]
+/// Edits whose photos the folder already has: no thumbnail of their own.
+const edit = (n: number): Print => ({
+    path: `/PhotoData/Mutations/DCIM/100APPLE/IMG_${n}/Adjustments/FullSizeRender.jpg`,
+    name: `IMG_E${n}.JPG`,
+    kind: "photos",
+    edit: true,
+})
 const kinds = (photos: number, videos = 0, liveVideos = 0): Counts => ({
     photos,
     livePhotos: 0,
@@ -70,7 +85,7 @@ const kinds = (photos: number, videos = 0, liveVideos = 0): Counts => ({
     screenRecordings: 0,
 })
 // A twentieth are videos, a quarter come with a Live Photo video, and of the
-// new ones a thirtieth also come as an edit.
+// new ones a thirtieth also come as an edit: all with their photos.
 const batch = (files: number, edits = 0): Omit<Batch, "newest"> => {
     const videos = Math.floor(files / 20)
     const clips = Math.floor(files / 4)
@@ -78,7 +93,8 @@ const batch = (files: number, edits = 0): Omit<Batch, "newest"> => {
     return {
         files,
         bytes: files * 3.2e6,
-        kinds: kinds(photos, videos, clips),
+        kinds: kinds(photos, videos),
+        edits: 0,
         items: photos + videos,
     }
 }
@@ -91,9 +107,9 @@ const done = (
     all: {
         ...batch(files),
         newest: [
-            "/DCIM/100APPLE/IMG_4700.HEIC",
-            "/DCIM/100APPLE/IMG_4699.HEIC",
-            "/DCIM/100APPLE/IMG_4698.HEIC",
+            print("/DCIM/100APPLE/IMG_4700.HEIC"),
+            print("/DCIM/100APPLE/IMG_4699.HEIC"),
+            print("/DCIM/100APPLE/IMG_4698.HEIC"),
         ],
     },
     new: {
@@ -311,7 +327,7 @@ const STATES: State[] = [
             roll: {
                 roll: "reading",
                 seen: 1284,
-                latest: NEWEST[0] ?? null,
+                latest: NEWEST[0]?.path ?? null,
                 failed: null,
             },
         },
@@ -333,13 +349,30 @@ const STATES: State[] = [
         roll: done(4210, 1, NEWEST.slice(0, 1)),
     }),
     state(
+        "ready-edits",
+        "Edits and Live Photo videos whose photos the folder has: each one, with its icon",
+        {
+            roll: {
+                ...done(4210, 0),
+                new: {
+                    files: 49,
+                    items: 49,
+                    bytes: 121e6,
+                    kinds: kinds(0, 0, 9),
+                    edits: 40,
+                    newest: [edit(4801), edit(4790), edit(4777)],
+                },
+            },
+        },
+    ),
+    state(
         "ready-no-thumbnails",
-        "Photos without thumbnails are drawn as paper",
+        "Photos without thumbnails are drawn as paper with their icon",
         {
             roll: done(4210, 3, [
-                "/DCIM/100APPLE/IMG_0001.DNG",
-                "/DCIM/100APPLE/IMG_0002.DNG",
-                "/DCIM/100APPLE/IMG_0003.DNG",
+                print("/DCIM/100APPLE/IMG_0001.DNG"),
+                print("/DCIM/100APPLE/IMG_0002.DNG"),
+                print("/DCIM/100APPLE/IMG_0003.DNG"),
             ]),
         },
     ),
@@ -371,6 +404,7 @@ const STATES: State[] = [
                     files: 86,
                     bytes: 86 * 3.2e6,
                     kinds: kinds(86),
+                    edits: 0,
                     items: 86,
                     newest: NEWEST.slice(0, 2),
                 },
@@ -413,7 +447,7 @@ const STATES: State[] = [
             bytes: 451e6,
             totalBytes: 998e6,
             eta: 118,
-            latest: NEWEST[1] ?? null,
+            latest: NEWEST[1]?.path ?? null,
         },
     }),
 
@@ -793,8 +827,10 @@ function fake({ flow, refuse }: { flow: Flow; refuse: string | null }) {
             return next++
         },
         convertFileSrc(path: string) {
-            // DNGs have no thumbnail on the phone, as some do not.
-            if (path.endsWith(".DNG")) return "http://photos.local/missing"
+            // DNGs have no thumbnail on the phone, as some do not, and
+            // neither has an edit.
+            if (path.endsWith(".DNG") || path.includes("/Mutations/"))
+                return "http://photos.local/missing"
             // The phone before the path: the same photos whichever phone.
             path = path.slice(path.indexOf("/"))
             const names = [

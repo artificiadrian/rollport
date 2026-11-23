@@ -17,6 +17,7 @@ import {
     size,
     type Batch,
     type Counts,
+    type Print,
     type Kind,
     type Device,
     type Flow,
@@ -52,8 +53,15 @@ const batch = (files: number, bytes = files * 1e6): Batch => ({
     files,
     bytes,
     kinds: kinds(files),
+    edits: 0,
     items: files,
     newest: [],
+})
+const print = (path: string): Print => ({
+    path,
+    name: path.split("/").pop() ?? path,
+    kind: "photos",
+    edit: false,
 })
 const read = (fresh: number, bytes?: number, undated = false): Roll => ({
     roll: "done",
@@ -356,8 +364,9 @@ describe("the ready screen counts as the Photos app does", () => {
             files: 324,
             items: 234,
             bytes: 1e9,
-            // 12 of the 219 photos also come as an edit.
-            kinds: kinds(219, 15, 78),
+            // 78 Live Photo videos and 12 edits come with their photos.
+            kinds: kinds(219, 15),
+            edits: 0,
             newest: [],
         }
         const shown = screen(flow({ roll }))
@@ -366,43 +375,56 @@ describe("the ready screen counts as the Photos app does", () => {
         assert.equal(shown.details, "219 photos and 15 videos (324 files)")
     })
 
-    test("Live Photo videos taken later are counted as files", () => {
+    test("edits and videos whose photos the folder has are named", () => {
         const roll = read(0)
         assert.ok(roll.roll === "done")
         roll.new = {
-            files: 78,
-            items: 78,
+            files: 49,
+            items: 49,
             bytes: 1e8,
-            kinds: kinds(0, 0, 78),
+            kinds: kinds(0, 0, 9),
+            edits: 40,
             newest: [],
         }
         const shown = screen(flow({ roll }))
         assert.ok(shown.screen === "ready")
-        assert.equal(shown.details, "78 files")
+        assert.equal(shown.details, "9 Live Photo videos and 40 edits")
     })
 })
 
 describe("the prints", () => {
     const roll: Roll = {
         ...read(3),
-        all: { ...batch(103), newest: ["/DCIM/a.HEIC"] },
-        new: { ...batch(3), newest: ["/DCIM/new.HEIC"] },
+        all: { ...batch(103), newest: [print("/DCIM/a.HEIC")] },
+        new: { ...batch(3), newest: [print("/DCIM/new.HEIC")] },
     } as Roll
     const at = (path: string) => `${phone.udid}${path}`
 
     test("ready shows what is new, of this phone", () => {
         const of = flow({ roll })
-        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/new.HEIC")])
+        assert.deepEqual(
+            prints(of, screen(of)).still.map(({ key }) => key),
+            [at("/DCIM/new.HEIC")],
+        )
     })
 
     test("a report shows what its run copied", () => {
-        const of = flow({ roll, run: finished({ newest: ["/DCIM/run.HEIC"] }) })
-        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/run.HEIC")])
+        const of = flow({
+            roll,
+            run: finished({ newest: [print("/DCIM/run.HEIC")] }),
+        })
+        assert.deepEqual(
+            prints(of, screen(of)).still.map(({ key }) => key),
+            [at("/DCIM/run.HEIC")],
+        )
     })
 
     test("a report that copied nothing shows what the folder has", () => {
         const of = flow({ roll, run: finished({ imported: 0 }) })
-        assert.deepEqual(prints(of, screen(of)).still, [at("/DCIM/a.HEIC")])
+        assert.deepEqual(
+            prints(of, screen(of)).still.map(({ key }) => key),
+            [at("/DCIM/a.HEIC")],
+        )
     })
 
     test("a copy deals the photo that landed last", () => {
