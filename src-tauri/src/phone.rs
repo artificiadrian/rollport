@@ -559,24 +559,24 @@ pub fn read_photos(path: &Path) -> rusqlite::Result<HashMap<String, Known>> {
         ""
     };
 
-    let mut rows = db.prepare(&format!(
-        "SELECT a.ZDIRECTORY, a.ZFILENAME, {}, {}, {}, {} IS NOT NULL AND {} != 0, {},
-                COALESCE({}, 0) > 0 OR COALESCE({}, 0) = 1, {}
-         FROM {table} a {join}
-         WHERE (a.ZDIRECTORY LIKE 'DCIM/%'
-                OR ({} = 1 AND (a.ZDIRECTORY LIKE 'PhotoData/CPLAssets%'
-                                OR a.ZDIRECTORY LIKE 'CPLAssets%')))
-           AND a.ZFILENAME IS NOT NULL",
-        a("ZDATECREATED"),
-        a("ZTRASHEDSTATE"),
-        x("ZTIMEZONEOFFSET"),
+    let (created, trashed, zone) = (a("ZDATECREATED"), a("ZTRASHEDSTATE"), x("ZTIMEZONEOFFSET"));
+    let (burst, visibility, kind) = (
         a("ZAVALANCHEUUID"),
         a("ZVISIBILITYSTATE"),
         a("ZKINDSUBTYPE"),
-        a("ZADJUSTMENTSSTATE"),
-        a("ZHASADJUSTMENTS"),
-        x("ZORIGINALFILENAME"),
-        a("ZCLOUDLOCALSTATE"),
+    );
+    let (adjusted, has_adjustments) = (a("ZADJUSTMENTSSTATE"), a("ZHASADJUSTMENTS"));
+    let (original, cloud) = (x("ZORIGINALFILENAME"), a("ZCLOUDLOCALSTATE"));
+
+    let mut rows = db.prepare(&format!(
+        "SELECT a.ZDIRECTORY, a.ZFILENAME, {created}, {trashed}, {zone},
+                {burst} IS NOT NULL AND {visibility} != 0, {kind},
+                COALESCE({adjusted}, 0) > 0 OR COALESCE({has_adjustments}, 0) = 1, {original}
+         FROM {table} a {join}
+         WHERE (a.ZDIRECTORY LIKE 'DCIM/%'
+                OR ({cloud} = 1 AND (a.ZDIRECTORY LIKE 'PhotoData/CPLAssets%'
+                                     OR a.ZDIRECTORY LIKE 'CPLAssets%')))
+           AND a.ZFILENAME IS NOT NULL"
     ))?;
 
     rows.query_map([], |row| {
